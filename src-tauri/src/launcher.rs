@@ -41,27 +41,32 @@ impl Launcher {
             return Err(format!("Path is not a directory: {}", path));
         }
 
-        // ディレクトリ直下の.code-workspaceファイルを検索
-        let workspace_file = Self::find_workspace_file(&path_buf);
-        let target_path = workspace_file.as_ref().unwrap_or(&path_buf);
-
         match editor {
             Some("windsurf") => {
+                // ディレクトリ直下の.code-workspaceファイルを検索
+                let workspace_file = Self::find_workspace_file(&path_buf);
+                let target_path = workspace_file.as_ref().unwrap_or(&path_buf);
                 // WindsurfのバンドルIDを取得して開く
                 Self::open_with_app_bundle("Windsurf", target_path)?;
             }
             Some("cursor") => {
+                // ディレクトリ直下の.code-workspaceファイルを検索
+                let workspace_file = Self::find_workspace_file(&path_buf);
+                let target_path = workspace_file.as_ref().unwrap_or(&path_buf);
                 // CursorのバンドルIDを取得して開く
                 Self::open_with_app_bundle("Cursor", target_path)?;
             }
             Some("code") | Some("vscode") => {
+                // ディレクトリ直下の.code-workspaceファイルを検索
+                let workspace_file = Self::find_workspace_file(&path_buf);
+                let target_path = workspace_file.as_ref().unwrap_or(&path_buf);
                 // VS CodeのバンドルIDを取得して開く
                 Self::open_with_app_bundle("Visual Studio Code", target_path)?;
             }
             _ => {
-                // デフォルトはFinderで開く
+                // デフォルトはFinderで開く（常にディレクトリ本体を開く）
                 Command::new("open")
-                    .arg(target_path)
+                    .arg(&path_buf)
                     .spawn()
                     .map_err(|e| format!("Failed to open directory: {}", e))?;
             }

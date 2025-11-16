@@ -416,7 +416,16 @@ const SettingsWindow: React.FC = () => {
                     </Form.Item>
                   )}
                   {parentOpenMode === 'editor' && (
-                    <Form.Item name="parent_editor" label="エディタ">
+                    <Form.Item
+                      name="parent_editor"
+                      label="エディタ"
+                      rules={[
+                        {
+                          required: true,
+                          message: 'エディタを選択してください',
+                        },
+                      ]}
+                    >
                       <Select placeholder="エディタを選択">
                         {availableEditors.includes('windsurf') && (
                           <Option value="windsurf">Windsurf</Option>
@@ -454,7 +463,13 @@ const SettingsWindow: React.FC = () => {
                 addDirForm.getFieldValue('subdirs_open_mode');
               return (
                 subdirsOpenMode === 'editor' && (
-                  <Form.Item name="subdirs_editor" label="エディタ">
+                  <Form.Item
+                    name="subdirs_editor"
+                    label="エディタ"
+                    rules={[
+                      { required: true, message: 'エディタを選択してください' },
+                    ]}
+                  >
                     <Select placeholder="エディタを選択">
                       {availableEditors.includes('windsurf') && (
                         <Option value="windsurf">Windsurf</Option>

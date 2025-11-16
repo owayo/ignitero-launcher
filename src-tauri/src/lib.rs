@@ -102,9 +102,7 @@ fn get_settings(state: State<AppState>) -> Settings {
 
 #[tauri::command]
 fn save_settings(settings: Settings, state: State<AppState>) -> Result<(), String> {
-    state.settings_manager.save_settings(settings)?;
-    // 設定変更後、ディレクトリリストを再スキャン
-    refresh_directories(state)
+    state.settings_manager.save_settings(settings)
 }
 
 #[tauri::command]

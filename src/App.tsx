@@ -420,7 +420,7 @@ function App() {
     try {
       await invoke('open_in_terminal', {
         path: item.path,
-        terminalType: defaultTerminal.current,
+        terminal_type: defaultTerminal.current,
       });
       // ウィンドウを非表示
       await invoke('hide_window');
