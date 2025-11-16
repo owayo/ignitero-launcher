@@ -7,8 +7,9 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 Ignitero Launcherは、macOS向けの軽量で高速なアプリケーションランチャーです。以下の機能を提供します：
 
 - **/Applications配下のアプリケーション**をインクリメンタル検索で起動
-- **特定ディレクトリ**（例：~/GitHub/）をWindsurf、Cursorなどのエディタで開く
-- ディレクトリごとに**使用するエディタを設定可能**
+- **柔軟なディレクトリ管理**: ディレクトリ自身や配下のディレクトリをFinder/エディタで開く
+- **カスタム検索キーワード**: ディレクトリを任意のキーワードで検索可能
+- **ターミナル統合**: →キーでディレクトリをターミナルで開く
 - **Option+Spaceのグローバルホットキー**で検索窓を呼び出し
 - **ステータスバー常駐**でバックグラウンド動作
 
@@ -37,7 +38,7 @@ cd src-tauri && cargo test  # Rustテスト
 
 - **`app_scanner.rs`** - /Applications配下のアプリケーションをスキャン
 - **`directory_scanner.rs`** - 指定ディレクトリ配下をスキャン
-- **`launcher.rs`** - アプリケーション起動とエディタでディレクトリを開く機能
+- **`launcher.rs`** - アプリケーション起動、エディタ起動、ターミナル起動機能
 - **`search.rs`** - fuzzy-matcherを使用したインクリメンタル検索エンジン
 - **`cache.rs`** - SQLiteを使用したアプリケーション情報のキャッシュ管理
 - **`icon_converter.rs`** - macOSアプリアイコンのPNG変換とキャッシュ
@@ -70,17 +71,24 @@ cd src-tauri && cargo test  # Rustテスト
    - アプリアイコンのPNG変換とキャッシュ
    - 高速な起動と検索応答
 
-3. **エディタ設定管理**:
-   - ディレクトリパスとエディタのマッピング
-   - デフォルトエディタの設定
+3. **柔軟なディレクトリ設定管理**:
+   - 親ディレクトリ自身の開き方（none / finder / editor）
+   - 配下のディレクトリの開き方（none / finder / editor）
+   - カスタム検索キーワードの設定
+   - ディレクトリごとに異なるエディタを設定可能
    - 設定の永続化（JSON）
 
-4. **グローバルホットキー**:
+4. **ターミナル統合**:
+   - デフォルトターミナルの設定（macOS Terminal / iTerm2 / Warp）
+   - →キーでディレクトリをターミナルで開く
+   - インストール済みターミナルの自動検出
+
+5. **グローバルホットキー**:
    - Option+Spaceでウィンドウを表示/非表示
    - システムワイドで動作
    - フォーカス管理とIME制御
 
-5. **ステータスバー統合**:
+6. **ステータスバー統合**:
    - ウィンドウを閉じても終了しない
    - トレイメニューから設定や終了が可能
    - バックグラウンドで常駐
@@ -95,13 +103,20 @@ cd src-tauri && cargo test  # Rustテスト
 - 起動時とメニューからの手動再スキャン
 
 ### ディレクトリ検索
-- 設定されたディレクトリ（例：~/GitHub/）配下をスキャン
-- ディレクトリごとの設定に基づいてエディタを起動
-- 対応エディタ: Windsurf、Cursor、VS Code、その他
+- **親ディレクトリ自身**:
+  - `parent_open_mode`: none / finder / editor
+  - `parent_search_keyword`: カスタム検索キーワード（未指定時はディレクトリ名）
+  - `parent_editor`: エディタ選択（Windsurf / Cursor / VS Code）
+- **配下のディレクトリ**:
+  - `subdirs_open_mode`: none / finder / editor
+  - `subdirs_editor`: エディタ選択（Windsurf / Cursor / VS Code）
 - **エディタ起動方式**:
   - osascriptでアプリ名からバンドルIDを取得
   - `open -n -b <bundle-id> --args <path>`で起動
   - .code-workspaceファイルがあれば優先的に開く
+- **ターミナル起動**:
+  - `open -a Terminal/iTerm/Warp <path>`でターミナルを開く
+  - →キーで起動
 
 ### 日本語検索対応
 - wanakanaによるローマ字・かな変換
@@ -117,6 +132,8 @@ cd src-tauri && cargo test  # Rustテスト
 
 ### キーボードナビゲーション
 - ↑↓キーで項目選択
+- Enterキーで起動
+- →キーでディレクトリをターミナルで開く
 - 選択項目の自動スクロール（useRefベースの実装）
 - scrollIntoView APIによる最小限のスクロール（block: 'nearest'）
 - パフォーマンス重視（behavior: 'auto'）
@@ -126,6 +143,12 @@ cd src-tauri && cargo test  # Rustテスト
 - 常に前面表示（alwaysOnTop）
 - 透明度とシャドウでモダンな見た目
 - window-vibrancyによるmacOS標準のぼかし効果
+
+### UI/UX改善
+- ツールチップ付きアイコンボタン（キャッシュ更新・設定）
+- キャッシュ更新ボタンを検索画面に配置
+- マウスオーバー効果なしのシンプルなボタンデザイン
+- エディタアイコンのIPCキャッシュによるパフォーマンス最適化
 
 ## Tauri固有の注意事項
 
@@ -145,4 +168,29 @@ cd src-tauri && cargo test  # Rustテスト
 - **アイコン処理**: core-foundation、plist
 - **UI効果**: window-vibrancy（macOSぼかし効果）
 - **ホットキー**: Tauri global-shortcut plugin
+- **統合機能**: エディタ・ターミナル自動検出と起動
 - **パッケージマネージャ**: pnpm
+
+## 主要な型定義
+
+### RegisteredDirectory
+```typescript
+{
+  path: string;
+  parent_open_mode: 'none' | 'finder' | 'editor';
+  parent_editor?: string;
+  parent_search_keyword?: string;
+  subdirs_open_mode: 'none' | 'finder' | 'editor';
+  subdirs_editor?: string;
+  scan_for_apps: boolean;
+}
+```
+
+### Settings
+```typescript
+{
+  registered_directories: RegisteredDirectory[];
+  cache_update: CacheUpdateSettings;
+  default_terminal: 'terminal' | 'iterm2' | 'warp';
+}
+```
