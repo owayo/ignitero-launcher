@@ -46,22 +46,37 @@ impl Launcher {
                 // ディレクトリ直下の.code-workspaceファイルを検索
                 let workspace_file = Self::find_workspace_file(&path_buf);
                 let target_path = workspace_file.as_ref().unwrap_or(&path_buf);
-                // WindsurfのバンドルIDを取得して開く
-                Self::open_with_app_bundle("Windsurf", target_path)?;
+                // Windsurfで開く
+                Command::new("open")
+                    .arg("-a")
+                    .arg("Windsurf")
+                    .arg(target_path)
+                    .spawn()
+                    .map_err(|e| format!("Failed to open with Windsurf: {}", e))?;
             }
             Some("cursor") => {
                 // ディレクトリ直下の.code-workspaceファイルを検索
                 let workspace_file = Self::find_workspace_file(&path_buf);
                 let target_path = workspace_file.as_ref().unwrap_or(&path_buf);
-                // CursorのバンドルIDを取得して開く
-                Self::open_with_app_bundle("Cursor", target_path)?;
+                // Cursorで開く
+                Command::new("open")
+                    .arg("-a")
+                    .arg("Cursor")
+                    .arg(target_path)
+                    .spawn()
+                    .map_err(|e| format!("Failed to open with Cursor: {}", e))?;
             }
             Some("code") | Some("vscode") => {
                 // ディレクトリ直下の.code-workspaceファイルを検索
                 let workspace_file = Self::find_workspace_file(&path_buf);
                 let target_path = workspace_file.as_ref().unwrap_or(&path_buf);
-                // VS CodeのバンドルIDを取得して開く
-                Self::open_with_app_bundle("Visual Studio Code", target_path)?;
+                // VS Codeで開く
+                Command::new("open")
+                    .arg("-a")
+                    .arg("Visual Studio Code")
+                    .arg(target_path)
+                    .spawn()
+                    .map_err(|e| format!("Failed to open with VS Code: {}", e))?;
             }
             _ => {
                 // デフォルトはFinderで開く（常にディレクトリ本体を開く）
@@ -91,40 +106,6 @@ impl Launcher {
             }
         }
         None
-    }
-
-    /// アプリケーションバンドルIDを使用してディレクトリを開く
-    fn open_with_app_bundle(app_name: &str, path: &Path) -> Result<(), String> {
-        // osascriptでアプリのバンドルIDを取得
-        let bundle_id_output = Command::new("osascript")
-            .arg("-e")
-            .arg(format!("id of app \"{}\"", app_name))
-            .output()
-            .map_err(|e| format!("Failed to get bundle ID for {}: {}", app_name, e))?;
-
-        if !bundle_id_output.status.success() {
-            return Err(format!(
-                "Failed to get bundle ID for {}: {}",
-                app_name,
-                String::from_utf8_lossy(&bundle_id_output.stderr)
-            ));
-        }
-
-        let bundle_id = String::from_utf8_lossy(&bundle_id_output.stdout)
-            .trim()
-            .to_string();
-
-        // open -n -b で開く
-        Command::new("open")
-            .arg("-n") // 新しいインスタンスを開く
-            .arg("-b") // バンドルIDを指定
-            .arg(&bundle_id)
-            .arg("--args") // 引数を渡す
-            .arg(path)
-            .spawn()
-            .map_err(|e| format!("Failed to open with {}: {}", app_name, e))?;
-
-        Ok(())
     }
 
     /// ディレクトリをターミナルで開く

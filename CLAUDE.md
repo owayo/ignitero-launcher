@@ -111,9 +111,9 @@ cd src-tauri && cargo test  # Rustテスト
   - `subdirs_open_mode`: none / finder / editor
   - `subdirs_editor`: エディタ選択（Windsurf / Cursor / VS Code）
 - **エディタ起動方式**:
-  - osascriptでアプリ名からバンドルIDを取得
-  - `open -n -b <bundle-id> --args <path>`で起動
-  - .code-workspaceファイルがあれば優先的に開く
+  - `open -a "App Name" <path>`でシンプルに起動
+  - .code-workspaceファイルがあればそれを優先的に開く（エディタの場合のみ）
+  - macOSのLaunchServicesがアプリケーション名からバンドルを自動解決
 - **ターミナル起動**:
   - `open -a Terminal/iTerm/Warp <path>`でターミナルを開く
   - →キーで起動
