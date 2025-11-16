@@ -1,0 +1,168 @@
+name: Build Ignitero Launcher
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'
+            args: '--target universal-apple-darwin'
+          - platform: 'macos-latest'
+            args: '--target x86_64-apple-darwin'
+          - platform: 'macos-latest'
+            args: '--target aarch64-apple-darwin'
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          clean: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      - name: Update version
+        run: |
+          node update-version.js
+          # Verify version was updated in all files
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Updated version to: $VERSION"
+
+      - name: Format code
+        run: |
+          pnpm fmt
+          pnpm tauri:fmt
+
+      - name: Prepare for ad-hoc signing
+        if: matrix.platform == 'macos-latest'
+        run: |
+          echo "Preparing for ad-hoc signing..."
+
+      - name: Build the app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_SIGNING_IDENTITY: '-'
+          ENABLE_CODE_SIGNING: false
+          TAURI_SKIP_DEVSERVER_CHECK: true
+        with:
+          args: ${{ matrix.args }}
+          includeUpdaterJson: false
+
+      - name: Apply ad-hoc signature and remove quarantine
+        if: matrix.platform == 'macos-latest'
+        run: |
+          # Apply ad-hoc signature to .app bundles
+          find src-tauri/target -name "*.app" -type d | while read app; do
+            echo "Ad-hoc signing: $app"
+            codesign --remove-signature "$app" 2>/dev/null || true
+            codesign --force --deep --sign - "$app"
+            xattr -cr "$app"
+          done
+
+          # Process DMG files
+          find src-tauri/target -name "*.dmg" -type f | while read dmg; do
+            echo "Processing DMG: $dmg"
+            MOUNT_POINT=$(mktemp -d)
+
+            hdiutil attach "$dmg" -nobrowse -mountpoint "$MOUNT_POINT"
+
+            find "$MOUNT_POINT" -name "*.app" -type d | while read app; do
+              echo "Removing quarantine from app in DMG: $app"
+              xattr -cr "$app"
+            done
+
+            hdiutil detach "$MOUNT_POINT"
+            xattr -cr "$dmg"
+          done
+
+      - name: Get updated version
+        id: get_updated_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Build version: $VERSION"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ignitero-launcher-${{ matrix.platform }}-${{ matrix.args == '--target universal-apple-darwin' && 'universal' || matrix.args == '--target x86_64-apple-darwin' && 'x86_64' || 'aarch64' }}
+          path: |
+            src-tauri/target/*/release/bundle/dmg/*.dmg
+          retention-days: 7
+
+      - name: Upload version info
+        if: matrix.args == '--target universal-apple-darwin'
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-info
+          path: package.json
+          retention-days: 1
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -la ./artifacts/
+
+      - name: Get version from artifact
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./artifacts/version-info/package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Release version: $VERSION"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          name: Release v${{ steps.get_version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            ./artifacts/**/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
