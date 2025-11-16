@@ -1,0 +1,108 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Ignitero Launcher",
+  "version": "0.1.8",
+  "identifier": "com.owayo.ignitero.launcher",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "title": "Ignitero Launcher",
+        "width": 600,
+        "height": 500,
+        "label": "main",
+        "visible": false,
+        "center": true,
+        "alwaysOnTop": true,
+        "decorations": false,
+        "resizable": false,
+        "skipTaskbar": true,
+        "focus": true,
+        "shadow": true,
+        "transparent": true,
+        "titleBarStyle": "Overlay"
+      },
+      {
+        "title": "設定 - Ignitero Launcher",
+        "width": 800,
+        "height": 600,
+        "label": "settings",
+        "url": "settings.html",
+        "visible": false,
+        "center": true,
+        "resizable": true,
+        "skipTaskbar": true,
+        "focus": true,
+        "decorations": true
+      }
+    ],
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "/Applications/**",
+          "$HOME/.cache/ignitero/icons/**",
+          "$HOME/Applications/**"
+        ]
+      },
+      "capabilities": [
+        {
+          "identifier": "main-window",
+          "description": "Main window capability for Mac Launcher",
+          "windows": [
+            "main"
+          ],
+          "permissions": [
+            "core:default",
+            "core:app:default",
+            "core:event:default",
+            "core:path:default",
+            "core:tray:default",
+            "core:window:default",
+            "core:window:allow-set-size",
+            "core:window:allow-set-size-constraints",
+            "core:window:allow-center",
+            "shell:default",
+            "global-shortcut:default",
+            "dialog:default"
+          ]
+        },
+        {
+          "identifier": "settings-window",
+          "description": "Settings window capability for Mac Launcher",
+          "windows": [
+            "settings"
+          ],
+          "permissions": [
+            "core:default",
+            "core:app:default",
+            "core:event:default",
+            "core:path:default",
+            "core:window:default",
+            "core:window:allow-close",
+            "shell:default",
+            "dialog:default"
+          ]
+        }
+      ]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

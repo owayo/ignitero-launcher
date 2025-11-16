@@ -1,0 +1,183 @@
+:root {
+  --color-ember: #ff7847;
+  --color-plasma: #ffb347;
+  --color-light-base: rgba(255, 250, 245, 0.92);
+  --color-input-bg: rgba(255, 255, 255, 0.75);
+}
+
+.app-container {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 250, 245, 0.92) 0%,
+    rgba(255, 180, 130, 0.65) 55%,
+    rgba(255, 100, 80, 0.65) 100%
+  );
+  backdrop-filter: blur(30px) saturate(120%);
+  -webkit-backdrop-filter: blur(30px) saturate(120%);
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  color: rgba(40, 40, 45, 0.9);
+}
+
+.search-box {
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.search-box-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-logo {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Ant Design Input のカスタマイズ */
+.search-box .ant-input-affix-wrapper {
+  background: var(--color-input-bg);
+  border: 1px solid rgba(255, 120, 71, 0.2);
+  box-shadow: 0 2px 8px rgba(255, 120, 71, 0.08);
+  border-radius: 8px;
+}
+
+.search-box .ant-input-affix-wrapper:hover,
+.search-box .ant-input-affix-wrapper:focus,
+.search-box .ant-input-affix-wrapper-focused {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 120, 71, 0.5);
+  box-shadow:
+    0 2px 8px rgba(255, 120, 71, 0.12),
+    0 0 0 2px rgba(255, 120, 71, 0.15);
+}
+
+.search-box .ant-input {
+  background: transparent;
+  color: rgba(40, 40, 45, 0.95);
+  font-size: 16px;
+}
+
+.search-box .ant-input::placeholder {
+  color: rgba(100, 100, 110, 0.5);
+}
+
+.search-box .ant-input-prefix {
+  color: rgba(255, 120, 71, 0.7);
+  margin-right: 12px;
+}
+
+/* 設定ボタン */
+.search-box .ant-btn {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1.5px solid rgba(255, 120, 71, 0.45);
+  color: #c24410;
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 8px 20px rgba(255, 120, 71, 0.25),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  border-radius: 14px;
+}
+
+/* マウスオーバー効果を無効化 */
+.search-box .ant-btn.icon-button-no-hover:hover,
+.search-box .ant-btn.icon-button-no-hover:focus {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1.5px solid rgba(255, 120, 71, 0.45) !important;
+  color: #c24410 !important;
+  box-shadow:
+    0 8px 20px rgba(255, 120, 71, 0.25),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3) !important;
+  transform: none !important;
+}
+
+.results-container {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* スクロールバーのカスタマイズ */
+.results-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.results-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.results-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 120, 71, 0.3);
+  border-radius: 4px;
+}
+
+.results-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 120, 71, 0.5);
+}
+
+.result-item {
+  cursor: pointer;
+  padding: 12px 16px;
+  border-left: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.result-item .ant-space {
+  margin-left: 5px;
+}
+
+.result-item:hover {
+  background: rgba(255, 255, 255, 0.4);
+  color: rgba(40, 40, 45, 0.95);
+}
+
+.result-item.selected {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 120, 71, 0.25),
+    rgba(255, 179, 71, 0.18)
+  );
+  border-left-color: rgba(255, 120, 71, 0.9);
+  color: rgba(40, 40, 45, 1);
+}
+
+/* リストアイテムのテキスト */
+.result-item .ant-typography {
+  color: inherit;
+}
+
+.result-item:hover .ant-typography,
+.result-item.selected .ant-typography {
+  color: inherit;
+}
+
+/* secondary text のカスタマイズ */
+.result-item .ant-typography-secondary {
+  color: rgba(100, 100, 110, 0.65);
+}
+
+.result-item:hover .ant-typography-secondary,
+.result-item.selected .ant-typography-secondary {
+  color: rgba(80, 80, 90, 0.75);
+}
+
+/* Empty state (No data) */
+.ant-empty-description {
+  color: rgba(100, 100, 110, 0.6);
+}

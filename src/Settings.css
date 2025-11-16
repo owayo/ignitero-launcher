@@ -1,0 +1,86 @@
+.settings-container {
+  width: 100%;
+  height: 100vh;
+  padding: 24px;
+  box-sizing: border-box;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 250, 245, 0.95) 0%,
+    rgba(255, 200, 150, 0.85) 50%,
+    rgba(255, 120, 100, 0.85) 100%
+  );
+  overflow-y: auto;
+}
+
+.settings-header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid rgba(255, 120, 71, 0.2);
+}
+
+.settings-header .ant-typography {
+  margin: 0;
+  color: rgba(40, 40, 45, 0.9);
+}
+
+.settings-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.settings-panel {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 24px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 120, 71, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.settings-panel .ant-list-item-meta-title {
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+
+.settings-panel .ant-typography h5,
+.settings-panel h5.ant-typography {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.settings-content .ant-form-item-label > label {
+  color: rgba(40, 40, 45, 0.85);
+  font-weight: 500;
+}
+
+.settings-content .ant-switch-checked {
+  background-color: #ff7847;
+}
+
+.settings-content .ant-btn-primary {
+  background: linear-gradient(90deg, #ff7847, #ffb347);
+  border: none;
+}
+
+.settings-content .ant-btn-primary:hover {
+  background: linear-gradient(90deg, #ff8857, #ffc357);
+}
+
+.settings-content .ant-input-number,
+.settings-content .ant-select {
+  border-color: rgba(255, 120, 71, 0.3);
+}
+
+.settings-content .ant-input-number:hover,
+.settings-content .ant-select:hover {
+  border-color: rgba(255, 120, 71, 0.5);
+}
+
+.settings-content .ant-input-number:focus,
+.settings-content .ant-select:focus {
+  border-color: #ff7847;
+  box-shadow: 0 0 0 2px rgba(255, 120, 71, 0.2);
+}
