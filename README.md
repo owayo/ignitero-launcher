@@ -128,6 +128,9 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 > **なぜこの手順が必要なのか？**
 > Apple Developer Program に加入し、アプリに正式な署名と公証を行うと、この手順は不要になりますが個人開発のため署名を行っていません。
 
+### リムーバブルディスクなどを開けるようにしたい場合
+**「プライバシーとセキュリティ」** → **「フルディスクアクセス」** にIgnitero Launcherを追加してください。
+
 ## 使い方
 
 ### 基本操作
