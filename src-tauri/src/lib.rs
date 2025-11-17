@@ -453,9 +453,7 @@ pub fn run() {
             // グローバルホットキーを登録
             if let Err(e) = app.global_shortcut().register("Alt+Space") {
                 eprintln!("Warning: Failed to register hotkey Alt+Space: {}", e);
-                eprintln!(
-                    "You can still use the app from the system tray or by clicking the window"
-                );
+                eprintln!("You can still use the app from the menu bar or by clicking the window");
             }
 
             // ウィンドウイベントのハンドリング
@@ -493,8 +491,8 @@ pub fn run() {
                 });
             }
 
-            // システムトレイのセットアップ
-            let tray_icon = setup_system_tray(app).expect("Failed to setup system tray");
+            // メニューバーのセットアップ
+            let tray_icon = setup_system_tray(app).expect("Failed to setup menu bar");
 
             // TrayIconをAppStateに保存
             if let Some(state) = app.try_state::<AppState>() {

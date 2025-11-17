@@ -4,6 +4,7 @@ use tauri::{
     Emitter, Manager,
 };
 
+/// メニューバーアイコンとメニューを設定
 pub fn setup_system_tray(app: &tauri::App) -> Result<TrayIcon, Box<dyn std::error::Error>> {
     // メニューアイテムの作成
     let show_item = MenuItem::with_id(app, "show", "ウィンドウを表示", true, None::<&str>)?;
@@ -23,7 +24,7 @@ pub fn setup_system_tray(app: &tauri::App) -> Result<TrayIcon, Box<dyn std::erro
         &[&show_item, &refresh_cache_item, &settings_item, &quit_item],
     )?;
 
-    // トレイアイコンを作成
+    // メニューバーアイコンを作成
     let tray = TrayIconBuilder::new()
         .menu(&menu)
         .icon(app.default_window_icon().unwrap().clone())
