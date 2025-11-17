@@ -388,7 +388,7 @@ function App() {
       });
       await invoke('open_in_terminal', {
         path: item.path,
-        terminal_type: defaultTerminal.current,
+        terminalType: defaultTerminal.current,
       });
       // ウィンドウを非表示
       await invoke('hide_window');
