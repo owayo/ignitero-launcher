@@ -6,13 +6,22 @@ use walkdir::WalkDir;
 pub struct AppScanner;
 
 impl AppScanner {
-    /// /Applications配下のアプリをスキャン
+    /// /Applicationsと~/Applications配下のアプリをスキャン
     pub fn scan_applications() -> Vec<AppItem> {
         let mut apps = Vec::new();
-        let app_dir = Path::new("/Applications");
 
-        if app_dir.exists() {
-            apps.extend(Self::scan_directory(app_dir, 2)); // 深さ2まで
+        // システムのApplicationsディレクトリ
+        let system_app_dir = Path::new("/Applications");
+        if system_app_dir.exists() {
+            apps.extend(Self::scan_directory(system_app_dir, 2)); // 深さ2まで
+        }
+
+        // ユーザーのApplicationsディレクトリ
+        if let Some(home_dir) = std::env::var("HOME").ok() {
+            let user_app_dir = Path::new(&home_dir).join("Applications");
+            if user_app_dir.exists() {
+                apps.extend(Self::scan_directory(&user_app_dir, 3)); // Chrome Appsなどのため深さ3
+            }
         }
 
         apps

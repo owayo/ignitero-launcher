@@ -36,7 +36,7 @@ cd src-tauri && cargo test  # Rustテスト
 
 ### バックエンド（Rust/Tauri）
 
-- **`app_scanner.rs`** - /Applications配下のアプリケーションをスキャン
+- **`app_scanner.rs`** - /Applicationsと~/Applications配下のアプリケーションをスキャン
 - **`directory_scanner.rs`** - 指定ディレクトリ配下をスキャン
 - **`launcher.rs`** - アプリケーション起動、エディタ起動、ターミナル起動機能
 - **`search.rs`** - fuzzy-matcherを使用したインクリメンタル検索エンジン
