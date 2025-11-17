@@ -379,62 +379,6 @@ function App() {
     };
   }, []);
 
-  // キーボードナビゲーション
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      console.log('handleKeyDown:', {
-        key: e.key,
-        isComposing,
-        selectedIndex,
-        resultsLength: results.length,
-      });
-
-      // Escapeキーは常に動作（ウィンドウを閉じる）
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        invoke('hide_window');
-        return;
-      }
-
-      // IME入力中はナビゲーションを無効化
-      if (isComposing) {
-        console.log('IME composing, skipping navigation');
-        return;
-      }
-
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSelectedIndex((prev) => Math.min(prev + 1, results.length - 1));
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSelectedIndex((prev) => Math.max(prev - 1, 0));
-      } else if (e.key === 'ArrowRight' && results[selectedIndex]) {
-        e.preventDefault();
-        // ディレクトリの場合、ターミナルで開く
-        const item = results[selectedIndex];
-        console.log(
-          'ArrowRight pressed, item:',
-          item,
-          'isAppItem:',
-          isAppItem(item),
-        );
-        if (!isAppItem(item)) {
-          console.log(
-            'Opening in terminal:',
-            item.path,
-            'terminal:',
-            defaultTerminal.current,
-          );
-          handleOpenInTerminal(item);
-        }
-      } else if (e.key === 'Enter' && results[selectedIndex]) {
-        e.preventDefault();
-        handleLaunch(results[selectedIndex]);
-      }
-    },
-    [results, selectedIndex, isComposing, handleOpenInTerminal, handleLaunch],
-  );
-
   // ターミナルで開く
   const handleOpenInTerminal = useCallback(async (item: DirectoryItem) => {
     try {
@@ -498,6 +442,62 @@ function App() {
       }
     },
     [searchQuery, selectionHistory],
+  );
+
+  // キーボードナビゲーション
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      console.log('handleKeyDown:', {
+        key: e.key,
+        isComposing,
+        selectedIndex,
+        resultsLength: results.length,
+      });
+
+      // Escapeキーは常に動作（ウィンドウを閉じる）
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        invoke('hide_window');
+        return;
+      }
+
+      // IME入力中はナビゲーションを無効化
+      if (isComposing) {
+        console.log('IME composing, skipping navigation');
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex((prev) => Math.min(prev + 1, results.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex((prev) => Math.max(prev - 1, 0));
+      } else if (e.key === 'ArrowRight' && results[selectedIndex]) {
+        e.preventDefault();
+        // ディレクトリの場合、ターミナルで開く
+        const item = results[selectedIndex];
+        console.log(
+          'ArrowRight pressed, item:',
+          item,
+          'isAppItem:',
+          isAppItem(item),
+        );
+        if (!isAppItem(item)) {
+          console.log(
+            'Opening in terminal:',
+            item.path,
+            'terminal:',
+            defaultTerminal.current,
+          );
+          handleOpenInTerminal(item);
+        }
+      } else if (e.key === 'Enter' && results[selectedIndex]) {
+        e.preventDefault();
+        handleLaunch(results[selectedIndex]);
+      }
+    },
+    [results, selectedIndex, isComposing, handleOpenInTerminal, handleLaunch],
   );
 
   return (
