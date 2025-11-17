@@ -382,6 +382,13 @@ function App() {
   // キーボードナビゲーション
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      console.log('handleKeyDown:', {
+        key: e.key,
+        isComposing,
+        selectedIndex,
+        resultsLength: results.length,
+      });
+
       // Escapeキーは常に動作（ウィンドウを閉じる）
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -391,6 +398,7 @@ function App() {
 
       // IME入力中はナビゲーションを無効化
       if (isComposing) {
+        console.log('IME composing, skipping navigation');
         return;
       }
 
@@ -404,7 +412,19 @@ function App() {
         e.preventDefault();
         // ディレクトリの場合、ターミナルで開く
         const item = results[selectedIndex];
+        console.log(
+          'ArrowRight pressed, item:',
+          item,
+          'isAppItem:',
+          isAppItem(item),
+        );
         if (!isAppItem(item)) {
+          console.log(
+            'Opening in terminal:',
+            item.path,
+            'terminal:',
+            defaultTerminal.current,
+          );
           handleOpenInTerminal(item);
         }
       } else if (e.key === 'Enter' && results[selectedIndex]) {
@@ -412,12 +432,16 @@ function App() {
         handleLaunch(results[selectedIndex]);
       }
     },
-    [results, selectedIndex, isComposing],
+    [results, selectedIndex, isComposing, handleOpenInTerminal, handleLaunch],
   );
 
   // ターミナルで開く
-  const handleOpenInTerminal = async (item: DirectoryItem) => {
+  const handleOpenInTerminal = useCallback(async (item: DirectoryItem) => {
     try {
+      console.log('handleOpenInTerminal called with:', {
+        path: item.path,
+        terminal: defaultTerminal.current,
+      });
       await invoke('open_in_terminal', {
         path: item.path,
         terminal_type: defaultTerminal.current,
@@ -425,51 +449,56 @@ function App() {
       // ウィンドウを非表示
       await invoke('hide_window');
       setSearchQuery('');
+      setDisplayQuery('');
     } catch (error) {
       console.error('Failed to open in terminal:', error);
     }
-  };
+  }, []);
 
   // アプリ/ディレクトリ起動
-  const handleLaunch = async (item: SearchResult) => {
-    try {
-      // 履歴に記録
-      if (searchQuery.trim()) {
-        const newHistory: SelectionHistory = {
-          keyword: searchQuery.trim(),
-          selectedPath: item.path,
-          timestamp: Date.now(),
-        };
+  const handleLaunch = useCallback(
+    async (item: SearchResult) => {
+      try {
+        // 履歴に記録
+        if (searchQuery.trim()) {
+          const newHistory: SelectionHistory = {
+            keyword: searchQuery.trim(),
+            selectedPath: item.path,
+            timestamp: Date.now(),
+          };
 
-        // 新しい履歴を追加し、最大50件に制限
-        const updatedHistory = [newHistory, ...selectionHistory].slice(
-          0,
-          MAX_HISTORY_COUNT,
-        );
-        setSelectionHistory(updatedHistory);
-        saveHistory(updatedHistory);
+          // 新しい履歴を追加し、最大50件に制限
+          const updatedHistory = [newHistory, ...selectionHistory].slice(
+            0,
+            MAX_HISTORY_COUNT,
+          );
+          setSelectionHistory(updatedHistory);
+          saveHistory(updatedHistory);
 
-        console.log('履歴に記録:', {
-          keyword: searchQuery.trim(),
-          path: item.path,
-          name: item.name,
-        });
+          console.log('履歴に記録:', {
+            keyword: searchQuery.trim(),
+            path: item.path,
+            name: item.name,
+          });
+        }
+
+        if (isAppItem(item)) {
+          await invoke('launch_app', { path: item.path });
+        } else {
+          await invoke('open_directory', {
+            path: item.path,
+            editor: item.editor,
+          });
+        }
+        await invoke('hide_window');
+        setSearchQuery('');
+        setDisplayQuery('');
+      } catch (error) {
+        console.error('Launch error:', error);
       }
-
-      if (isAppItem(item)) {
-        await invoke('launch_app', { path: item.path });
-      } else {
-        await invoke('open_directory', {
-          path: item.path,
-          editor: item.editor,
-        });
-      }
-      await invoke('hide_window');
-      setSearchQuery('');
-    } catch (error) {
-      console.error('Launch error:', error);
-    }
-  };
+    },
+    [searchQuery, selectionHistory],
+  );
 
   return (
     <div className="app-container">
