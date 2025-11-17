@@ -53,13 +53,6 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
-      - name: Update version
-        run: |
-          node update-version.js
-          # Verify version was updated in all files
-          VERSION=$(node -p "require('./package.json').version")
-          echo "Updated version to: $VERSION"
-
       - name: Format code
         run: |
           pnpm fmt
