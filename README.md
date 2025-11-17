@@ -202,8 +202,8 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 
 | キー | 動作 |
 |------|------|
-| `Option+Space` | 検索窓の表示/非表示 |
-| `↑``↓` | 検索結果の選択 |
+| `Option` + `Space` | 検索窓の表示/非表示 |
+| `↑` `↓` | 検索結果の選択 |
 | `Enter` | 選択項目を起動 |
 | `→` | ディレクトリをターミナルで開く |
 | `Escape` | ウィンドウを閉じる |
