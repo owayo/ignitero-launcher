@@ -1,6 +1,55 @@
+/// アクセシビリティ権限をチェックして、必要なら要求する
+#[cfg(target_os = "macos")]
+pub fn check_and_request_accessibility() -> bool {
+    use core_foundation::base::TCFType;
+    use core_foundation::boolean::CFBoolean;
+    use core_foundation::dictionary::CFDictionary;
+    use core_foundation::string::CFString;
+
+    unsafe {
+        #[link(name = "ApplicationServices", kind = "framework")]
+        extern "C" {
+            fn AXIsProcessTrusted() -> bool;
+            fn AXIsProcessTrustedWithOptions(
+                options: core_foundation::dictionary::CFDictionaryRef,
+            ) -> bool;
+        }
+
+        // まず権限をチェック
+        if AXIsProcessTrusted() {
+            println!("✓ Accessibility permission already granted");
+            return true;
+        }
+
+        // 権限がない場合、プロンプトを表示して要求
+        println!("⚠ Accessibility permission not granted, requesting...");
+
+        let prompt_key = CFString::new("AXTrustedCheckOptionPrompt");
+        let prompt_value = CFBoolean::true_value();
+
+        let options =
+            CFDictionary::from_CFType_pairs(&[(prompt_key.as_CFType(), prompt_value.as_CFType())]);
+
+        let is_trusted = AXIsProcessTrustedWithOptions(options.as_concrete_TypeRef());
+
+        if is_trusted {
+            println!("✓ Accessibility permission granted");
+        } else {
+            println!("⚠ Accessibility permission denied. Please grant permission in System Settings > Privacy & Security > Accessibility");
+        }
+
+        is_trusted
+    }
+}
+
 /// 英数キーをシミュレートしてIMEを英字入力に切り替える
 #[cfg(target_os = "macos")]
 fn simulate_eisu_key() -> Result<(), String> {
+    // まずアクセシビリティ権限をチェック
+    if !check_and_request_accessibility() {
+        return Err("Accessibility permission required. Please grant permission in System Settings > Privacy & Security > Accessibility, then restart the app.".to_string());
+    }
+
     unsafe {
         // Core Graphics Framework関数の宣言
         type CGEventRef = *mut std::ffi::c_void;
