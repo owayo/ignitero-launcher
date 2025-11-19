@@ -12,7 +12,6 @@ import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-shell';
 import type { AppItem, DirectoryItem } from './types';
-import { toRomaji } from 'wanakana';
 import './App.css';
 
 const { Text } = Typography;
@@ -537,44 +536,14 @@ function App() {
               size="large"
               placeholder="Search apps and directories"
               prefix={<SearchOutlined />}
-              value={displayQuery}
+              value={searchQuery}
               onChange={(e) => {
                 const value = e.target.value;
+                setSearchQuery(value);
                 setDisplayQuery(value);
-                // かな文字をローマ字に変換して検索クエリを更新
-                const romajiValue = normalizeForSearch(toRomaji(value));
-                const finalQuery = isComposing
-                  ? compositionBaseRef.current + romajiValue
-                  : romajiValue;
-                console.log('onChange:', {
-                  value,
-                  romajiValue,
-                  isComposing,
-                  compositionBase: compositionBaseRef.current,
-                  finalQuery,
-                });
-                setSearchQuery(finalQuery);
               }}
               onKeyDown={(e) => {
                 handleKeyDown(e);
-              }}
-              onCompositionStart={() => {
-                compositionBaseRef.current = searchQuery;
-                setIsComposing(true);
-              }}
-              onCompositionUpdate={(e) => {
-                const currentVisible = e.currentTarget.value;
-                setDisplayQuery(currentVisible);
-                const romajiPart = normalizeForSearch(toRomaji(currentVisible));
-                setSearchQuery(compositionBaseRef.current + romajiPart);
-              }}
-              onCompositionEnd={(e) => {
-                const finalVisible = e.currentTarget.value;
-                const romajiPart = normalizeForSearch(toRomaji(finalVisible));
-                setSearchQuery(compositionBaseRef.current + romajiPart);
-                // 日本語入力を許可するため、displayQueryはクリアしない
-                compBuffer.current = '';
-                setIsComposing(false);
               }}
               autoFocus
               autoComplete="off"
