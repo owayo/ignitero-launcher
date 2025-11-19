@@ -94,4 +94,51 @@ impl SettingsManager {
     pub fn get_registered_directories(&self) -> Vec<RegisteredDirectory> {
         self.get_settings().registered_directories
     }
+
+    pub fn get_update_cache(&self) -> crate::types::UpdateCache {
+        self.get_settings().update_cache
+    }
+
+    pub fn save_update_cache(
+        &self,
+        last_checked: Option<i64>,
+        latest_version: Option<String>,
+        html_url: Option<String>,
+    ) -> Result<(), String> {
+        // mutexを保持したまま更新して競合を防ぐ
+        let mut settings_guard = self.settings.lock().unwrap();
+        settings_guard.update_cache = crate::types::UpdateCache {
+            last_checked,
+            latest_version,
+            html_url,
+        };
+
+        // ディレクトリを作成
+        if let Some(parent) = self.settings_path.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+
+        // 設定を保存
+        let content = serde_json::to_string_pretty(&*settings_guard).map_err(|e| e.to_string())?;
+        fs::write(&self.settings_path, content).map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
+    pub fn dismiss_update(&self, version: String) -> Result<(), String> {
+        // mutexを保持したまま更新
+        let mut settings_guard = self.settings.lock().unwrap();
+        settings_guard.update_cache.dismissed_version = Some(version);
+
+        // ディレクトリを作成
+        if let Some(parent) = self.settings_path.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+
+        // 設定を保存
+        let content = serde_json::to_string_pretty(&*settings_guard).map_err(|e| e.to_string())?;
+        fs::write(&self.settings_path, content).map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
 }

@@ -80,10 +80,21 @@ impl Default for CacheUpdateSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UpdateCache {
+    pub last_checked: Option<i64>,      // Unix timestamp
+    pub latest_version: Option<String>, // 最新バージョン（例: "0.1.13"）
+    pub html_url: Option<String>,       // ダウンロードページURL
+    #[serde(default)]
+    pub dismissed_version: Option<String>, // 却下したバージョン
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Settings {
     pub registered_directories: Vec<RegisteredDirectory>,
     #[serde(default)]
     pub cache_update: CacheUpdateSettings,
     #[serde(default)]
     pub default_terminal: TerminalType,
+    #[serde(default)]
+    pub update_cache: UpdateCache,
 }

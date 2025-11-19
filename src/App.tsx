@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Input, List, Typography, Space, Button, Tooltip } from 'antd';
+import { Input, List, Typography, Space, Button, Tooltip, Alert } from 'antd';
 import {
   AppstoreOutlined,
   FolderFilled,
@@ -10,11 +10,19 @@ import {
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
+import { open } from '@tauri-apps/plugin-shell';
 import type { AppItem, DirectoryItem } from './types';
 import { toRomaji } from 'wanakana';
 import './App.css';
 
 const { Text } = Typography;
+
+interface UpdateInfo {
+  has_update: boolean;
+  current_version: string;
+  latest_version: string | null;
+  html_url: string | null;
+}
 
 type SearchResult = AppItem | DirectoryItem;
 
@@ -178,6 +186,7 @@ function App() {
   const [selectionHistory, setSelectionHistory] = useState<SelectionHistory[]>(
     () => loadHistory(),
   );
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const inputRef = React.useRef<any>(null);
   const shouldForceIME = React.useRef(true);
   const compBuffer = React.useRef(''); // IME未確定文字列のバッファ
@@ -364,6 +373,18 @@ function App() {
         setTimeout(() => {
           inputRef.current?.focus();
         }, 100);
+
+        // 更新チェックを実行
+        invoke<UpdateInfo>('check_update', { force: false })
+          .then((info) => {
+            console.log('Update check result:', info);
+            if (info.has_update) {
+              setUpdateInfo(info);
+            }
+          })
+          .catch((error) => {
+            console.error('Failed to check for updates:', error);
+          });
       } else {
         // ウィンドウが非表示またはフォーカスを失ったら検索欄をクリアし、フラグをリセット
         shouldForceIME.current = true;
@@ -585,6 +606,37 @@ function App() {
           </Space.Compact>
         </div>
       </div>
+
+      {updateInfo && updateInfo.has_update && (
+        <Alert
+          message={`v${updateInfo.latest_version} がリリースされています`}
+          type="info"
+          showIcon
+          closable
+          onClose={() => {
+            // 通知を却下したことを記録
+            if (updateInfo.latest_version) {
+              invoke('dismiss_update', {
+                version: updateInfo.latest_version,
+              }).catch((error) => {
+                console.error('Failed to dismiss update:', error);
+              });
+            }
+            setUpdateInfo(null);
+          }}
+          onClick={() => {
+            if (updateInfo.html_url) {
+              open(updateInfo.html_url).catch((error) => {
+                console.error('Failed to open URL:', error);
+              });
+            }
+          }}
+          style={{
+            margin: '8px 16px 0 16px',
+            cursor: updateInfo.html_url ? 'pointer' : 'default',
+          }}
+        />
+      )}
 
       <div className="results-container">
         <List

@@ -8,6 +8,7 @@ mod search;
 mod settings;
 mod system_tray;
 mod types;
+mod update_checker;
 
 use app_scanner::AppScanner;
 use cache::CacheDB;
@@ -263,6 +264,17 @@ fn get_terminal_icon_path(terminal: String) -> Result<Option<String>, String> {
             Ok(None)
         }
     }
+}
+
+#[tauri::command]
+async fn check_update(force: bool, app: tauri::AppHandle, state: State<'_, AppState>) -> Result<update_checker::UpdateInfo, String> {
+    let version = app.package_info().version.to_string();
+    update_checker::check_for_updates(&state.settings_manager, version, force).await
+}
+
+#[tauri::command]
+fn dismiss_update(version: String, state: State<AppState>) -> Result<(), String> {
+    state.settings_manager.dismiss_update(version)
 }
 
 #[tauri::command]
@@ -588,6 +600,8 @@ pub fn run() {
             convert_icon_to_png,
             get_editor_icon_path,
             get_terminal_icon_path,
+            check_update,
+            dismiss_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
