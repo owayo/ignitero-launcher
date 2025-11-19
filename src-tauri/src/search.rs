@@ -88,3 +88,144 @@ impl Default for SearchEngine {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalize_for_search() {
+        // 全角英数字を半角に変換
+        assert_eq!(normalize_for_search("ＡＢＣ"), "abc");
+        assert_eq!(normalize_for_search("ａｂｃ"), "abc");
+        assert_eq!(normalize_for_search("０１２"), "012");
+
+        // 大文字を小文字に変換
+        assert_eq!(normalize_for_search("ABC"), "abc");
+
+        // 混在
+        assert_eq!(normalize_for_search("Ａｂｃ１２３"), "abc123");
+    }
+
+    #[test]
+    fn test_search_apps_empty_query() {
+        let engine = SearchEngine::new();
+        let apps = vec![AppItem {
+            name: "Safari".to_string(),
+            path: "/Applications/Safari.app".to_string(),
+            icon_path: None,
+        }];
+
+        let results = engine.search_apps(&apps, "");
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn test_search_apps_basic() {
+        let engine = SearchEngine::new();
+        let apps = vec![
+            AppItem {
+                name: "Safari".to_string(),
+                path: "/Applications/Safari.app".to_string(),
+                icon_path: None,
+            },
+            AppItem {
+                name: "Mail".to_string(),
+                path: "/Applications/Mail.app".to_string(),
+                icon_path: None,
+            },
+        ];
+
+        let results = engine.search_apps(&apps, "saf");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "Safari");
+    }
+
+    #[test]
+    fn test_search_apps_fuzzy_match() {
+        let engine = SearchEngine::new();
+        let apps = vec![
+            AppItem {
+                name: "Safari".to_string(),
+                path: "/Applications/Safari.app".to_string(),
+                icon_path: None,
+            },
+            AppItem {
+                name: "System Settings".to_string(),
+                path: "/Applications/System Settings.app".to_string(),
+                icon_path: None,
+            },
+        ];
+
+        // "sf" should match "Safari" (fuzzy match)
+        let results = engine.search_apps(&apps, "sf");
+        assert!(results.iter().any(|app| app.name == "Safari"));
+    }
+
+    #[test]
+    fn test_search_apps_full_width() {
+        let engine = SearchEngine::new();
+        let apps = vec![AppItem {
+            name: "Safari".to_string(),
+            path: "/Applications/Safari.app".to_string(),
+            icon_path: None,
+        }];
+
+        // 全角でも検索できる
+        let results = engine.search_apps(&apps, "ｓａｆ");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "Safari");
+    }
+
+    #[test]
+    fn test_search_directories_empty_query() {
+        let engine = SearchEngine::new();
+        let dirs = vec![DirectoryItem {
+            name: "Project".to_string(),
+            path: "/Users/test/Project".to_string(),
+            editor: None,
+        }];
+
+        let results = engine.search_directories(&dirs, "");
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn test_search_directories_basic() {
+        let engine = SearchEngine::new();
+        let dirs = vec![
+            DirectoryItem {
+                name: "Project".to_string(),
+                path: "/Users/test/Project".to_string(),
+                editor: None,
+            },
+            DirectoryItem {
+                name: "Documents".to_string(),
+                path: "/Users/test/Documents".to_string(),
+                editor: None,
+            },
+        ];
+
+        let results = engine.search_directories(&dirs, "proj");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "Project");
+    }
+
+    #[test]
+    fn test_search_limit_to_20() {
+        let engine = SearchEngine::new();
+
+        // 30個のアプリを作成
+        let apps: Vec<AppItem> = (0..30)
+            .map(|i| AppItem {
+                name: format!("App{}", i),
+                path: format!("/Applications/App{}.app", i),
+                icon_path: None,
+            })
+            .collect();
+
+        // "App"で検索すると全てマッチするが、20件に制限される
+        let results = engine.search_apps(&apps, "app");
+        assert_eq!(results.len(), 20);
+    }
+}

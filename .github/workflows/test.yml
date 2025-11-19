@@ -1,0 +1,53 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-latest]
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      - name: Run frontend tests
+        run: pnpm test
+
+      - name: Run Rust tests
+        run: pnpm test:rust
+
+      - name: Run type checking
+        run: pnpm exec tsc --noEmit
+
+      - name: Check Rust formatting
+        run: cd src-tauri && cargo fmt --check
+
+      - name: Run Clippy
+        run: cd src-tauri && cargo clippy -- -D warnings

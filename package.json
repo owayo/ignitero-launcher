@@ -11,7 +11,13 @@
     "tauri": "tauri",
     "tauri:build": "pnpm fmt && pnpm tauri:fmt && tauri build",
     "tauri:release-build": "node update-version.js && pnpm fmt && pnpm tauri:fmt && tauri build",
-    "tauri:fmt": "cd src-tauri && cargo fmt"
+    "tauri:fmt": "cd src-tauri && cargo fmt",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:rust": "cd src-tauri && cargo test",
+    "test:all": "pnpm test && pnpm test:rust"
   },
   "dependencies": {
     "@ant-design/icons": "^5.6.1",
@@ -25,11 +31,17 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.9.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^18.3.1f9",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^5.1.0",
+    "@vitest/ui": "^4.0.10",
+    "jsdom": "^27.2.0",
     "prettier": "^3.5.3",
     "typescript": "~5.9.3",
-    "vite": "^7.1.12"
+    "vite": "^7.1.12",
+    "vitest": "^4.0.10"
   }
 }
