@@ -237,6 +237,13 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
   - Windsurf.app
 - アプリケーションが `/Applications` に存在するか確認
 
+### 既知の問題
+
+#### Option+Spaceで呼び出した際の入力モード
+- 現在、Option+Spaceで検索窓を呼び出した際、初期の入力モードを英字入力に固定できない制限があります
+- これはmacOSのIME制御の制約によるもので、システム全体の入力ソース設定が反映されます
+- 回避策: 検索窓が表示された後、手動で英数キーを押して英字入力モードに切り替えてください
+
 ## 開発
 
 ```bash
