@@ -168,3 +168,110 @@ impl Launcher {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_launch_app_with_nonexistent_path() {
+        let result = Launcher::launch_app("/nonexistent/path/to/app.app");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid path"));
+    }
+
+    #[test]
+    fn test_open_directory_with_nonexistent_path() {
+        let result = Launcher::open_directory("/nonexistent/path", None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid path"));
+    }
+
+    #[test]
+    fn test_open_directory_with_file() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let file_path = temp_dir.path().join("test.txt");
+        fs::write(&file_path, "test").expect("Failed to write file");
+
+        let result = Launcher::open_directory(file_path.to_str().unwrap(), None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not a directory"));
+    }
+
+    #[test]
+    fn test_open_in_terminal_with_nonexistent_path() {
+        let result = Launcher::open_in_terminal("/nonexistent/path", &TerminalType::Terminal);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid path"));
+    }
+
+    #[test]
+    fn test_open_in_terminal_with_file() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let file_path = temp_dir.path().join("test.txt");
+        fs::write(&file_path, "test").expect("Failed to write file");
+
+        let result =
+            Launcher::open_in_terminal(file_path.to_str().unwrap(), &TerminalType::Terminal);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not a directory"));
+    }
+
+    #[test]
+    fn test_find_workspace_file() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+        // .code-workspaceファイルを作成
+        let workspace_path = temp_dir.path().join("project.code-workspace");
+        fs::write(&workspace_path, "{}").expect("Failed to write workspace file");
+
+        let result = Launcher::find_workspace_file(temp_dir.path());
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), workspace_path);
+    }
+
+    #[test]
+    fn test_find_workspace_file_not_found() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+        // .code-workspaceファイルがない場合
+        let result = Launcher::find_workspace_file(temp_dir.path());
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_find_workspace_file_with_other_files() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+        // 他のファイルを作成
+        fs::write(temp_dir.path().join("README.md"), "test").expect("Failed to write file");
+        fs::write(temp_dir.path().join("config.json"), "{}").expect("Failed to write file");
+
+        // .code-workspaceファイルを作成
+        let workspace_path = temp_dir.path().join("my.code-workspace");
+        fs::write(&workspace_path, "{}").expect("Failed to write workspace file");
+
+        let result = Launcher::find_workspace_file(temp_dir.path());
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), workspace_path);
+    }
+
+    #[test]
+    fn test_find_workspace_file_multiple() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+        // 複数の.code-workspaceファイルを作成
+        let workspace1 = temp_dir.path().join("project1.code-workspace");
+        let workspace2 = temp_dir.path().join("project2.code-workspace");
+        fs::write(&workspace1, "{}").expect("Failed to write workspace1");
+        fs::write(&workspace2, "{}").expect("Failed to write workspace2");
+
+        // いずれかが返される（どちらでも良い）
+        let result = Launcher::find_workspace_file(temp_dir.path());
+        assert!(result.is_some());
+        let path = result.unwrap();
+        assert!(path == workspace1 || path == workspace2);
+    }
+}

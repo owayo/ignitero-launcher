@@ -232,3 +232,249 @@ impl CacheDB {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{AppItem, DirectoryItem};
+
+    #[test]
+    fn test_new_in_memory() {
+        let cache = CacheDB::new_in_memory().expect("Failed to create in-memory cache");
+        assert!(cache.is_empty().expect("Failed to check if empty"));
+    }
+
+    #[test]
+    fn test_save_and_load_apps() {
+        let cache = CacheDB::new_in_memory().expect("Failed to create cache");
+
+        let apps = vec![
+            AppItem {
+                name: "Safari".to_string(),
+                path: "/Applications/Safari.app".to_string(),
+                icon_path: None,
+            },
+            AppItem {
+                name: "Mail".to_string(),
+                path: "/Applications/Mail.app".to_string(),
+                icon_path: Some("/path/to/icon.png".to_string()),
+            },
+        ];
+
+        cache.save_apps(&apps).expect("Failed to save apps");
+        let loaded = cache.load_apps().expect("Failed to load apps");
+
+        assert_eq!(loaded.len(), 2);
+        assert_eq!(loaded[0].name, "Mail");
+        assert_eq!(loaded[1].name, "Safari");
+    }
+
+    #[test]
+    fn test_save_and_load_directories() {
+        let cache = CacheDB::new_in_memory().expect("Failed to create cache");
+
+        let dirs = vec![
+            DirectoryItem {
+                name: "Projects".to_string(),
+                path: "/Users/test/Projects".to_string(),
+                editor: Some("cursor".to_string()),
+            },
+            DirectoryItem {
+                name: "Documents".to_string(),
+                path: "/Users/test/Documents".to_string(),
+                editor: None,
+            },
+        ];
+
+        cache
+            .save_directories(&dirs)
+            .expect("Failed to save directories");
+        let loaded = cache
+            .load_directories()
+            .expect("Failed to load directories");
+
+        assert_eq!(loaded.len(), 2);
+        assert_eq!(loaded[0].name, "Documents");
+        assert_eq!(loaded[1].name, "Projects");
+    }
+
+    #[test]
+    fn test_is_empty() {
+        let cache = CacheDB::new_in_memory().expect("Failed to create cache");
+
+        assert!(cache.is_empty().expect("Failed to check if empty"));
+
+        let apps = vec![AppItem {
+            name: "TestApp".to_string(),
+            path: "/Applications/TestApp.app".to_string(),
+            icon_path: None,
+        }];
+
+        cache.save_apps(&apps).expect("Failed to save apps");
+        assert!(!cache.is_empty().expect("Failed to check if empty"));
+
+        cache.clear_cache().expect("Failed to clear cache");
+        assert!(cache.is_empty().expect("Failed to check if empty"));
+    }
+
+    #[test]
+    fn test_update_time_operations() {
+        let cache = CacheDB::new_in_memory().expect("Failed to create cache");
+
+        // 初期状態ではNone
+        assert_eq!(
+            cache.get_last_update_time().expect("Failed to get time"),
+            None
+        );
+
+        // 時刻を設定
+        let timestamp = 1234567890;
+        cache
+            .set_last_update_time(timestamp)
+            .expect("Failed to set time");
+
+        // 取得して確認
+        assert_eq!(
+            cache.get_last_update_time().expect("Failed to get time"),
+            Some(timestamp)
+        );
+    }
+
+    #[test]
+    fn test_needs_update() {
+        let cache = CacheDB::new_in_memory().expect("Failed to create cache");
+
+        // 更新時刻が未設定の場合は更新が必要
+        assert!(cache.needs_update(1).expect("Failed to check needs_update"));
+
+        // 現在時刻を設定
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+
+        cache.set_last_update_time(now).expect("Failed to set time");
+
+        // 1時間以内なら更新不要
+        assert!(!cache.needs_update(1).expect("Failed to check needs_update"));
+
+        // 過去の時刻を設定
+        let old_time = now - 7200; // 2時間前
+        cache
+            .set_last_update_time(old_time)
+            .expect("Failed to set time");
+
+        // 1時間経過しているので更新が必要
+        assert!(cache.needs_update(1).expect("Failed to check needs_update"));
+
+        // 3時間以内なら更新不要
+        assert!(!cache.needs_update(3).expect("Failed to check needs_update"));
+    }
+
+    #[test]
+    fn test_overwrite_apps() {
+        let cache = CacheDB::new_in_memory().expect("Failed to create cache");
+
+        // 最初のアプリを保存
+        let apps1 = vec![AppItem {
+            name: "App1".to_string(),
+            path: "/Applications/App1.app".to_string(),
+            icon_path: None,
+        }];
+        cache.save_apps(&apps1).expect("Failed to save apps");
+
+        // 上書き
+        let apps2 = vec![
+            AppItem {
+                name: "App2".to_string(),
+                path: "/Applications/App2.app".to_string(),
+                icon_path: None,
+            },
+            AppItem {
+                name: "App3".to_string(),
+                path: "/Applications/App3.app".to_string(),
+                icon_path: None,
+            },
+        ];
+        cache.save_apps(&apps2).expect("Failed to save apps");
+
+        let loaded = cache.load_apps().expect("Failed to load apps");
+        assert_eq!(loaded.len(), 2);
+        assert!(loaded.iter().any(|app| app.name == "App2"));
+        assert!(loaded.iter().any(|app| app.name == "App3"));
+        assert!(!loaded.iter().any(|app| app.name == "App1"));
+    }
+
+    #[test]
+    fn test_empty_save() {
+        let cache = CacheDB::new_in_memory().expect("Failed to create cache");
+
+        // 空のリストを保存
+        cache.save_apps(&[]).expect("Failed to save empty apps");
+        cache
+            .save_directories(&[])
+            .expect("Failed to save empty directories");
+
+        assert!(cache.is_empty().expect("Failed to check if empty"));
+    }
+
+    #[test]
+    fn test_icon_path_persistence() {
+        let cache = CacheDB::new_in_memory().expect("Failed to create cache");
+
+        let apps = vec![
+            AppItem {
+                name: "App1".to_string(),
+                path: "/Applications/App1.app".to_string(),
+                icon_path: Some("/path/to/icon1.png".to_string()),
+            },
+            AppItem {
+                name: "App2".to_string(),
+                path: "/Applications/App2.app".to_string(),
+                icon_path: None,
+            },
+        ];
+
+        cache.save_apps(&apps).expect("Failed to save apps");
+        let loaded = cache.load_apps().expect("Failed to load apps");
+
+        assert_eq!(loaded.len(), 2);
+        let app1 = loaded.iter().find(|app| app.name == "App1").unwrap();
+        let app2 = loaded.iter().find(|app| app.name == "App2").unwrap();
+
+        assert_eq!(app1.icon_path, Some("/path/to/icon1.png".to_string()));
+        assert_eq!(app2.icon_path, None);
+    }
+
+    #[test]
+    fn test_editor_persistence() {
+        let cache = CacheDB::new_in_memory().expect("Failed to create cache");
+
+        let dirs = vec![
+            DirectoryItem {
+                name: "Projects".to_string(),
+                path: "/Users/test/Projects".to_string(),
+                editor: Some("cursor".to_string()),
+            },
+            DirectoryItem {
+                name: "Documents".to_string(),
+                path: "/Users/test/Documents".to_string(),
+                editor: None,
+            },
+        ];
+
+        cache
+            .save_directories(&dirs)
+            .expect("Failed to save directories");
+        let loaded = cache
+            .load_directories()
+            .expect("Failed to load directories");
+
+        assert_eq!(loaded.len(), 2);
+        let projects = loaded.iter().find(|dir| dir.name == "Projects").unwrap();
+        let documents = loaded.iter().find(|dir| dir.name == "Documents").unwrap();
+
+        assert_eq!(projects.editor, Some("cursor".to_string()));
+        assert_eq!(documents.editor, None);
+    }
+}
