@@ -1,10 +1,22 @@
-/// アクセシビリティ権限をチェックして、必要なら要求する
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+
+// 権限チェックの状態をキャッシュ
+static PERMISSION_CHECKED: AtomicBool = AtomicBool::new(false);
+static PERMISSION_GRANTED: AtomicBool = AtomicBool::new(false);
+static PROMPT_SHOWN: AtomicU8 = AtomicU8::new(0);
+
+/// アクセシビリティ権限をチェックして、必要なら要求する（初回のみ）
 #[cfg(target_os = "macos")]
 pub fn check_and_request_accessibility() -> bool {
     use core_foundation::base::TCFType;
     use core_foundation::boolean::CFBoolean;
     use core_foundation::dictionary::CFDictionary;
     use core_foundation::string::CFString;
+
+    // キャッシュされた結果をチェック
+    if PERMISSION_CHECKED.load(Ordering::Relaxed) {
+        return PERMISSION_GRANTED.load(Ordering::Relaxed);
+    }
 
     unsafe {
         #[link(name = "ApplicationServices", kind = "framework")]
@@ -18,27 +30,46 @@ pub fn check_and_request_accessibility() -> bool {
         // まず権限をチェック
         if AXIsProcessTrusted() {
             println!("✓ Accessibility permission already granted");
+            PERMISSION_CHECKED.store(true, Ordering::Relaxed);
+            PERMISSION_GRANTED.store(true, Ordering::Relaxed);
             return true;
         }
 
-        // 権限がない場合、プロンプトを表示して要求
-        println!("⚠ Accessibility permission not granted, requesting...");
+        // 権限がない場合、初回のみプロンプトを表示
+        let prompt_count = PROMPT_SHOWN.fetch_add(1, Ordering::Relaxed);
 
-        let prompt_key = CFString::new("AXTrustedCheckOptionPrompt");
-        let prompt_value = CFBoolean::true_value();
+        if prompt_count == 0 {
+            // 初回のみプロンプトを表示
+            println!("⚠ Accessibility permission not granted, requesting...");
 
-        let options =
-            CFDictionary::from_CFType_pairs(&[(prompt_key.as_CFType(), prompt_value.as_CFType())]);
+            let prompt_key = CFString::new("AXTrustedCheckOptionPrompt");
+            let prompt_value = CFBoolean::true_value();
 
-        let is_trusted = AXIsProcessTrustedWithOptions(options.as_concrete_TypeRef());
+            let options = CFDictionary::from_CFType_pairs(&[(
+                prompt_key.as_CFType(),
+                prompt_value.as_CFType(),
+            )]);
 
-        if is_trusted {
-            println!("✓ Accessibility permission granted");
+            let is_trusted = AXIsProcessTrustedWithOptions(options.as_concrete_TypeRef());
+
+            if is_trusted {
+                println!("✓ Accessibility permission granted");
+                PERMISSION_CHECKED.store(true, Ordering::Relaxed);
+                PERMISSION_GRANTED.store(true, Ordering::Relaxed);
+            } else {
+                println!("⚠ Accessibility permission denied. Please grant permission in System Settings > Privacy & Security > Accessibility");
+                PERMISSION_CHECKED.store(true, Ordering::Relaxed);
+                PERMISSION_GRANTED.store(false, Ordering::Relaxed);
+            }
+
+            is_trusted
         } else {
-            println!("⚠ Accessibility permission denied. Please grant permission in System Settings > Privacy & Security > Accessibility");
+            // 2回目以降はプロンプトなしでチェックのみ
+            let is_trusted = AXIsProcessTrusted();
+            PERMISSION_CHECKED.store(true, Ordering::Relaxed);
+            PERMISSION_GRANTED.store(is_trusted, Ordering::Relaxed);
+            is_trusted
         }
-
-        is_trusted
     }
 }
 
