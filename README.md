@@ -2,6 +2,12 @@
 
 <img src="./app-icon.png" alt="Ignitero Launcher" width="100">
 
+**Option+Spaceで即座に呼び出せるメニューバー常駐ランチャー。** Antigravity・Cursor・VS Code・Windsurfをプロジェクトごとに切り替えられ、検索してEnterを押すだけで指定エディタが瞬時に立ち上がるから、複数エディタ併用派でも迷子にならない。
+
+→キーひとつでターミナルを開き、macOSターミナル/iTerm2/WarpからClaude Code・Codex・Gemini CLIなどをすぐ呼び出せるので、相談しながらコードを書く流れが止まらない。プロジェクト切り替えもキーボード操作だけで完結し、現代のマルチツール開発ワークフローを高速化する「手が覚える」ランチャーです。
+
+---
+
 macOS向けの高速アプリケーション・ディレクトリランチャー。Tauri v2で構築されたメニューバー常駐型のランチャーです。
 
 ![](./docs/images/launcher.png)
@@ -37,7 +43,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
   - 配下のディレクトリの開き方を選択（表示しない / Finder / エディタ）
   - ディレクトリごとに異なるエディタを設定可能
   - カスタム検索キーワードで見つけやすく
-- **対応エディタ**: Windsurf、Cursor、VS Code
+- **対応エディタ**: Antigravity、Cursor、VS Code、Windsurf
 - **ターミナル統合**: ディレクトリ選択時に→キーでターミナルを開く
   - 対応ターミナル: macOSターミナル、iTerm2、Warp
 
@@ -154,11 +160,11 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 3. フォルダを選択
 4. **このディレクトリ自身**の設定:
    - 検索に表示しない / Finderで開く / エディタで開く を選択
-   - エディタで開く場合、Windsurf/Cursor/VS Codeから選択
+   - エディタで開く場合、Antigravity/Cursor/VS Code/Windsurfから選択
    - カスタム検索キーワードを設定可能（例: `~/GitHub` → "git"で検索）
 5. **配下のディレクトリ**の設定:
    - 検索に表示しない / Finderで開く / エディタで開く を選択
-   - エディタで開く場合、Windsurf/Cursor/VS Codeから選択
+   - エディタで開く場合、Antigravity/Cursor/VS Code/Windsurfから選択
 6. 「アプリスキャン」を有効にすると、そのディレクトリ配下の`.app`ファイルも検索対象に
 
 #### デフォルトターミナルの設定
@@ -225,9 +231,10 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 
 ### エディタが起動しない
 - エディタがアプリケーションとしてインストールされているか確認
-  - Windsurf.app
+  - Antigravity.app
   - Cursor.app
   - Visual Studio Code.app
+  - Windsurf.app
 - アプリケーションが `/Applications` に存在するか確認
 
 ## 開発
