@@ -361,18 +361,31 @@ function App() {
 
     const unlisten = appWindow.onFocusChanged(({ payload: focused }) => {
       if (focused) {
-        // 初回フォーカス時のみ英字入力モードに切り替え
-        if (shouldForceIME.current) {
-          shouldForceIME.current = false;
-          invoke('force_english_input_wrapper').catch((error) => {
-            console.error('Failed to switch to English input:', error);
-          });
-        }
-
         // 検索欄にフォーカスを設定
         setTimeout(() => {
           inputRef.current?.focus();
         }, 100);
+
+        // 初回フォーカス時のみ英字入力モードに切り替え
+        // macOSの自動復元を待ってから実行（150ms遅延）
+        if (shouldForceIME.current) {
+          shouldForceIME.current = false;
+          setTimeout(() => {
+            invoke('force_english_input_wrapper').catch((error) => {
+              console.error('Failed to switch to English input:', error);
+            });
+          }, 150);
+
+          // 念のため再試行（300ms後）
+          setTimeout(() => {
+            invoke('force_english_input_wrapper').catch((error) => {
+              console.error(
+                'Failed to switch to English input (retry):',
+                error,
+              );
+            });
+          }, 300);
+        }
 
         // 更新チェックを実行
         invoke<UpdateInfo>('check_update', { force: false })
