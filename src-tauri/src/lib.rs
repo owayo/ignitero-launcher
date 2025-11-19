@@ -156,6 +156,7 @@ fn get_available_editors() -> Vec<String> {
         ("windsurf", "/Applications/Windsurf.app"),
         ("cursor", "/Applications/Cursor.app"),
         ("code", "/Applications/Visual Studio Code.app"),
+        ("antigravity", "/Applications/Antigravity.app"),
     ];
 
     for (identifier, app_path) in editors {
@@ -207,6 +208,7 @@ fn get_editor_icon_path(editor: String) -> Result<Option<String>, String> {
         "windsurf" => std::path::PathBuf::from("/Applications/Windsurf.app"),
         "cursor" => std::path::PathBuf::from("/Applications/Cursor.app"),
         "code" => std::path::PathBuf::from("/Applications/Visual Studio Code.app"),
+        "antigravity" => std::path::PathBuf::from("/Applications/Antigravity.app"),
         _ => return Ok(None),
     };
 
@@ -227,6 +229,37 @@ fn get_editor_icon_path(editor: String) -> Result<Option<String>, String> {
         Ok(png_path) => Ok(Some(png_path)),
         Err(e) => {
             eprintln!("Failed to convert icon for {}: {}", editor, e);
+            Ok(None)
+        }
+    }
+}
+
+#[tauri::command]
+fn get_terminal_icon_path(terminal: String) -> Result<Option<String>, String> {
+    let app_path = match terminal.as_str() {
+        "terminal" => std::path::PathBuf::from("/System/Applications/Utilities/Terminal.app"),
+        "iterm2" => std::path::PathBuf::from("/Applications/iTerm.app"),
+        "warp" => std::path::PathBuf::from("/Applications/Warp.app"),
+        _ => return Ok(None),
+    };
+
+    // アプリが存在しない場合はNoneを返す
+    if !app_path.exists() {
+        return Ok(None);
+    }
+
+    // AppScannerを使ってアイコンパスを取得
+    let icon_path = match AppScanner::get_app_icon_path(&app_path) {
+        Some(path) => path,
+        None => return Ok(None),
+    };
+
+    // IconConverterを使ってPNGに変換
+    let converter = icon_converter::IconConverter::new()?;
+    match converter.convert_icns_to_png(&icon_path) {
+        Ok(png_path) => Ok(Some(png_path)),
+        Err(e) => {
+            eprintln!("Failed to convert icon for {}: {}", terminal, e);
             Ok(None)
         }
     }
@@ -554,6 +587,7 @@ pub fn run() {
             force_english_input_wrapper,
             convert_icon_to_png,
             get_editor_icon_path,
+            get_terminal_icon_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

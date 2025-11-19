@@ -20,7 +20,7 @@ import {
   ReloadOutlined,
   EditOutlined,
 } from '@ant-design/icons';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { emit } from '@tauri-apps/api/event';
 import type { Settings, RegisteredDirectory } from './types';
@@ -40,15 +40,41 @@ const SettingsWindow: React.FC = () => {
   const [availableTerminals, setAvailableTerminals] = useState<string[]>([]);
   const [editingDirectory, setEditingDirectory] =
     useState<RegisteredDirectory | null>(null);
+  const [editorIcons, setEditorIcons] = useState<Map<string, string>>(
+    new Map(),
+  );
+  const [terminalIcons, setTerminalIcons] = useState<Map<string, string>>(
+    new Map(),
+  );
 
   // インストール済みエディタを取得
   const loadAvailableEditors = async () => {
     try {
       const editors = await invoke<string[]>('get_available_editors');
       setAvailableEditors(editors);
+      // エディタアイコンを読み込み
+      await loadEditorIcons(editors);
     } catch (error) {
       console.error('Failed to load available editors:', error);
     }
+  };
+
+  // エディタアイコンを読み込み
+  const loadEditorIcons = async (editors: string[]) => {
+    const icons = new Map<string, string>();
+    for (const editor of editors) {
+      try {
+        const iconPath = await invoke<string | null>('get_editor_icon_path', {
+          editor,
+        });
+        if (iconPath) {
+          icons.set(editor, convertFileSrc(iconPath));
+        }
+      } catch (error) {
+        console.error(`Failed to load icon for ${editor}:`, error);
+      }
+    }
+    setEditorIcons(icons);
   };
 
   // インストール済みターミナルを取得
@@ -56,9 +82,29 @@ const SettingsWindow: React.FC = () => {
     try {
       const terminals = await invoke<string[]>('get_available_terminals');
       setAvailableTerminals(terminals);
+      // ターミナルアイコンを読み込み
+      await loadTerminalIcons(terminals);
     } catch (error) {
       console.error('Failed to load available terminals:', error);
     }
+  };
+
+  // ターミナルアイコンを読み込み
+  const loadTerminalIcons = async (terminals: string[]) => {
+    const icons = new Map<string, string>();
+    for (const terminal of terminals) {
+      try {
+        const iconPath = await invoke<string | null>('get_terminal_icon_path', {
+          terminal,
+        });
+        if (iconPath) {
+          icons.set(terminal, convertFileSrc(iconPath));
+        }
+      } catch (error) {
+        console.error(`Failed to load icon for ${terminal}:`, error);
+      }
+    }
+    setTerminalIcons(icons);
   };
 
   // 設定を読み込み
@@ -275,13 +321,58 @@ const SettingsWindow: React.FC = () => {
             >
               <Select placeholder="ターミナルを選択">
                 {availableTerminals.includes('terminal') && (
-                  <Option value="terminal">macOSデフォルトターミナル</Option>
+                  <Option value="terminal">
+                    <Space align="center">
+                      {terminalIcons.get('terminal') && (
+                        <img
+                          src={terminalIcons.get('terminal')}
+                          alt="Terminal"
+                          style={{
+                            width: 16,
+                            height: 16,
+                            verticalAlign: 'middle',
+                          }}
+                        />
+                      )}
+                      macOSデフォルトターミナル
+                    </Space>
+                  </Option>
                 )}
                 {availableTerminals.includes('iterm2') && (
-                  <Option value="iterm2">iTerm2</Option>
+                  <Option value="iterm2">
+                    <Space align="center">
+                      {terminalIcons.get('iterm2') && (
+                        <img
+                          src={terminalIcons.get('iterm2')}
+                          alt="iTerm2"
+                          style={{
+                            width: 16,
+                            height: 16,
+                            verticalAlign: 'middle',
+                          }}
+                        />
+                      )}
+                      iTerm2
+                    </Space>
+                  </Option>
                 )}
                 {availableTerminals.includes('warp') && (
-                  <Option value="warp">Warp</Option>
+                  <Option value="warp">
+                    <Space align="center">
+                      {terminalIcons.get('warp') && (
+                        <img
+                          src={terminalIcons.get('warp')}
+                          alt="Warp"
+                          style={{
+                            width: 16,
+                            height: 16,
+                            verticalAlign: 'middle',
+                          }}
+                        />
+                      )}
+                      Warp
+                    </Space>
+                  </Option>
                 )}
               </Select>
             </Form.Item>
@@ -427,14 +518,77 @@ const SettingsWindow: React.FC = () => {
                       ]}
                     >
                       <Select placeholder="エディタを選択">
-                        {availableEditors.includes('windsurf') && (
-                          <Option value="windsurf">Windsurf</Option>
+                        {availableEditors.includes('antigravity') && (
+                          <Option value="antigravity">
+                            <Space align="center">
+                              {editorIcons.get('antigravity') && (
+                                <img
+                                  src={editorIcons.get('antigravity')}
+                                  alt="Antigravity"
+                                  style={{
+                                    width: 16,
+                                    height: 16,
+                                    verticalAlign: 'middle',
+                                  }}
+                                />
+                              )}
+                              Antigravity
+                            </Space>
+                          </Option>
                         )}
                         {availableEditors.includes('cursor') && (
-                          <Option value="cursor">Cursor</Option>
+                          <Option value="cursor">
+                            <Space align="center">
+                              {editorIcons.get('cursor') && (
+                                <img
+                                  src={editorIcons.get('cursor')}
+                                  alt="Cursor"
+                                  style={{
+                                    width: 16,
+                                    height: 16,
+                                    verticalAlign: 'middle',
+                                  }}
+                                />
+                              )}
+                              Cursor
+                            </Space>
+                          </Option>
                         )}
                         {availableEditors.includes('code') && (
-                          <Option value="code">VS Code</Option>
+                          <Option value="code">
+                            <Space align="center">
+                              {editorIcons.get('code') && (
+                                <img
+                                  src={editorIcons.get('code')}
+                                  alt="VS Code"
+                                  style={{
+                                    width: 16,
+                                    height: 16,
+                                    verticalAlign: 'middle',
+                                  }}
+                                />
+                              )}
+                              VS Code
+                            </Space>
+                          </Option>
+                        )}
+                        {availableEditors.includes('windsurf') && (
+                          <Option value="windsurf">
+                            <Space align="center">
+                              {editorIcons.get('windsurf') && (
+                                <img
+                                  src={editorIcons.get('windsurf')}
+                                  alt="Windsurf"
+                                  style={{
+                                    width: 16,
+                                    height: 16,
+                                    verticalAlign: 'middle',
+                                  }}
+                                />
+                              )}
+                              Windsurf
+                            </Space>
+                          </Option>
                         )}
                       </Select>
                     </Form.Item>
@@ -471,14 +625,77 @@ const SettingsWindow: React.FC = () => {
                     ]}
                   >
                     <Select placeholder="エディタを選択">
-                      {availableEditors.includes('windsurf') && (
-                        <Option value="windsurf">Windsurf</Option>
+                      {availableEditors.includes('antigravity') && (
+                        <Option value="antigravity">
+                          <Space align="center">
+                            {editorIcons.get('antigravity') && (
+                              <img
+                                src={editorIcons.get('antigravity')}
+                                alt="Antigravity"
+                                style={{
+                                  width: 16,
+                                  height: 16,
+                                  verticalAlign: 'middle',
+                                }}
+                              />
+                            )}
+                            Antigravity
+                          </Space>
+                        </Option>
                       )}
                       {availableEditors.includes('cursor') && (
-                        <Option value="cursor">Cursor</Option>
+                        <Option value="cursor">
+                          <Space align="center">
+                            {editorIcons.get('cursor') && (
+                              <img
+                                src={editorIcons.get('cursor')}
+                                alt="Cursor"
+                                style={{
+                                  width: 16,
+                                  height: 16,
+                                  verticalAlign: 'middle',
+                                }}
+                              />
+                            )}
+                            Cursor
+                          </Space>
+                        </Option>
                       )}
                       {availableEditors.includes('code') && (
-                        <Option value="code">VS Code</Option>
+                        <Option value="code">
+                          <Space align="center">
+                            {editorIcons.get('code') && (
+                              <img
+                                src={editorIcons.get('code')}
+                                alt="VS Code"
+                                style={{
+                                  width: 16,
+                                  height: 16,
+                                  verticalAlign: 'middle',
+                                }}
+                              />
+                            )}
+                            VS Code
+                          </Space>
+                        </Option>
+                      )}
+                      {availableEditors.includes('windsurf') && (
+                        <Option value="windsurf">
+                          <Space align="center">
+                            {editorIcons.get('windsurf') && (
+                              <img
+                                src={editorIcons.get('windsurf')}
+                                alt="Windsurf"
+                                style={{
+                                  width: 16,
+                                  height: 16,
+                                  verticalAlign: 'middle',
+                                }}
+                              />
+                            )}
+                            Windsurf
+                          </Space>
+                        </Option>
                       )}
                     </Select>
                   </Form.Item>

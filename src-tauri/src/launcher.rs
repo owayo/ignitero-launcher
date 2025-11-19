@@ -78,6 +78,18 @@ impl Launcher {
                     .spawn()
                     .map_err(|e| format!("Failed to open with VS Code: {}", e))?;
             }
+            Some("antigravity") => {
+                // ディレクトリ直下の.code-workspaceファイルを検索
+                let workspace_file = Self::find_workspace_file(&path_buf);
+                let target_path = workspace_file.as_ref().unwrap_or(&path_buf);
+                // Antigravityで開く
+                Command::new("open")
+                    .arg("-a")
+                    .arg("Antigravity")
+                    .arg(target_path)
+                    .spawn()
+                    .map_err(|e| format!("Failed to open with Antigravity: {}", e))?;
+            }
             _ => {
                 // デフォルトはFinderで開く（常にディレクトリ本体を開く）
                 Command::new("open")
