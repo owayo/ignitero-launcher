@@ -48,10 +48,7 @@ pub async fn check_for_updates(
                     // キャッシュが有効 - セマンティックバージョニングで比較
                     let has_update = if let Some(ref latest) = cache.latest_version {
                         // ユーザーが却下したバージョンと同じ場合は通知しない
-                        let is_dismissed = cache
-                            .dismissed_version
-                            .as_ref()
-                            .map_or(false, |dismissed| dismissed == latest);
+                        let is_dismissed = cache.dismissed_version.as_ref() == Some(latest);
                         !is_dismissed && compare_versions(&app_version, latest)
                     } else {
                         false
@@ -82,10 +79,7 @@ pub async fn check_for_updates(
         .map_err(|e| format!("Failed to fetch release info: {}", e))?;
 
     if !response.status().is_success() {
-        return Err(format!(
-            "GitHub API returned error: {}",
-            response.status()
-        ));
+        return Err(format!("GitHub API returned error: {}", response.status()));
     }
 
     let release: GithubRelease = response
@@ -145,10 +139,7 @@ pub async fn check_for_updates(
 fn compare_versions(current: &str, latest: &str) -> bool {
     // セマンティックバージョニングの簡易比較
     // 例: "0.1.13" < "0.2.0"
-    let current_parts: Vec<u32> = current
-        .split('.')
-        .filter_map(|s| s.parse().ok())
-        .collect();
+    let current_parts: Vec<u32> = current.split('.').filter_map(|s| s.parse().ok()).collect();
     let latest_parts: Vec<u32> = latest.split('.').filter_map(|s| s.parse().ok()).collect();
 
     for i in 0..3 {

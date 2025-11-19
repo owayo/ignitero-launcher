@@ -8,6 +8,12 @@ pub struct SettingsManager {
     settings_path: PathBuf,
 }
 
+impl Default for SettingsManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SettingsManager {
     pub fn new() -> Self {
         let settings_path = Self::get_settings_path();

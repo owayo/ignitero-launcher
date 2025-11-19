@@ -14,32 +14,22 @@ pub struct DirectoryItem {
     pub editor: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum OpenMode {
+    #[default]
     None,
     Finder,
     Editor,
 }
 
-impl Default for OpenMode {
-    fn default() -> Self {
-        OpenMode::None
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum TerminalType {
+    #[default]
     Terminal,
     Iterm2,
     Warp,
-}
-
-impl Default for TerminalType {
-    fn default() -> Self {
-        TerminalType::Terminal
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

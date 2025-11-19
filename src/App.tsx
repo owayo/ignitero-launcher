@@ -29,15 +29,6 @@ function isAppItem(item: SearchResult): item is AppItem {
   return 'icon_path' in item;
 }
 
-// 文字列を検索用に正規化（全角→半角、小文字化）
-function normalizeForSearch(str: string): string {
-  return str
-    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) => {
-      return String.fromCharCode(s.charCodeAt(0) - 0xfee0);
-    })
-    .toLowerCase();
-}
-
 // 選択履歴の型定義
 interface SelectionHistory {
   keyword: string;
@@ -181,15 +172,13 @@ function App() {
   const [displayQuery, setDisplayQuery] = useState(''); // IME表示用
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [isComposing, setIsComposing] = useState(false);
+  const [isComposing, _setIsComposing] = useState(false);
   const [selectionHistory, setSelectionHistory] = useState<SelectionHistory[]>(
     () => loadHistory(),
   );
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const inputRef = React.useRef<any>(null);
   const shouldForceIME = React.useRef(true);
-  const compBuffer = React.useRef(''); // IME未確定文字列のバッファ
-  const compositionBaseRef = React.useRef(''); // IME開始前の検索クエリ
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]); // リスト項目のref配列
   const defaultTerminal = useRef<'terminal' | 'iterm2' | 'warp'>('terminal'); // デフォルトターミナル
 
@@ -224,12 +213,12 @@ function App() {
     async (
       romajiQuery: string,
       kanaQuery: string,
-      composing: boolean = false,
+      _composing: boolean = false,
     ) => {
       console.log('performSearch called:', {
         romajiQuery,
         kanaQuery,
-        composing,
+        composing: _composing,
       });
 
       if (!romajiQuery.trim() && !kanaQuery.trim()) {

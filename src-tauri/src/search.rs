@@ -7,11 +7,10 @@ fn normalize_for_search(s: &str) -> String {
     s.chars()
         .map(|c| {
             // 全角英数字を半角に変換
-            if c >= 'Ａ' && c <= 'Ｚ' {
-                char::from_u32(c as u32 - 0xFEE0).unwrap_or(c)
-            } else if c >= 'ａ' && c <= 'ｚ' {
-                char::from_u32(c as u32 - 0xFEE0).unwrap_or(c)
-            } else if c >= '０' && c <= '９' {
+            if ('Ａ'..='Ｚ').contains(&c)
+                || ('ａ'..='ｚ').contains(&c)
+                || ('０'..='９').contains(&c)
+            {
                 char::from_u32(c as u32 - 0xFEE0).unwrap_or(c)
             } else {
                 c

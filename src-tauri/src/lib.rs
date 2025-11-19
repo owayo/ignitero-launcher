@@ -286,7 +286,11 @@ fn get_terminal_icon_path(terminal: String) -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
-async fn check_update(force: bool, app: tauri::AppHandle, state: State<'_, AppState>) -> Result<update_checker::UpdateInfo, String> {
+async fn check_update(
+    force: bool,
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<update_checker::UpdateInfo, String> {
     let version = app.package_info().version.to_string();
     update_checker::check_for_updates(&state.settings_manager, version, force).await
 }

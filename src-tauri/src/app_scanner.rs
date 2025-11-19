@@ -17,7 +17,7 @@ impl AppScanner {
         }
 
         // ユーザーのApplicationsディレクトリ
-        if let Some(home_dir) = std::env::var("HOME").ok() {
+        if let Ok(home_dir) = std::env::var("HOME") {
             let user_app_dir = Path::new(&home_dir).join("Applications");
             if user_app_dir.exists() {
                 apps.extend(Self::scan_directory(&user_app_dir, 3)); // Chrome Appsなどのため深さ3
