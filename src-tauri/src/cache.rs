@@ -23,6 +23,14 @@ impl CacheDB {
         Ok(cache)
     }
 
+    /// テスト用：インメモリデータベースを作成
+    pub fn new_in_memory() -> Result<Self> {
+        let conn = Connection::open_in_memory()?;
+        let cache = Self { conn };
+        cache.init_tables()?;
+        Ok(cache)
+    }
+
     fn get_db_path() -> PathBuf {
         let home = std::env::var("HOME").unwrap_or_else(|_| String::from("/tmp"));
         PathBuf::from(home)
@@ -214,5 +222,13 @@ impl CacheDB {
             // 更新時刻が記録されていない場合は更新が必要
             Ok(true)
         }
+    }
+
+    /// キャッシュをクリア（テスト用）
+    pub fn clear_cache(&self) -> Result<()> {
+        self.conn.execute("DELETE FROM apps", [])?;
+        self.conn.execute("DELETE FROM directories", [])?;
+        self.conn.execute("DELETE FROM metadata", [])?;
+        Ok(())
     }
 }

@@ -1,5 +1,5 @@
 mod app_scanner;
-mod cache;
+pub mod cache;
 mod directory_scanner;
 mod icon_converter;
 mod ime_control;
@@ -7,7 +7,7 @@ mod launcher;
 mod search;
 mod settings;
 mod system_tray;
-mod types;
+pub mod types;
 mod update_checker;
 
 use app_scanner::AppScanner;
@@ -16,6 +16,12 @@ use directory_scanner::DirectoryScanner;
 use launcher::Launcher;
 use search::SearchEngine;
 use settings::SettingsManager;
+
+// Export public modules for testing
+pub use app_scanner::AppScanner as AppScannerExport;
+pub use directory_scanner::DirectoryScanner as DirectoryScannerExport;
+pub use search::SearchEngine as SearchEngineExport;
+pub use settings::SettingsManager as SettingsManagerExport;
 use std::sync::mpsc::channel;
 use std::sync::Mutex;
 use std::thread;
@@ -31,12 +37,12 @@ use types::{AppItem, DirectoryItem, RegisteredDirectory, Settings};
 use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
 
 pub struct AppState {
-    apps: Mutex<Vec<AppItem>>,
-    directories: Mutex<Vec<DirectoryItem>>,
-    search_engine: SearchEngine,
-    settings_manager: SettingsManager,
-    cache_db: Mutex<CacheDB>,
-    tray_icon: Mutex<Option<TrayIcon>>,
+    pub apps: Mutex<Vec<AppItem>>,
+    pub directories: Mutex<Vec<DirectoryItem>>,
+    pub search_engine: SearchEngine,
+    pub settings_manager: SettingsManager,
+    pub cache_db: Mutex<CacheDB>,
+    pub tray_icon: Mutex<Option<TrayIcon>>,
 }
 
 #[tauri::command]
@@ -47,6 +53,19 @@ fn search_apps(query: String, state: State<AppState>) -> Vec<AppItem> {
 
 #[tauri::command]
 fn search_directories(query: String, state: State<AppState>) -> Vec<DirectoryItem> {
+    let directories = state.directories.lock().unwrap();
+    state.search_engine.search_directories(&directories, &query)
+}
+
+// テスト用の公開関数
+#[cfg(test)]
+pub fn test_search_apps(query: String, state: &AppState) -> Vec<AppItem> {
+    let apps = state.apps.lock().unwrap();
+    state.search_engine.search_apps(&apps, &query)
+}
+
+#[cfg(test)]
+pub fn test_search_directories(query: String, state: &AppState) -> Vec<DirectoryItem> {
     let directories = state.directories.lock().unwrap();
     state.search_engine.search_directories(&directories, &query)
 }
