@@ -375,16 +375,6 @@ function App() {
               console.error('Failed to switch to English input:', error);
             });
           }, 150);
-
-          // 念のため再試行（300ms後）
-          setTimeout(() => {
-            invoke('force_english_input_wrapper').catch((error) => {
-              console.error(
-                'Failed to switch to English input (retry):',
-                error,
-              );
-            });
-          }, 300);
         }
 
         // 更新チェックを実行
