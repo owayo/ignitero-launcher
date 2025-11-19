@@ -107,10 +107,12 @@ impl SettingsManager {
     ) -> Result<(), String> {
         // mutexを保持したまま更新して競合を防ぐ
         let mut settings_guard = self.settings.lock().unwrap();
+        let dismissed_version = settings_guard.update_cache.dismissed_version.clone();
         settings_guard.update_cache = crate::types::UpdateCache {
             last_checked,
             latest_version,
             html_url,
+            dismissed_version,
         };
 
         // ディレクトリを作成
