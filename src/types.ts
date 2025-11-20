@@ -10,6 +10,19 @@ export interface DirectoryItem {
   editor?: string;
 }
 
+export interface EditorInfo {
+  id: string;
+  name: string;
+  app_name: string;
+  installed: boolean;
+}
+
+export interface WindowState {
+  label: string;
+  visible: boolean;
+  focused: boolean;
+}
+
 export type OpenMode = 'none' | 'finder' | 'editor';
 export type TerminalType = 'terminal' | 'iterm2' | 'warp';
 

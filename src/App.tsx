@@ -6,12 +6,13 @@ import {
   SearchOutlined,
   SettingOutlined,
   ReloadOutlined,
+  MoreOutlined,
 } from '@ant-design/icons';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-shell';
-import type { AppItem, DirectoryItem } from './types';
+import type { AppItem, DirectoryItem, EditorInfo, WindowState } from './types';
 import './App.css';
 
 const { Text } = Typography;
@@ -347,7 +348,9 @@ function App() {
   useEffect(() => {
     const appWindow = getCurrentWindow();
 
-    const unlisten = appWindow.onFocusChanged(({ payload: focused }) => {
+    const unlisten = appWindow.onFocusChanged(async ({ payload: focused }) => {
+      console.log('[main-window] focus changed', { focused });
+
       if (focused) {
         // 検索欄にフォーカスを設定
         setTimeout(() => {
@@ -383,6 +386,45 @@ function App() {
         setDisplayQuery('');
         setResults([]);
         setSelectedIndex(0);
+
+        try {
+          const [visible, pickerState] = await Promise.all([
+            appWindow.isVisible(),
+            invoke<WindowState | null>('get_window_state', {
+              label: 'editor-picker',
+            }).catch((error) => {
+              console.error('Failed to get editor picker window state:', error);
+              return null;
+            }),
+          ]);
+
+          console.log('[main-window] blur state', { visible, pickerState });
+
+          if (pickerState?.visible || pickerState?.focused) {
+            console.log(
+              'Main window lost focus but editor picker is visible/focused; keeping it open.',
+            );
+            return;
+          }
+
+          if (!visible) {
+            console.log(
+              'Main window hidden; requesting editor picker close if it exists.',
+            );
+            invoke('close_editor_picker_window').catch((error) => {
+              console.error('Failed to close editor picker window:', error);
+            });
+          } else {
+            console.log(
+              'Main window lost focus but is still visible; keeping editor picker window open.',
+            );
+          }
+        } catch (error) {
+          console.error(
+            'Error while handling main window focus change:',
+            error,
+          );
+        }
       }
     });
 
@@ -410,6 +452,29 @@ function App() {
       console.error('Failed to open in terminal:', error);
     }
   }, []);
+
+  // エディタ選択ウィンドウを開く
+  const handleOpenEditorPickerWindow = useCallback(
+    async (item: DirectoryItem) => {
+      try {
+        console.log(
+          'Opening editor picker window for:',
+          item.path,
+          'editor:',
+          item.editor,
+        );
+        await invoke('open_editor_picker_window', {
+          directoryPath: item.path,
+          currentEditor: item.editor || null,
+        });
+        // 検索バーを非表示
+        await invoke('hide_window');
+      } catch (error) {
+        console.error('Failed to open editor picker window:', error);
+      }
+    },
+    [],
+  );
 
   // アプリ/ディレクトリ起動
   const handleLaunch = useCallback(
@@ -487,7 +552,7 @@ function App() {
         setSelectedIndex((prev) => Math.max(prev - 1, 0));
       } else if (e.key === 'ArrowRight' && results[selectedIndex]) {
         e.preventDefault();
-        // ディレクトリの場合、ターミナルで開く
+        // ディレクトリの場合、デフォルトターミナルで開く
         const item = results[selectedIndex];
         console.log(
           'ArrowRight pressed, item:',
@@ -496,20 +561,47 @@ function App() {
           isAppItem(item),
         );
         if (!isAppItem(item)) {
-          console.log(
-            'Opening in terminal:',
-            item.path,
-            'terminal:',
-            defaultTerminal.current,
-          );
           handleOpenInTerminal(item);
+        }
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        console.log(
+          'ArrowLeft detected! selectedIndex:',
+          selectedIndex,
+          'results:',
+          results,
+        );
+        // ディレクトリの場合、エディタ選択ウィンドウを開く
+        if (results[selectedIndex]) {
+          const item = results[selectedIndex];
+          console.log(
+            'ArrowLeft pressed, item:',
+            item,
+            'isAppItem:',
+            isAppItem(item),
+          );
+          if (!isAppItem(item)) {
+            console.log('Opening editor picker window...');
+            handleOpenEditorPickerWindow(item);
+          } else {
+            console.log('Item is an app, not opening editor picker');
+          }
+        } else {
+          console.log('No item selected');
         }
       } else if (e.key === 'Enter' && results[selectedIndex]) {
         e.preventDefault();
         handleLaunch(results[selectedIndex]);
       }
     },
-    [results, selectedIndex, isComposing, handleOpenInTerminal, handleLaunch],
+    [
+      results,
+      selectedIndex,
+      isComposing,
+      handleOpenInTerminal,
+      handleLaunch,
+      handleOpenEditorPickerWindow,
+    ],
   );
 
   return (
@@ -602,37 +694,63 @@ function App() {
       <div className="results-container">
         <List
           dataSource={results}
-          renderItem={(item, index) => (
-            <div ref={(el) => (itemRefs.current[index] = el)}>
-              <List.Item
-                className={`result-item ${index === selectedIndex ? 'selected' : ''}`}
-                onClick={() => handleLaunch(item)}
-                onMouseEnter={() => setSelectedIndex(index)}
-              >
-                <Space>
-                  <ItemIcon item={item} />
-                  <div>
-                    <Text strong>{item.name}</Text>
-                    <br />
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                      {item.path}
-                    </Text>
-                    {!isAppItem(item) && item.editor && (
-                      <>
-                        <br />
-                        <Text
-                          type="secondary"
-                          style={{ fontSize: '11px', fontStyle: 'italic' }}
-                        >
-                          {item.editor}で開く
-                        </Text>
-                      </>
-                    )}
-                  </div>
-                </Space>
-              </List.Item>
-            </div>
-          )}
+          renderItem={(item, index) => {
+            const isDirectory = !isAppItem(item);
+            const isSelected = index === selectedIndex;
+
+            return (
+              <div ref={(el) => (itemRefs.current[index] = el)}>
+                <List.Item
+                  className={`result-item ${isSelected ? 'selected' : ''}`}
+                  onClick={() => handleLaunch(item)}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  style={{ position: 'relative' }}
+                >
+                  <Space style={{ flex: 1 }}>
+                    <ItemIcon item={item} />
+                    <div style={{ flex: 1 }}>
+                      <Text strong>{item.name}</Text>
+                      <br />
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                        {item.path}
+                      </Text>
+                      {isDirectory && item.editor && (
+                        <>
+                          <br />
+                          <Text
+                            type="secondary"
+                            style={{
+                              fontSize: '11px',
+                              fontStyle: 'italic',
+                            }}
+                          >
+                            {item.editor}で開く
+                          </Text>
+                        </>
+                      )}
+                    </div>
+                  </Space>
+                  {isDirectory && isSelected && (
+                    <Button
+                      icon={<MoreOutlined />}
+                      size="small"
+                      type="text"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenEditorPickerWindow(item);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                      }}
+                    />
+                  )}
+                </List.Item>
+              </div>
+            );
+          }}
         />
       </div>
     </div>

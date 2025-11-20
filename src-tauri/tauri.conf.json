@@ -40,6 +40,21 @@
         "skipTaskbar": true,
         "focus": true,
         "decorations": true
+      },
+      {
+        "title": "エディタ選択",
+        "width": 400,
+        "height": 450,
+        "label": "editor-picker",
+        "url": "editor-picker.html",
+        "visible": false,
+        "center": true,
+        "alwaysOnTop": true,
+        "decorations": false,
+        "resizable": false,
+        "skipTaskbar": true,
+        "focus": true,
+        "transparent": true
       }
     ],
     "security": {
@@ -89,6 +104,22 @@
             "core:window:allow-close",
             "shell:default",
             "dialog:default"
+          ]
+        },
+        {
+          "identifier": "editor-picker-window",
+          "description": "Editor picker window capability",
+          "windows": [
+            "editor-picker"
+          ],
+          "permissions": [
+            "core:default",
+            "core:app:default",
+            "core:event:default",
+            "core:window:default",
+            "core:window:allow-close",
+            "core:window:allow-hide",
+            "shell:default"
           ]
         }
       ]

@@ -1,11 +1,92 @@
 use crate::types::TerminalType;
+use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EditorInfo {
+    pub id: String,
+    pub name: String,
+    pub app_name: String,
+    pub installed: bool,
+}
 
 pub struct Launcher;
 
 impl Launcher {
+    /// インストール済みエディタの一覧を取得
+    pub fn get_available_editors() -> Vec<EditorInfo> {
+        let editors = vec![
+            EditorInfo {
+                id: "windsurf".to_string(),
+                name: "Windsurf".to_string(),
+                app_name: "Windsurf".to_string(),
+                installed: Self::is_app_installed("Windsurf"),
+            },
+            EditorInfo {
+                id: "cursor".to_string(),
+                name: "Cursor".to_string(),
+                app_name: "Cursor".to_string(),
+                installed: Self::is_app_installed("Cursor"),
+            },
+            EditorInfo {
+                id: "code".to_string(),
+                name: "VS Code".to_string(),
+                app_name: "Visual Studio Code".to_string(),
+                installed: Self::is_app_installed("Visual Studio Code"),
+            },
+            EditorInfo {
+                id: "antigravity".to_string(),
+                name: "Antigravity".to_string(),
+                app_name: "Antigravity".to_string(),
+                installed: Self::is_app_installed("Antigravity"),
+            },
+        ];
+
+        // インストール済みのエディタのみを返す
+        editors.into_iter().filter(|e| e.installed).collect()
+    }
+
+    /// アプリがインストールされているかチェック
+    fn is_app_installed(app_name: &str) -> bool {
+        // /Applicationsと~/Applicationsの両方をチェック
+        let paths = vec![
+            PathBuf::from("/Applications").join(format!("{}.app", app_name)),
+            PathBuf::from(std::env::var("HOME").unwrap_or_default())
+                .join("Applications")
+                .join(format!("{}.app", app_name)),
+        ];
+
+        paths.iter().any(|p| p.exists())
+    }
+
+    /// インストール済みターミナルの一覧を取得
+    pub fn get_available_terminals() -> Vec<EditorInfo> {
+        let terminals = vec![
+            EditorInfo {
+                id: "terminal".to_string(),
+                name: "Terminal".to_string(),
+                app_name: "Terminal".to_string(),
+                installed: true, // macOS標準なので常にインストール済み
+            },
+            EditorInfo {
+                id: "iterm2".to_string(),
+                name: "iTerm2".to_string(),
+                app_name: "iTerm".to_string(),
+                installed: Self::is_app_installed("iTerm"),
+            },
+            EditorInfo {
+                id: "warp".to_string(),
+                name: "Warp".to_string(),
+                app_name: "Warp".to_string(),
+                installed: Self::is_app_installed("Warp"),
+            },
+        ];
+
+        terminals.into_iter().filter(|t| t.installed).collect()
+    }
+
     /// macOSアプリを起動
     pub fn launch_app(path: &str) -> Result<(), String> {
         // パスを正規化して検証

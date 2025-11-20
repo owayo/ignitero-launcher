@@ -25,6 +25,7 @@ plist = "1"
 rusqlite = { version = "0.32", features = ["bundled"] }
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 tokio = { version = "1", features = ["rt-multi-thread"] }
+urlencoding = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.9"

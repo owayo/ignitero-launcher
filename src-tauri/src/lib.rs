@@ -16,6 +16,7 @@ use directory_scanner::DirectoryScanner;
 use launcher::Launcher;
 use search::SearchEngine;
 use settings::SettingsManager;
+use serde::Serialize;
 
 // Export public modules for testing
 pub use app_scanner::AppScanner as AppScannerExport;
@@ -215,6 +216,16 @@ fn get_available_terminals() -> Vec<String> {
 }
 
 #[tauri::command]
+fn get_editor_list() -> Vec<launcher::EditorInfo> {
+    Launcher::get_available_editors()
+}
+
+#[tauri::command]
+fn get_terminal_list() -> Vec<launcher::EditorInfo> {
+    Launcher::get_available_terminals()
+}
+
+#[tauri::command]
 fn convert_icon_to_png(icon_path: String) -> Result<String, String> {
     use icon_converter::IconConverter;
 
@@ -301,23 +312,196 @@ fn dismiss_update(version: String, state: State<AppState>) -> Result<(), String>
 }
 
 #[tauri::command]
+fn open_editor_picker_window(
+    app: tauri::AppHandle,
+    directory_path: String,
+    current_editor: Option<String>,
+) -> Result<(), String> {
+    use tauri::{WebviewUrl, WebviewWindowBuilder};
+
+    println!(
+        "[editor-picker] open requested for {} with editor {:?} (existing windows: {:?})",
+        directory_path,
+        current_editor,
+        app.webview_windows().keys().collect::<Vec<_>>()
+    );
+
+    // エディタ選択ウィンドウが既に存在する場合は閉じて再作成
+    if let Some(window) = app.get_webview_window("editor-picker") {
+        println!("[editor-picker] closing existing window before reopening");
+        if let Err(err) = window.close() {
+            eprintln!("[editor-picker] failed to close existing window: {err}");
+        }
+    }
+
+    // メインウィンドウの位置を取得
+    let main_window_position = if let Some(main_window) = app.get_webview_window("main") {
+        main_window.outer_position().ok()
+    } else {
+        None
+    };
+
+    // URLエンコードしてクエリパラメータとして渡す
+    let encoded_path = urlencoding::encode(&directory_path);
+    let mut url = format!("editor-picker.html?path={}", encoded_path);
+    if let Some(editor) = current_editor {
+        let encoded_editor = urlencoding::encode(&editor);
+        url.push_str(&format!("&editor={}", encoded_editor));
+    }
+
+    println!(
+        "[editor-picker] window states before build: {:?}",
+        list_window_states(app.clone())
+    );
+
+    // 新規作成
+    let mut builder = WebviewWindowBuilder::new(&app, "editor-picker", WebviewUrl::App(url.into()))
+        .title("エディタ選択")
+        .visible(true)
+        .inner_size(400.0, 450.0)
+        .resizable(false)
+        .decorations(false)
+        .transparent(true)
+        .always_on_top(true)
+        .skip_taskbar(true);
+
+    // メインウィンドウと同じディスプレイに表示
+    if let Some(pos) = main_window_position {
+        builder = builder.position(pos.x as f64, pos.y as f64);
+    } else {
+        builder = builder.center();
+    }
+
+    let window = builder
+        .build()
+        .map_err(|e| {
+            eprintln!("[editor-picker] failed to build window: {e}");
+            e.to_string()
+        })?;
+
+    // 中央に配置（メインウィンドウと同じディスプレイ上で）
+    if let Err(e) = window.center() {
+        eprintln!("[editor-picker] failed to center window: {e}");
+    }
+
+    window
+        .show()
+        .map_err(|e| {
+            eprintln!("[editor-picker] failed to show window: {e}");
+            e.to_string()
+        })?;
+
+    window
+        .set_focus()
+        .map_err(|e| {
+            eprintln!("[editor-picker] failed to focus window: {e}");
+            e.to_string()
+        })?;
+
+    println!(
+        "[editor-picker] window states after build: {:?}",
+        list_window_states(app.clone())
+    );
+    println!(
+        "[editor-picker] immediate visibility check => visible: {}, focused: {}",
+        window.is_visible().unwrap_or(false),
+        window.is_focused().unwrap_or(false)
+    );
+
+    println!(
+        "[editor-picker] window created and shown for {}",
+        directory_path
+    );
+
+    Ok(())
+}
+
+#[tauri::command]
+fn close_editor_picker_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("editor-picker") {
+        println!(
+            "[editor-picker] close requested. visible: {}, focused: {}",
+            window.is_visible().unwrap_or(false),
+            window.is_focused().unwrap_or(false)
+        );
+        window.close().map_err(|e| e.to_string())?;
+    } else {
+        println!("[editor-picker] close requested but window not found");
+    }
+    Ok(())
+}
+
+// デバッグ用: 現在存在するWebviewウィンドウのラベル一覧を返す
+#[tauri::command]
+fn list_window_labels(app: tauri::AppHandle) -> Vec<String> {
+    app.webview_windows().keys().cloned().collect()
+}
+
+#[derive(Debug, Serialize)]
+struct WindowState {
+    label: String,
+    visible: bool,
+    focused: bool,
+}
+
+fn build_window_state(label: &str, window: &tauri::WebviewWindow) -> WindowState {
+    WindowState {
+        label: label.to_string(),
+        visible: window.is_visible().unwrap_or(false),
+        focused: window.is_focused().unwrap_or(false),
+    }
+}
+
+#[tauri::command]
+fn get_window_state(app: tauri::AppHandle, label: String) -> Option<WindowState> {
+    app.get_webview_window(&label)
+        .as_ref()
+        .map(|window| build_window_state(&label, window))
+}
+
+#[tauri::command]
+fn list_window_states(app: tauri::AppHandle) -> Vec<WindowState> {
+    app.webview_windows()
+        .iter()
+        .map(|(label, window)| build_window_state(label, window))
+        .collect()
+}
+
+#[tauri::command]
 fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
-    use tauri::WebviewUrl;
-    use tauri::WebviewWindowBuilder;
+    use tauri::{WebviewUrl, WebviewWindowBuilder};
 
     // 設定ウィンドウが既に存在する場合は表示
     if let Some(window) = app.get_webview_window("settings") {
         window.show().map_err(|e| e.to_string())?;
         window.set_focus().map_err(|e| e.to_string())?;
     } else {
+        // メインウィンドウの位置を取得
+        let main_window_position = if let Some(main_window) = app.get_webview_window("main") {
+            main_window.outer_position().ok()
+        } else {
+            None
+        };
+
         // 存在しない場合は新規作成
-        WebviewWindowBuilder::new(&app, "settings", WebviewUrl::App("settings.html".into()))
+        let mut builder = WebviewWindowBuilder::new(&app, "settings", WebviewUrl::App("settings.html".into()))
             .title("設定 - Ignitero Launcher")
             .inner_size(800.0, 600.0)
-            .resizable(true)
-            .center()
-            .build()
-            .map_err(|e| e.to_string())?;
+            .resizable(true);
+
+        // メインウィンドウと同じディスプレイに表示
+        if let Some(pos) = main_window_position {
+            builder = builder.position(pos.x as f64, pos.y as f64);
+        } else {
+            builder = builder.center();
+        }
+
+        let window = builder.build().map_err(|e| e.to_string())?;
+
+        // 中央に配置（メインウィンドウと同じディスプレイ上で）
+        if let Err(e) = window.center() {
+            eprintln!("[settings] failed to center window: {e}");
+        }
     }
     Ok(())
 }
@@ -502,7 +686,16 @@ pub fn run() {
                             return;
                         }
 
-                        if let Some(window) = app_handle.get_webview_window("main") {
+                        // エディタ選択ウィンドウが開いている場合は閉じてメインウィンドウを表示
+                        if let Some(picker_window) = app_handle.get_webview_window("editor-picker") {
+                            let _ = picker_window.close();
+                            if let Some(main_window) = app_handle.get_webview_window("main") {
+                                let _ = main_window.show();
+                                let _ = main_window.set_focus();
+                                #[cfg(target_os = "macos")]
+                                let _ = ime_control::force_english_input();
+                            }
+                        } else if let Some(window) = app_handle.get_webview_window("main") {
                             if window.is_visible().unwrap_or(false) {
                                 let _ = window.hide();
                             } else {
@@ -611,6 +804,8 @@ pub fn run() {
             hide_window,
             show_window,
             open_settings_window,
+            open_editor_picker_window,
+            close_editor_picker_window,
             get_settings,
             save_settings,
             add_directory,
@@ -619,12 +814,17 @@ pub fn run() {
             show_folder_picker,
             get_available_editors,
             get_available_terminals,
+            get_editor_list,
+            get_terminal_list,
             force_english_input_wrapper,
             convert_icon_to_png,
             get_editor_icon_path,
             get_terminal_icon_path,
             check_update,
             dismiss_update,
+            list_window_labels,
+            list_window_states,
+            get_window_state,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -18,6 +18,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         settings: resolve(__dirname, 'settings.html'),
+        editorPicker: resolve(__dirname, 'editor-picker.html'),
       },
     },
   },
