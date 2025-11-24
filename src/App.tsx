@@ -647,8 +647,8 @@ function App() {
 
   return (
     <div className="app-container" data-tauri-drag-region>
-      <div className="search-box">
-        <div className="search-box-content">
+      <div className="search-box" data-tauri-drag-region>
+        <div className="search-box-content drag-exclude">
           <div className="app-logo">
             <img src="/app-icon.png" alt="Ignitero Launcher" />
           </div>
@@ -704,6 +704,7 @@ function App() {
 
       {updateInfo && updateInfo.has_update && (
         <Alert
+          className="drag-exclude"
           message={`v${updateInfo.latest_version} がリリースされています`}
           type="info"
           showIcon
@@ -733,7 +734,7 @@ function App() {
         />
       )}
 
-      <div className="results-container">
+      <div className="results-container drag-exclude">
         <List
           dataSource={results}
           renderItem={(item, index) => {
