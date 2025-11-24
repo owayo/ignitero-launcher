@@ -51,7 +51,7 @@ impl Launcher {
     /// アプリがインストールされているかチェック
     fn is_app_installed(app_name: &str) -> bool {
         // /Applicationsと~/Applicationsの両方をチェック
-        let paths = vec![
+        let paths = [
             PathBuf::from("/Applications").join(format!("{}.app", app_name)),
             PathBuf::from(std::env::var("HOME").unwrap_or_default())
                 .join("Applications")
