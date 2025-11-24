@@ -631,11 +631,6 @@ function App() {
 
   return (
     <div className="app-container">
-      <div className="drag-header" data-tauri-drag-region>
-        <div className="drag-header-title">Ignitero Launcher</div>
-        <div className="drag-header-hint">ドラッグで移動</div>
-      </div>
-
       <div className="search-box" data-tauri-drag-region>
         <div className="search-box-content">
           <div className="app-logo">
