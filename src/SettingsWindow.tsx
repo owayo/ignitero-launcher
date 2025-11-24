@@ -311,101 +311,110 @@ const SettingsWindow: React.FC = () => {
             }
           }}
         >
-          <div
-            style={{
-              display: 'grid',
-              gap: 16,
-              gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-              alignItems: 'start',
-            }}
-          >
-            <Card
-              title="バージョンチェック"
-              bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div
+              style={{
+                display: 'grid',
+                gap: 16,
+                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                alignItems: 'start',
+              }}
             >
-              <Descriptions size="small" column={1}>
-                <Descriptions.Item label="現在のバージョン">
-                  v{packageJson.version}
-                </Descriptions.Item>
-              </Descriptions>
-              <Space>
-                <Button
-                  type="primary"
-                  icon={<CloudSyncOutlined />}
-                  loading={checkingUpdate}
-                  onClick={handleCheckUpdates}
-                >
-                  更新を確認
-                </Button>
-                {updateInfo && !updateInfo.has_update && (
-                  <Text type="secondary">最新バージョンです</Text>
-                )}
-              </Space>
-              {updateError && <Text type="danger">{updateError}</Text>}
-              {updateInfo?.has_update && (
-                <Alert
-                  type="info"
-                  showIcon
-                  message={`最新版 v${updateInfo.latest_version} が利用可能です`}
-                  description={
-                    updateInfo.html_url ? (
-                      <a
-                        href={updateInfo.html_url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        ダウンロードページを開く
-                      </a>
-                    ) : null
-                  }
-                />
-              )}
-            </Card>
-
-            <Card title="デフォルトターミナル" bodyStyle={{ paddingBottom: 0 }}>
-              <Form.Item
-                name="default_terminal"
-                label="検索結果でディレクトリを選択して→キーを押したときに開くターミナル"
+              <Card
+                title="バージョンチェック"
+                bodyStyle={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}
               >
-                <Radio.Group style={{ width: '100%' }}>
-                  {installedTerminals.map((terminal) => {
-                    const label =
-                      terminal === 'terminal'
-                        ? 'macOSデフォルトターミナル'
-                        : terminal === 'iterm2'
-                          ? 'iTerm2'
-                          : 'Warp';
-                    return (
-                      <Radio
-                        key={terminal}
-                        value={terminal}
-                        style={{ display: 'block', padding: '6px 0' }}
-                      >
-                        <Space align="center">
-                          {terminalIcons.get(terminal) && (
-                            <img
-                              src={terminalIcons.get(terminal)}
-                              alt={label}
-                              style={{
-                                width: 16,
-                                height: 16,
-                                verticalAlign: 'middle',
-                              }}
-                            />
-                          )}
-                          {label}
-                        </Space>
-                      </Radio>
-                    );
-                  })}
-                  {installedTerminals.length === 0 && (
-                    <Text type="secondary">
-                      利用可能なターミナルが見つかりませんでした
-                    </Text>
+                <Descriptions size="small" column={1}>
+                  <Descriptions.Item label="現在のバージョン">
+                    v{packageJson.version}
+                  </Descriptions.Item>
+                </Descriptions>
+                <Space>
+                  <Button
+                    type="primary"
+                    icon={<CloudSyncOutlined />}
+                    loading={checkingUpdate}
+                    onClick={handleCheckUpdates}
+                  >
+                    更新を確認
+                  </Button>
+                  {updateInfo && !updateInfo.has_update && (
+                    <Text type="secondary">最新バージョンです</Text>
                   )}
-                </Radio.Group>
-              </Form.Item>
-            </Card>
+                </Space>
+                {updateError && <Text type="danger">{updateError}</Text>}
+                {updateInfo?.has_update && (
+                  <Alert
+                    type="info"
+                    showIcon
+                    message={`最新版 v${updateInfo.latest_version} が利用可能です`}
+                    description={
+                      updateInfo.html_url ? (
+                        <a
+                          href={updateInfo.html_url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          ダウンロードページを開く
+                        </a>
+                      ) : null
+                    }
+                  />
+                )}
+              </Card>
+
+              <Card
+                title="デフォルトターミナル"
+                bodyStyle={{ paddingBottom: 0 }}
+              >
+                <Form.Item
+                  name="default_terminal"
+                  label="検索結果でディレクトリを選択して→キーを押したときに開くターミナル"
+                >
+                  <Radio.Group style={{ width: '100%' }}>
+                    {installedTerminals.map((terminal) => {
+                      const label =
+                        terminal === 'terminal'
+                          ? 'macOSデフォルトターミナル'
+                          : terminal === 'iterm2'
+                            ? 'iTerm2'
+                            : 'Warp';
+                      return (
+                        <Radio
+                          key={terminal}
+                          value={terminal}
+                          style={{ display: 'block', padding: '6px 0' }}
+                        >
+                          <Space align="center">
+                            {terminalIcons.get(terminal) && (
+                              <img
+                                src={terminalIcons.get(terminal)}
+                                alt={label}
+                                style={{
+                                  width: 16,
+                                  height: 16,
+                                  verticalAlign: 'middle',
+                                }}
+                              />
+                            )}
+                            {label}
+                          </Space>
+                        </Radio>
+                      );
+                    })}
+                    {installedTerminals.length === 0 && (
+                      <Text type="secondary">
+                        利用可能なターミナルが見つかりませんでした
+                      </Text>
+                    )}
+                  </Radio.Group>
+                </Form.Item>
+              </Card>
+            </div>
 
             <Card title="キャッシュ更新" bodyStyle={{ paddingBottom: 0 }}>
               <Form.Item
