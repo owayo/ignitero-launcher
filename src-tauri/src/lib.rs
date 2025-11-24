@@ -29,7 +29,7 @@ use std::thread;
 use std::time::Duration;
 use system_tray::setup_system_tray;
 use tauri::tray::TrayIcon;
-use tauri::{Manager, PhysicalPosition, State};
+use tauri::{LogicalSize, Manager, PhysicalPosition, Size, State};
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 use types::{AppItem, DirectoryItem, RegisteredDirectory, Settings, WindowPosition};
 
@@ -464,6 +464,43 @@ fn list_window_states(app: tauri::AppHandle) -> Vec<WindowState> {
         .collect()
 }
 
+fn log_window_debug(window: &tauri::WebviewWindow, context: &str) {
+    let position = window
+        .outer_position()
+        .map(|p| format!("{},{}", p.x, p.y))
+        .unwrap_or_else(|e| format!("error:{e}"));
+    let size = window
+        .outer_size()
+        .map(|s| format!("{},{}", s.width, s.height))
+        .unwrap_or_else(|e| format!("error:{e}"));
+    let visibility = window.is_visible().unwrap_or(false);
+    let focused = window.is_focused().unwrap_or(false);
+    let always_on_top = window.is_always_on_top().unwrap_or(false);
+
+    println!(
+        "[hotkey][debug] {context}: label={} pos=({}) size=({}) visible={} focused={} always_on_top={}",
+        window.label(),
+        position,
+        size,
+        visibility,
+        focused,
+        always_on_top
+    );
+}
+
+fn ensure_main_window_ready(window: &tauri::WebviewWindow) {
+    // 明示的にサイズと配置を整えることで、画面外・極小・透明化の疑いを排除
+    if let Err(e) = window.set_size(Size::Logical(LogicalSize::new(600.0, 500.0))) {
+        eprintln!("[hotkey] failed to enforce main window size: {}", e);
+    }
+    if let Err(e) = window.center() {
+        eprintln!("[hotkey] failed to center main window: {}", e);
+    }
+    if let Err(e) = window.set_always_on_top(true) {
+        eprintln!("[hotkey] failed to set always on top: {}", e);
+    }
+}
+
 #[tauri::command]
 fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     use tauri::{WebviewUrl, WebviewWindowBuilder};
@@ -700,9 +737,11 @@ pub fn run() {
                         }
 
                         let handle = app_handle.clone();
-                        if let Err(e) = app_handle.run_on_main_thread(move || {
+                        let handle_for_thread = handle.clone();
+                        if let Err(e) = handle.run_on_main_thread(move || {
                             // エディタ選択ウィンドウが開いている場合は閉じてメインウィンドウを表示
-                            if let Some(picker_window) = handle.get_webview_window("editor-picker")
+                            if let Some(picker_window) =
+                                handle_for_thread.get_webview_window("editor-picker")
                             {
                                 if let Err(e) = picker_window.close() {
                                     eprintln!(
@@ -710,7 +749,14 @@ pub fn run() {
                                         e
                                     );
                                 }
-                                if let Some(main_window) = handle.get_webview_window("main") {
+                                if let Some(main_window) =
+                                    handle_for_thread.get_webview_window("main")
+                                {
+                                    log_window_debug(
+                                        &main_window,
+                                        "before show after closing picker",
+                                    );
+                                    ensure_main_window_ready(&main_window);
                                     if let Err(e) = main_window.show() {
                                         eprintln!("[hotkey] failed to show main window: {}", e);
                                     } else {
@@ -719,6 +765,10 @@ pub fn run() {
                                     if let Err(e) = main_window.set_focus() {
                                         eprintln!("[hotkey] failed to focus main window: {}", e);
                                     }
+                                    log_window_debug(
+                                        &main_window,
+                                        "after show/focus with picker closed",
+                                    );
                                     #[cfg(target_os = "macos")]
                                     if let Err(e) = ime_control::force_english_input() {
                                         eprintln!("[hotkey] failed to force english input: {}", e);
@@ -728,21 +778,41 @@ pub fn run() {
                                         "[hotkey] main window not found after closing editor picker"
                                     );
                                 }
-                            } else if let Some(window) = handle.get_webview_window("main") {
-                                if window.is_visible().unwrap_or(false) {
-                                    if let Err(e) = window.hide() {
+                            } else if let Some(main_window) =
+                                handle_for_thread.get_webview_window("main")
+                            {
+                                log_window_debug(&main_window, "before toggle");
+                                if main_window.is_visible().unwrap_or(false) {
+                                    if let Err(e) = main_window.hide() {
                                         eprintln!("[hotkey] failed to hide main window: {}", e);
                                     } else {
                                         println!("[hotkey] hiding main window");
                                     }
+                                    log_window_debug(&main_window, "after hide");
                                 } else {
-                                    if let Err(e) = window.show() {
+                                    ensure_main_window_ready(&main_window);
+                                    if let Err(e) = main_window.show() {
                                         eprintln!("[hotkey] failed to show main window: {}", e);
                                     } else {
                                         println!("[hotkey] showing main window");
                                     }
-                                    if let Err(e) = window.set_focus() {
+                                    log_window_debug(&main_window, "after show before focus");
+                                    if let Err(e) = main_window.set_focus() {
                                         eprintln!("[hotkey] failed to focus main window: {}", e);
+                                    }
+                                    log_window_debug(&main_window, "after focus");
+                                    if !main_window.is_visible().unwrap_or(false) {
+                                        println!(
+                                            "[hotkey] main window still hidden after show; retrying"
+                                        );
+                                        let _ = main_window.hide();
+                                        if let Err(e) = main_window.show() {
+                                            eprintln!(
+                                                "[hotkey] failed to re-show main window: {}",
+                                                e
+                                            );
+                                        }
+                                        log_window_debug(&main_window, "after re-show attempt");
                                     }
                                     // ウィンドウ表示時に英語入力に切り替え
                                     #[cfg(target_os = "macos")]
