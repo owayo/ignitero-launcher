@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import type {
   AppItem,
   DirectoryItem,
+  EditorInfo,
+  WindowState,
   OpenMode,
   TerminalType,
   RegisteredDirectory,
@@ -73,5 +75,124 @@ describe('Type definitions', () => {
     expect(settings.registered_directories).toEqual([]);
     expect(settings.cache_update.update_on_startup).toBe(true);
     expect(settings.default_terminal).toBe('terminal');
+  });
+
+  // 新機能のテスト: EditorInfo型
+  it('should create EditorInfo correctly', () => {
+    const editor: EditorInfo = {
+      id: 'cursor',
+      name: 'Cursor',
+      app_name: 'Cursor',
+      installed: true,
+    };
+
+    expect(editor.id).toBe('cursor');
+    expect(editor.name).toBe('Cursor');
+    expect(editor.app_name).toBe('Cursor');
+    expect(editor.installed).toBe(true);
+  });
+
+  it('should create EditorInfo with not installed status', () => {
+    const editor: EditorInfo = {
+      id: 'windsurf',
+      name: 'Windsurf',
+      app_name: 'Windsurf',
+      installed: false,
+    };
+
+    expect(editor.installed).toBe(false);
+  });
+
+  it('should create EditorInfo for all supported editors', () => {
+    const editors: EditorInfo[] = [
+      {
+        id: 'windsurf',
+        name: 'Windsurf',
+        app_name: 'Windsurf',
+        installed: true,
+      },
+      {
+        id: 'cursor',
+        name: 'Cursor',
+        app_name: 'Cursor',
+        installed: true,
+      },
+      {
+        id: 'code',
+        name: 'VS Code',
+        app_name: 'Visual Studio Code',
+        installed: false,
+      },
+      {
+        id: 'antigravity',
+        name: 'Antigravity',
+        app_name: 'Antigravity',
+        installed: false,
+      },
+    ];
+
+    expect(editors).toHaveLength(4);
+    expect(editors.every((e) => e.id && e.name && e.app_name)).toBe(true);
+  });
+
+  // 新機能のテスト: WindowState型
+  it('should create WindowState correctly', () => {
+    const windowState: WindowState = {
+      label: 'main',
+      visible: true,
+      focused: true,
+    };
+
+    expect(windowState.label).toBe('main');
+    expect(windowState.visible).toBe(true);
+    expect(windowState.focused).toBe(true);
+  });
+
+  it('should create WindowState with invisible state', () => {
+    const windowState: WindowState = {
+      label: 'settings',
+      visible: false,
+      focused: false,
+    };
+
+    expect(windowState.visible).toBe(false);
+    expect(windowState.focused).toBe(false);
+  });
+
+  // 統合テスト: エディタとターミナルの組み合わせ
+  it('should support all terminal types with directory items', () => {
+    const terminals: TerminalType[] = ['terminal', 'iterm2', 'warp'];
+
+    terminals.forEach((terminal) => {
+      const settings: Settings = {
+        registered_directories: [],
+        cache_update: {
+          update_on_startup: true,
+          auto_update_enabled: false,
+          auto_update_interval_hours: 24,
+        },
+        default_terminal: terminal,
+      };
+
+      expect(settings.default_terminal).toBe(terminal);
+    });
+  });
+
+  it('should support all editor types in RegisteredDirectory', () => {
+    const editorIds = ['windsurf', 'cursor', 'code', 'antigravity'];
+
+    editorIds.forEach((editorId) => {
+      const registeredDir: RegisteredDirectory = {
+        path: '/test/path',
+        parent_open_mode: 'editor',
+        parent_editor: editorId,
+        subdirs_open_mode: 'editor',
+        subdirs_editor: editorId,
+        scan_for_apps: false,
+      };
+
+      expect(registeredDir.parent_editor).toBe(editorId);
+      expect(registeredDir.subdirs_editor).toBe(editorId);
+    });
   });
 });

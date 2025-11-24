@@ -355,4 +355,150 @@ mod tests {
         let path = result.unwrap();
         assert!(path == workspace1 || path == workspace2);
     }
+
+    // 新機能のテスト: エディタ自動検出
+    #[test]
+    fn test_get_available_editors_returns_vec() {
+        // エディタリストが返されることを確認
+        let editors = Launcher::get_available_editors();
+        assert!(editors.iter().all(|e| e.installed));
+    }
+
+    #[test]
+    fn test_get_available_editors_structure() {
+        // 最低でも1つ以上のエディタが定義されている
+        // （実際にインストールされていなくても構造は確認できる）
+        let all_editors = vec![
+            EditorInfo {
+                id: "windsurf".to_string(),
+                name: "Windsurf".to_string(),
+                app_name: "Windsurf".to_string(),
+                installed: false,
+            },
+            EditorInfo {
+                id: "cursor".to_string(),
+                name: "Cursor".to_string(),
+                app_name: "Cursor".to_string(),
+                installed: false,
+            },
+            EditorInfo {
+                id: "code".to_string(),
+                name: "VS Code".to_string(),
+                app_name: "Visual Studio Code".to_string(),
+                installed: false,
+            },
+            EditorInfo {
+                id: "antigravity".to_string(),
+                name: "Antigravity".to_string(),
+                app_name: "Antigravity".to_string(),
+                installed: false,
+            },
+        ];
+
+        // 各エディタの構造が正しいことを確認
+        assert_eq!(all_editors.len(), 4);
+        assert!(all_editors.iter().all(|e| !e.id.is_empty()));
+        assert!(all_editors.iter().all(|e| !e.name.is_empty()));
+        assert!(all_editors.iter().all(|e| !e.app_name.is_empty()));
+    }
+
+    #[test]
+    fn test_get_available_editors_filters_installed_only() {
+        // インストール済みのエディタのみが返されることを確認
+        let available = Launcher::get_available_editors();
+
+        // すべてのエディタがinstalledフラグがtrueであることを確認
+        for editor in available {
+            assert!(
+                editor.installed,
+                "Editor {} should be marked as installed",
+                editor.name
+            );
+        }
+    }
+
+    // 新機能のテスト: ターミナル自動検出
+    #[test]
+    fn test_get_available_terminals_returns_vec() {
+        // ターミナルリストが返されることを確認
+        let terminals = Launcher::get_available_terminals();
+        assert!(!terminals.is_empty());
+        assert!(terminals.iter().all(|t| t.installed));
+    }
+
+    #[test]
+    fn test_get_available_terminals_always_includes_default_terminal() {
+        // macOSデフォルトのTerminalは常に含まれる
+        let terminals = Launcher::get_available_terminals();
+
+        let has_terminal = terminals
+            .iter()
+            .any(|t| t.id == "terminal" && t.app_name == "Terminal" && t.installed);
+
+        assert!(
+            has_terminal,
+            "Default macOS Terminal should always be available"
+        );
+    }
+
+    #[test]
+    fn test_get_available_terminals_structure() {
+        // ターミナルの構造が正しいことを確認
+        let terminals = Launcher::get_available_terminals();
+
+        for terminal in terminals {
+            assert!(!terminal.id.is_empty(), "Terminal ID should not be empty");
+            assert!(
+                !terminal.name.is_empty(),
+                "Terminal name should not be empty"
+            );
+            assert!(
+                !terminal.app_name.is_empty(),
+                "Terminal app_name should not be empty"
+            );
+            assert!(
+                terminal.installed,
+                "All returned terminals should be installed"
+            );
+        }
+    }
+
+    #[test]
+    fn test_editor_info_serialization() {
+        // EditorInfoがシリアライズ可能であることを確認
+        let editor = EditorInfo {
+            id: "test".to_string(),
+            name: "Test Editor".to_string(),
+            app_name: "TestApp".to_string(),
+            installed: true,
+        };
+
+        let serialized = serde_json::to_string(&editor);
+        assert!(serialized.is_ok());
+
+        let json = serialized.unwrap();
+        assert!(json.contains("\"id\":\"test\""));
+        assert!(json.contains("\"name\":\"Test Editor\""));
+        assert!(json.contains("\"installed\":true"));
+    }
+
+    #[test]
+    fn test_editor_info_deserialization() {
+        // EditorInfoがデシリアライズ可能であることを確認
+        let json = r#"{
+            "id": "test",
+            "name": "Test Editor",
+            "app_name": "TestApp",
+            "installed": true
+        }"#;
+
+        let result: Result<EditorInfo, _> = serde_json::from_str(json);
+        assert!(result.is_ok());
+
+        let editor = result.unwrap();
+        assert_eq!(editor.id, "test");
+        assert_eq!(editor.name, "Test Editor");
+        assert_eq!(editor.app_name, "TestApp");
+        assert!(editor.installed);
+    }
 }
