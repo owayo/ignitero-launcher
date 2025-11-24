@@ -29,7 +29,7 @@ use std::thread;
 use std::time::Duration;
 use system_tray::setup_system_tray;
 use tauri::tray::TrayIcon;
-use tauri::{LogicalSize, Manager, PhysicalPosition, Size, State};
+use tauri::{Manager, PhysicalPosition, State};
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 use types::{AppItem, DirectoryItem, RegisteredDirectory, Settings, WindowPosition};
 
