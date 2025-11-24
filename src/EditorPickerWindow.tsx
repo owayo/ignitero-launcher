@@ -217,19 +217,18 @@ export const EditorPickerWindow: React.FC = () => {
             top: pathTop,
             left: '50%',
             transform: 'translateX(-50%)',
-            background: 'rgba(255, 255, 255, 0.96)',
+            background: 'white',
             padding: '10px 16px',
             borderRadius: 10,
-            boxShadow: '0 8px 20px rgba(0, 0, 0, 0.08)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
             fontSize: 14,
             color: '#1f1f1f',
             maxWidth: '85%',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            border: '1px solid rgba(255, 120, 71, 0.35)',
+            border: '1px solid #e0e0e0',
             fontWeight: '500',
-            letterSpacing: '0.01em',
           }}
         >
           {directoryPath}

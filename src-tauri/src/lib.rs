@@ -29,13 +29,9 @@ use std::thread;
 use std::time::Duration;
 use system_tray::setup_system_tray;
 use tauri::tray::TrayIcon;
-#[cfg(target_os = "macos")]
-use tauri::TitleBarStyle;
 use tauri::{Manager, State};
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 use types::{AppItem, DirectoryItem, RegisteredDirectory, Settings};
-#[cfg(target_os = "macos")]
-use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
 
 pub struct AppState {
     pub apps: Mutex<Vec<AppItem>>,
@@ -719,19 +715,6 @@ pub fn run() {
 
             // ウィンドウイベントのハンドリング
             if let Some(window) = app.get_webview_window("main") {
-                #[cfg(target_os = "macos")]
-                {
-                    let _ = window.set_title_bar_style(TitleBarStyle::Overlay);
-                    if let Err(err) = apply_vibrancy(
-                        &window,
-                        NSVisualEffectMaterial::HudWindow,
-                        Some(NSVisualEffectState::Active),
-                        Some(12.0),
-                    ) {
-                        eprintln!("Failed to apply vibrancy: {err}");
-                    }
-                }
-
                 let window_clone = window.clone();
                 window.on_window_event(move |event| {
                     match event {
