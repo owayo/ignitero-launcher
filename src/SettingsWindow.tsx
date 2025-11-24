@@ -150,7 +150,7 @@ const SettingsWindow: React.FC = () => {
     try {
       setCheckingUpdate(true);
       setUpdateError(null);
-      const info = await invoke<UpdateInfo>('check_for_updates', {
+      const info = await invoke<UpdateInfo>('check_update', {
         force: true,
       });
       setUpdateInfo(info);

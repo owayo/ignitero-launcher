@@ -685,47 +685,82 @@ pub fn run() {
             }
 
             // グローバルホットキーの設定 (Option+Space)
+            const HOTKEY: &str = "Alt+Space";
             let app_handle = app.handle().clone();
             if let Err(e) =
                 app.global_shortcut()
-                    .on_shortcut("Alt+Space", move |_app, _shortcut, event| {
+                    .on_shortcut(HOTKEY, move |_app, _shortcut, event| {
                         use tauri_plugin_global_shortcut::ShortcutState;
+
+                        println!("[hotkey] {HOTKEY} event: {:?}", event.state());
 
                         // Pressedイベントのみで動作（Released時は無視）
                         if event.state() != ShortcutState::Pressed {
                             return;
                         }
 
-                        // エディタ選択ウィンドウが開いている場合は閉じてメインウィンドウを表示
-                        if let Some(picker_window) = app_handle.get_webview_window("editor-picker")
-                        {
-                            let _ = picker_window.close();
-                            if let Some(main_window) = app_handle.get_webview_window("main") {
-                                let _ = main_window.show();
-                                let _ = main_window.set_focus();
-                                #[cfg(target_os = "macos")]
-                                let _ = ime_control::force_english_input();
-                            }
-                        } else if let Some(window) = app_handle.get_webview_window("main") {
-                            if window.is_visible().unwrap_or(false) {
-                                let _ = window.hide();
+                        let handle = app_handle.clone();
+                        if let Err(e) = app_handle.run_on_main_thread(move || {
+                            // エディタ選択ウィンドウが開いている場合は閉じてメインウィンドウを表示
+                            if let Some(picker_window) = handle.get_webview_window("editor-picker")
+                            {
+                                if let Err(e) = picker_window.close() {
+                                    eprintln!(
+                                        "[hotkey] failed to close editor picker window: {}",
+                                        e
+                                    );
+                                }
+                                if let Some(main_window) = handle.get_webview_window("main") {
+                                    if let Err(e) = main_window.show() {
+                                        eprintln!("[hotkey] failed to show main window: {}", e);
+                                    } else {
+                                        println!("[hotkey] showing main window");
+                                    }
+                                    if let Err(e) = main_window.set_focus() {
+                                        eprintln!("[hotkey] failed to focus main window: {}", e);
+                                    }
+                                    #[cfg(target_os = "macos")]
+                                    if let Err(e) = ime_control::force_english_input() {
+                                        eprintln!("[hotkey] failed to force english input: {}", e);
+                                    }
+                                } else {
+                                    eprintln!(
+                                        "[hotkey] main window not found after closing editor picker"
+                                    );
+                                }
+                            } else if let Some(window) = handle.get_webview_window("main") {
+                                if window.is_visible().unwrap_or(false) {
+                                    if let Err(e) = window.hide() {
+                                        eprintln!("[hotkey] failed to hide main window: {}", e);
+                                    } else {
+                                        println!("[hotkey] hiding main window");
+                                    }
+                                } else {
+                                    if let Err(e) = window.show() {
+                                        eprintln!("[hotkey] failed to show main window: {}", e);
+                                    } else {
+                                        println!("[hotkey] showing main window");
+                                    }
+                                    if let Err(e) = window.set_focus() {
+                                        eprintln!("[hotkey] failed to focus main window: {}", e);
+                                    }
+                                    // ウィンドウ表示時に英語入力に切り替え
+                                    #[cfg(target_os = "macos")]
+                                    if let Err(e) = ime_control::force_english_input() {
+                                        eprintln!("[hotkey] failed to force english input: {}", e);
+                                    }
+                                }
                             } else {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                                // ウィンドウ表示時に英語入力に切り替え
-                                #[cfg(target_os = "macos")]
-                                let _ = ime_control::force_english_input();
+                                eprintln!("[hotkey] main window not found");
                             }
+                        }) {
+                            eprintln!("[hotkey] failed to dispatch to main thread: {}", e);
                         }
                     })
             {
-                eprintln!("Warning: Failed to set hotkey handler: {}", e);
-            }
-
-            // グローバルホットキーを登録
-            if let Err(e) = app.global_shortcut().register("Alt+Space") {
-                eprintln!("Warning: Failed to register hotkey Alt+Space: {}", e);
-                eprintln!("You can still use the app from the menu bar or by clicking the window");
+                eprintln!("Warning: Failed to set hotkey handler for {HOTKEY}: {}", e);
+            } else {
+                println!("[hotkey] Registered global shortcut handler for {HOTKEY}");
             }
 
             // ウィンドウイベントのハンドリング
