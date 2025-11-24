@@ -15,8 +15,8 @@ use cache::CacheDB;
 use directory_scanner::DirectoryScanner;
 use launcher::Launcher;
 use search::SearchEngine;
-use settings::SettingsManager;
 use serde::Serialize;
+use settings::SettingsManager;
 
 // Export public modules for testing
 pub use app_scanner::AppScanner as AppScannerExport;
@@ -368,31 +368,25 @@ fn open_editor_picker_window(
         builder = builder.center();
     }
 
-    let window = builder
-        .build()
-        .map_err(|e| {
-            eprintln!("[editor-picker] failed to build window: {e}");
-            e.to_string()
-        })?;
+    let window = builder.build().map_err(|e| {
+        eprintln!("[editor-picker] failed to build window: {e}");
+        e.to_string()
+    })?;
 
     // 中央に配置（メインウィンドウと同じディスプレイ上で）
     if let Err(e) = window.center() {
         eprintln!("[editor-picker] failed to center window: {e}");
     }
 
-    window
-        .show()
-        .map_err(|e| {
-            eprintln!("[editor-picker] failed to show window: {e}");
-            e.to_string()
-        })?;
+    window.show().map_err(|e| {
+        eprintln!("[editor-picker] failed to show window: {e}");
+        e.to_string()
+    })?;
 
-    window
-        .set_focus()
-        .map_err(|e| {
-            eprintln!("[editor-picker] failed to focus window: {e}");
-            e.to_string()
-        })?;
+    window.set_focus().map_err(|e| {
+        eprintln!("[editor-picker] failed to focus window: {e}");
+        e.to_string()
+    })?;
 
     println!(
         "[editor-picker] window states after build: {:?}",
@@ -480,10 +474,11 @@ fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
         };
 
         // 存在しない場合は新規作成
-        let mut builder = WebviewWindowBuilder::new(&app, "settings", WebviewUrl::App("settings.html".into()))
-            .title("設定 - Ignitero Launcher")
-            .inner_size(800.0, 600.0)
-            .resizable(true);
+        let mut builder =
+            WebviewWindowBuilder::new(&app, "settings", WebviewUrl::App("settings.html".into()))
+                .title("設定 - Ignitero Launcher")
+                .inner_size(800.0, 600.0)
+                .resizable(true);
 
         // メインウィンドウと同じディスプレイに表示
         if let Some(pos) = main_window_position {
@@ -683,7 +678,8 @@ pub fn run() {
                         }
 
                         // エディタ選択ウィンドウが開いている場合は閉じてメインウィンドウを表示
-                        if let Some(picker_window) = app_handle.get_webview_window("editor-picker") {
+                        if let Some(picker_window) = app_handle.get_webview_window("editor-picker")
+                        {
                             let _ = picker_window.close();
                             if let Some(main_window) = app_handle.get_webview_window("main") {
                                 let _ = main_window.show();

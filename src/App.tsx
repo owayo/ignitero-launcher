@@ -12,7 +12,7 @@ import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-shell';
-import type { AppItem, DirectoryItem, EditorInfo, WindowState } from './types';
+import type { AppItem, DirectoryItem, WindowState } from './types';
 import './App.css';
 
 const { Text } = Typography;
