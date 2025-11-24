@@ -236,6 +236,22 @@ function App() {
     };
   }, []);
 
+  // 検索結果に応じてウィンドウサイズを動的に変更
+  useEffect(() => {
+    const appWindow = getCurrentWindow();
+    const hasResults = results.length > 0;
+
+    // 検索結果がない場合は小さいサイズ（入力欄のみ）
+    // 検索結果がある場合は大きいサイズ
+    const newSize = hasResults
+      ? new LogicalSize(600, 500)
+      : new LogicalSize(600, 80);
+
+    appWindow.setSize(newSize).catch((error) => {
+      console.error('Failed to set window size:', error);
+    });
+  }, [results.length]);
+
   // 検索処理
   const performSearch = useCallback(
     async (
@@ -630,8 +646,8 @@ function App() {
   );
 
   return (
-    <div className="app-container">
-      <div className="search-box" data-tauri-drag-region>
+    <div className="app-container" data-tauri-drag-region>
+      <div className="search-box">
         <div className="search-box-content">
           <div className="app-logo">
             <img src="/app-icon.png" alt="Ignitero Launcher" />
