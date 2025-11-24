@@ -647,9 +647,10 @@ function App() {
 
   return (
     <div className="app-container" data-tauri-drag-region>
+      <div className="drag-bar" data-tauri-drag-region />
       <div className="search-box" data-tauri-drag-region>
         <div className="search-box-content drag-exclude">
-          <div className="app-logo">
+          <div className="app-logo" data-tauri-drag-region>
             <img src="/app-icon.png" alt="Ignitero Launcher" />
           </div>
           <Space.Compact style={{ flex: 1 }}>

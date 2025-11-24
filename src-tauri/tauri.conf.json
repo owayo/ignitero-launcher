@@ -81,6 +81,7 @@
             "core:path:default",
             "core:tray:default",
             "core:window:default",
+            "core:window:allow-start-dragging",
             "core:window:allow-is-always-on-top",
             "core:window:allow-set-always-on-top",
             "core:window:allow-set-size",
