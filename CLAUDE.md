@@ -8,9 +8,11 @@ Ignitero Launcherは、macOS向けの軽量で高速なアプリケーション�
 
 - **/Applications配下のアプリケーション**をインクリメンタル検索で起動
 - **柔軟なディレクトリ管理**: ディレクトリ自身や配下のディレクトリをFinder/エディタで開く
+- **エディタ・ターミナル自動検出**: インストール済みのもののみを選択肢に表示
 - **カスタム検索キーワード**: ディレクトリを任意のキーワードで検索可能
 - **ターミナル統合**: →キーでディレクトリをターミナルで開く
 - **Option+Spaceのグローバルホットキー**で検索窓を呼び出し
+- **自動IME制御**: 権限チェックのキャッシュ化により快適な操作
 - **メニューバー常駐**でバックグラウンド動作
 
 ## 必須コマンド
@@ -39,10 +41,13 @@ cd src-tauri && cargo test  # Rustテスト
 - **`app_scanner.rs`** - /Applicationsと~/Applications配下のアプリケーションをスキャン
 - **`directory_scanner.rs`** - 指定ディレクトリ配下をスキャン
 - **`launcher.rs`** - アプリケーション起動、エディタ起動、ターミナル起動機能
+  - **`get_available_editors()`**: インストール済みエディタの自動検出
+  - **`get_available_terminals()`**: インストール済みターミナルの自動検出
 - **`search.rs`** - fuzzy-matcherを使用したインクリメンタル検索エンジン
 - **`cache.rs`** - SQLiteを使用したアプリケーション情報のキャッシュ管理
 - **`icon_converter.rs`** - macOSアプリアイコンのPNG変換とキャッシュ
 - **`ime_control.rs`** - IME（日本語入力）の制御と英字入力モードへの自動切り替え
+  - アクセシビリティ権限チェックのキャッシュ化
 - **`system_tray.rs`** - メニューバー統合とコンテキストメニュー
 - **`settings.rs`** - ディレクトリ設定とエディタマッピングの永続化
 - **`types.rs`** - アプリケーション情報とディレクトリ情報の型定義
@@ -63,6 +68,7 @@ cd src-tauri && cargo test  # Rustテスト
      - useRefベースの選択項目自動スクロール
      - behavior: 'auto'で即座にスクロール（パフォーマンス最適化）
    - 自動IME制御による英字入力モードへの切り替え
+     - アクセシビリティ権限チェックのキャッシュ化（繰り返しプロンプトの抑制）
 
 2. **キャッシュ管理**:
    - SQLiteによるアプリケーション情報の永続化
@@ -75,6 +81,11 @@ cd src-tauri && cargo test  # Rustテスト
    - カスタム検索キーワードの設定
    - ディレクトリごとに異なるエディタを設定可能
    - 設定の永続化（JSON）
+   - **エディタ・ターミナル自動検出**:
+     - `/Applications`と`~/Applications`の両方をスキャン
+     - インストール済みのもののみを選択肢に表示
+     - 対応エディタ: Antigravity, Cursor, VS Code, Windsurf
+     - 対応ターミナル: Terminal（常に利用可能）, iTerm2, Warp
 
 4. **ターミナル統合**:
    - デフォルトターミナルの設定（macOS Terminal / iTerm2 / Warp）
@@ -104,10 +115,19 @@ cd src-tauri && cargo test  # Rustテスト
 - **親ディレクトリ自身**:
   - `parent_open_mode`: none / finder / editor
   - `parent_search_keyword`: カスタム検索キーワード（未指定時はディレクトリ名）
-  - `parent_editor`: エディタ選択（Windsurf / Cursor / VS Code）
+  - `parent_editor`: エディタ選択（Antigravity / Windsurf / Cursor / VS Code）
 - **配下のディレクトリ**:
   - `subdirs_open_mode`: none / finder / editor
-  - `subdirs_editor`: エディタ選択（Windsurf / Cursor / VS Code）
+  - `subdirs_editor`: エディタ選択（Antigravity / Windsurf / Cursor / VS Code）
+- **エディタ自動検出**:
+  - `Launcher::get_available_editors()`: インストール済みエディタを取得
+  - `/Applications`と`~/Applications`の両方をチェック
+  - インストール済みのエディタのみが選択肢に表示される
+  - 対応エディタ: Antigravity, Cursor, VS Code, Windsurf
+- **ターミナル自動検出**:
+  - `Launcher::get_available_terminals()`: インストール済みターミナルを取得
+  - Terminal（macOS標準）は常に利用可能
+  - iTerm2, Warpはインストール時のみ表示
 - **エディタ起動方式**:
   - `open -a "App Name" <path>`でシンプルに起動
   - .code-workspaceファイルがあればそれを優先的に開く（エディタの場合のみ）
@@ -120,6 +140,10 @@ cd src-tauri && cargo test  # Rustテスト
 - ウィンドウ表示時に自動的に英字入力モードへ切り替え
 - Core Graphics FrameworkのCGEventによる英数キー（キーコード102）シミュレーション
 - アクセシビリティ権限チェックとユーザーへの権限要求
+- **権限チェックのキャッシュ化**:
+  - 初回チェック後の結果をキャッシュ（静的変数）
+  - 2回目以降は繰り返しプロンプトを表示しない
+  - パフォーマンス向上とUX改善
 - macOSの「書類ごとの自動切り替え」に対応した150ms遅延処理
 - メインスレッド保証による確実な実行
 
