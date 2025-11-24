@@ -489,10 +489,7 @@ fn log_window_debug(window: &tauri::WebviewWindow, context: &str) {
 }
 
 fn ensure_main_window_ready(window: &tauri::WebviewWindow) {
-    // 明示的にサイズと配置を整えることで、画面外・極小・透明化の疑いを排除
-    if let Err(e) = window.set_size(Size::Logical(LogicalSize::new(600.0, 500.0))) {
-        eprintln!("[hotkey] failed to enforce main window size: {}", e);
-    }
+    // サイズはフロントエンド側（App.tsx）のロジックに委ねる
     if let Err(e) = window.center() {
         eprintln!("[hotkey] failed to center main window: {}", e);
     }
