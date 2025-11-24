@@ -1,4 +1,4 @@
-use crate::types::{RegisteredDirectory, Settings};
+use crate::types::{RegisteredDirectory, Settings, WindowPosition};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -148,6 +148,12 @@ impl SettingsManager {
         fs::write(&self.settings_path, content).map_err(|e| e.to_string())?;
 
         Ok(())
+    }
+
+    pub fn save_main_window_position(&self, position: WindowPosition) -> Result<(), String> {
+        let mut settings = self.get_settings();
+        settings.main_window_position = Some(position);
+        self.save_settings(settings)
     }
 
     /// テスト用：カスタムパスでSettingsManagerを作成

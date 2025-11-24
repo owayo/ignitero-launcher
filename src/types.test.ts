@@ -4,6 +4,7 @@ import type {
   DirectoryItem,
   EditorInfo,
   WindowState,
+  WindowPosition,
   OpenMode,
   TerminalType,
   RegisteredDirectory,
@@ -75,6 +76,23 @@ describe('Type definitions', () => {
     expect(settings.registered_directories).toEqual([]);
     expect(settings.cache_update.update_on_startup).toBe(true);
     expect(settings.default_terminal).toBe('terminal');
+  });
+
+  it('should optionally keep window position in settings', () => {
+    const mainWindowPosition: WindowPosition = { x: 120, y: 260 };
+    const settings: Settings = {
+      registered_directories: [],
+      cache_update: {
+        update_on_startup: true,
+        auto_update_enabled: false,
+        auto_update_interval_hours: 24,
+      },
+      default_terminal: 'terminal',
+      main_window_position: mainWindowPosition,
+    };
+
+    expect(settings.main_window_position?.x).toBe(120);
+    expect(settings.main_window_position?.y).toBe(260);
   });
 
   // 新機能のテスト: EditorInfo型

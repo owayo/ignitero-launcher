@@ -10,6 +10,11 @@ export interface DirectoryItem {
   editor?: string;
 }
 
+export interface WindowPosition {
+  x: number;
+  y: number;
+}
+
 export interface EditorInfo {
   id: string;
   name: string;
@@ -52,4 +57,5 @@ export interface Settings {
   registered_directories: RegisteredDirectory[];
   cache_update: CacheUpdateSettings;
   default_terminal: TerminalType;
+  main_window_position?: WindowPosition | null;
 }

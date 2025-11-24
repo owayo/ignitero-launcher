@@ -29,9 +29,9 @@ use std::thread;
 use std::time::Duration;
 use system_tray::setup_system_tray;
 use tauri::tray::TrayIcon;
-use tauri::{Manager, State};
+use tauri::{Manager, PhysicalPosition, State};
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
-use types::{AppItem, DirectoryItem, RegisteredDirectory, Settings};
+use types::{AppItem, DirectoryItem, RegisteredDirectory, Settings, WindowPosition};
 
 pub struct AppState {
     pub apps: Mutex<Vec<AppItem>>,
@@ -97,6 +97,13 @@ fn show_window(app: tauri::AppHandle) -> Result<(), String> {
         window.set_focus().map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+#[tauri::command]
+fn save_main_window_position(x: i32, y: i32, state: State<AppState>) -> Result<(), String> {
+    state
+        .settings_manager
+        .save_main_window_position(WindowPosition { x, y })
 }
 
 #[tauri::command]
@@ -661,6 +668,18 @@ pub fn run() {
 
             // キャッシュを初期化
             let settings = app.state::<AppState>().settings_manager.get_settings();
+
+            // 前回位置が保存されていれば復元
+            if let Some(window) = app.get_webview_window("main") {
+                if let Some(ref position) = settings.main_window_position {
+                    if let Err(e) =
+                        window.set_position(PhysicalPosition::new(position.x, position.y))
+                    {
+                        eprintln!("Failed to restore main window position: {}", e);
+                    }
+                }
+            }
+
             if let Err(e) = prime_cache(&app.state::<AppState>(), &settings) {
                 eprintln!("Warning: Failed to prime cache: {}", e);
             }
@@ -782,6 +801,7 @@ pub fn run() {
             open_in_terminal,
             hide_window,
             show_window,
+            save_main_window_position,
             open_settings_window,
             open_editor_picker_window,
             close_editor_picker_window,

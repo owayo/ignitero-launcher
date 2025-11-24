@@ -14,6 +14,12 @@ pub struct DirectoryItem {
     pub editor: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WindowPosition {
+    pub x: i32,
+    pub y: i32,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum OpenMode {
@@ -87,4 +93,6 @@ pub struct Settings {
     pub default_terminal: TerminalType,
     #[serde(default)]
     pub update_cache: UpdateCache,
+    #[serde(default)]
+    pub main_window_position: Option<WindowPosition>,
 }

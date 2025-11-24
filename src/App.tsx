@@ -182,6 +182,7 @@ function App() {
   const shouldForceIME = React.useRef(true);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]); // リスト項目のref配列
   const defaultTerminal = useRef<'terminal' | 'iterm2' | 'warp'>('terminal'); // デフォルトターミナル
+  const moveSaveTimeout = useRef<number | null>(null);
 
   // デフォルトターミナル設定を読み込む
   useEffect(() => {
@@ -206,6 +207,32 @@ function App() {
 
     return () => {
       unlisten.then((fn) => fn());
+    };
+  }, []);
+
+  // ウィンドウ移動時に位置を保存（設定ファイルに保持して次回復元）
+  useEffect(() => {
+    const appWindow = getCurrentWindow();
+    const unlistenPromise = appWindow.onMoved(({ payload: position }) => {
+      if (moveSaveTimeout.current) {
+        clearTimeout(moveSaveTimeout.current);
+      }
+
+      moveSaveTimeout.current = window.setTimeout(() => {
+        invoke('save_main_window_position', {
+          x: Math.round(position.x),
+          y: Math.round(position.y),
+        }).catch((error) => {
+          console.error('Failed to save window position:', error);
+        });
+      }, 150);
+    });
+
+    return () => {
+      unlistenPromise.then((fn) => fn());
+      if (moveSaveTimeout.current) {
+        clearTimeout(moveSaveTimeout.current);
+      }
     };
   }, []);
 
@@ -323,8 +350,6 @@ function App() {
           // 初期状態は入力欄のみの高さ
           await appWindow.setSize(new LogicalSize(600, 80));
         }
-        // サイズ変更後に中央配置を維持
-        await appWindow.center();
       } catch (error) {
         console.error('Failed to resize window:', error);
       }
@@ -606,7 +631,12 @@ function App() {
 
   return (
     <div className="app-container">
-      <div className="search-box">
+      <div className="drag-header" data-tauri-drag-region>
+        <div className="drag-header-title">Ignitero Launcher</div>
+        <div className="drag-header-hint">ドラッグで移動</div>
+      </div>
+
+      <div className="search-box" data-tauri-drag-region>
         <div className="search-box-content">
           <div className="app-logo">
             <img src="/app-icon.png" alt="Ignitero Launcher" />
@@ -618,6 +648,7 @@ function App() {
               placeholder="Search apps and directories"
               prefix={<SearchOutlined />}
               value={searchQuery}
+              className="drag-exclude"
               onChange={(e) => {
                 const value = e.target.value;
                 setSearchQuery(value);
@@ -634,6 +665,7 @@ function App() {
             />
             <Tooltip title="キャッシュを更新">
               <Button
+                className="icon-button-no-hover drag-exclude"
                 size="large"
                 icon={<ReloadOutlined />}
                 onClick={() => {
@@ -641,11 +673,11 @@ function App() {
                     console.error('Failed to refresh cache:', error);
                   });
                 }}
-                className="icon-button-no-hover"
               />
             </Tooltip>
             <Tooltip title="設定">
               <Button
+                className="icon-button-no-hover drag-exclude"
                 size="large"
                 icon={<SettingOutlined />}
                 onClick={() => {
@@ -653,7 +685,6 @@ function App() {
                     console.error('Failed to open settings window:', error);
                   });
                 }}
-                className="icon-button-no-hover"
               />
             </Tooltip>
           </Space.Compact>

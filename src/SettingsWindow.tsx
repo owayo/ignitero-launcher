@@ -1,33 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Modal,
-  Form,
+  Alert,
   Button,
+  Card,
+  Checkbox,
+  Descriptions,
+  Divider,
+  Form,
+  Input,
+  InputNumber,
   List,
+  Modal,
+  Radio,
+  Select,
   Space,
   Switch,
-  InputNumber,
-  Select,
   Typography,
-  Checkbox,
-  Radio,
-  Divider,
-  Input,
 } from 'antd';
 import {
-  FolderAddOutlined,
+  CloudSyncOutlined,
   DeleteOutlined,
-  ReloadOutlined,
   EditOutlined,
+  FolderAddOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
-import { invoke, convertFileSrc } from '@tauri-apps/api/core';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { emit } from '@tauri-apps/api/event';
 import type { Settings, RegisteredDirectory } from './types';
+import packageJson from '../package.json';
 import './Settings.css';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
+
+interface UpdateInfo {
+  has_update: boolean;
+  current_version: string;
+  latest_version: string | null;
+  html_url: string | null;
+}
 
 const SettingsWindow: React.FC = () => {
   const [form] = Form.useForm();
@@ -46,6 +58,9 @@ const SettingsWindow: React.FC = () => {
   const [terminalIcons, setTerminalIcons] = useState<Map<string, string>>(
     new Map(),
   );
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   // インストール済みエディタを取得
   const loadAvailableEditors = async () => {
@@ -129,6 +144,23 @@ const SettingsWindow: React.FC = () => {
     loadAvailableEditors();
     loadAvailableTerminals();
   }, []);
+
+  // バージョンを手動チェック
+  const handleCheckUpdates = async () => {
+    try {
+      setCheckingUpdate(true);
+      setUpdateError(null);
+      const info = await invoke<UpdateInfo>('check_for_updates', {
+        force: true,
+      });
+      setUpdateInfo(info);
+    } catch (error) {
+      console.error('Failed to check for updates:', error);
+      setUpdateError('更新の確認に失敗しました');
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
 
   // ディレクトリを追加（フォルダ選択）
   const handleAddDirectory = async () => {
@@ -243,222 +275,258 @@ const SettingsWindow: React.FC = () => {
     return <div>読み込み中...</div>;
   }
 
+  const installedTerminals = availableTerminals.filter(
+    (terminal) => terminal === 'terminal' || terminalIcons.has(terminal),
+  );
+
   return (
     <div className="settings-container">
       <div className="settings-header">
         <Title level={3}>設定</Title>
       </div>
 
-      <div className="settings-layout">
-        {/* キャッシュ更新設定 */}
-        <div className="settings-panel">
-          <Form
-            form={form}
-            layout="vertical"
-            onValuesChange={async (_changedValues, allValues) => {
-              // 設定が変更されたら即座に保存
-              try {
-                const updatedSettings: Settings = {
-                  ...settings,
-                  cache_update: {
-                    update_on_startup: allValues.update_on_startup,
-                    auto_update_enabled: allValues.auto_update_enabled,
-                    auto_update_interval_hours:
-                      allValues.auto_update_interval_hours,
-                  },
-                  default_terminal: allValues.default_terminal,
-                };
-                await invoke('save_settings', { settings: updatedSettings });
-                setSettings(updatedSettings);
-                // 設定変更イベントを発行
-                await emit('settings-changed');
-              } catch (error) {
-                console.error('Failed to save settings:', error);
-              }
+      <div className="settings-layout settings-content">
+        <Form
+          form={form}
+          layout="vertical"
+          onValuesChange={async (_changedValues, allValues) => {
+            // 設定が変更されたら即座に保存
+            try {
+              const updatedSettings: Settings = {
+                ...settings,
+                cache_update: {
+                  update_on_startup: allValues.update_on_startup,
+                  auto_update_enabled: allValues.auto_update_enabled,
+                  auto_update_interval_hours:
+                    allValues.auto_update_interval_hours,
+                },
+                default_terminal: allValues.default_terminal,
+              };
+              await invoke('save_settings', { settings: updatedSettings });
+              setSettings(updatedSettings);
+              // 設定変更イベントを発行
+              await emit('settings-changed');
+            } catch (error) {
+              console.error('Failed to save settings:', error);
+            }
+          }}
+        >
+          <div
+            style={{
+              display: 'grid',
+              gap: 16,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+              alignItems: 'start',
             }}
           >
-            <Title level={5}>キャッシュ更新設定</Title>
-            <Form.Item
-              name="update_on_startup"
-              label="起動時に更新"
-              valuePropName="checked"
+            <Card
+              title="バージョンチェック"
+              bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 12 }}
             >
-              <Switch />
-            </Form.Item>
-
-            <Form.Item
-              name="auto_update_enabled"
-              label="自動更新を有効化"
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-
-            <Form.Item noStyle shouldUpdate>
-              {() => {
-                const autoUpdateEnabled = form.getFieldValue(
-                  'auto_update_enabled',
-                );
-                return (
-                  autoUpdateEnabled && (
-                    <Form.Item
-                      name="auto_update_interval_hours"
-                      label="自動更新間隔（時間）"
-                    >
-                      <InputNumber min={1} max={24} />
-                    </Form.Item>
-                  )
-                );
-              }}
-            </Form.Item>
-
-            <Title level={5} style={{ marginTop: 24 }}>
-              デフォルトターミナル
-            </Title>
-            <Form.Item
-              name="default_terminal"
-              label="検索結果でディレクトリを選択して→キーを押したときに開くターミナル"
-            >
-              <Select placeholder="ターミナルを選択">
-                {availableTerminals.includes('terminal') && (
-                  <Option value="terminal">
-                    <Space align="center">
-                      {terminalIcons.get('terminal') && (
-                        <img
-                          src={terminalIcons.get('terminal')}
-                          alt="Terminal"
-                          style={{
-                            width: 16,
-                            height: 16,
-                            verticalAlign: 'middle',
-                          }}
-                        />
-                      )}
-                      macOSデフォルトターミナル
-                    </Space>
-                  </Option>
+              <Descriptions size="small" column={1}>
+                <Descriptions.Item label="現在のバージョン">
+                  v{packageJson.version}
+                </Descriptions.Item>
+              </Descriptions>
+              <Space>
+                <Button
+                  type="primary"
+                  icon={<CloudSyncOutlined />}
+                  loading={checkingUpdate}
+                  onClick={handleCheckUpdates}
+                >
+                  更新を確認
+                </Button>
+                {updateInfo && !updateInfo.has_update && (
+                  <Text type="secondary">最新バージョンです</Text>
                 )}
-                {availableTerminals.includes('iterm2') && (
-                  <Option value="iterm2">
-                    <Space align="center">
-                      {terminalIcons.get('iterm2') && (
-                        <img
-                          src={terminalIcons.get('iterm2')}
-                          alt="iTerm2"
-                          style={{
-                            width: 16,
-                            height: 16,
-                            verticalAlign: 'middle',
-                          }}
-                        />
-                      )}
-                      iTerm2
-                    </Space>
-                  </Option>
-                )}
-                {availableTerminals.includes('warp') && (
-                  <Option value="warp">
-                    <Space align="center">
-                      {terminalIcons.get('warp') && (
-                        <img
-                          src={terminalIcons.get('warp')}
-                          alt="Warp"
-                          style={{
-                            width: 16,
-                            height: 16,
-                            verticalAlign: 'middle',
-                          }}
-                        />
-                      )}
-                      Warp
-                    </Space>
-                  </Option>
-                )}
-              </Select>
-            </Form.Item>
-
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={handleRefreshCache}
-              loading={loading}
-              style={{ width: '100%', marginTop: 16 }}
-            >
-              今すぐキャッシュを更新
-            </Button>
-          </Form>
-        </div>
-
-        {/* 登録ディレクトリ */}
-        <div className="settings-panel">
-          <Title level={5}>登録ディレクトリ</Title>
-          <Button
-            icon={<FolderAddOutlined />}
-            onClick={handleAddDirectory}
-            style={{ marginBottom: 16, width: '100%' }}
-          >
-            ディレクトリを追加
-          </Button>
-
-          <List
-            dataSource={
-              settings?.registered_directories
-                ? [...settings.registered_directories].sort((a, b) =>
-                    a.path.localeCompare(b.path),
-                  )
-                : []
-            }
-            renderItem={(dir) => (
-              <List.Item
-                actions={[
-                  <Button
-                    key="edit"
-                    type="link"
-                    icon={<EditOutlined />}
-                    onClick={() => handleEditDirectory(dir)}
-                  >
-                    編集
-                  </Button>,
-                  <Button
-                    key="delete"
-                    type="link"
-                    danger
-                    icon={<DeleteOutlined />}
-                    onClick={() => handleRemoveDirectory(dir.path)}
-                  >
-                    削除
-                  </Button>,
-                ]}
-              >
-                <List.Item.Meta
-                  title={dir.path}
+              </Space>
+              {updateError && <Text type="danger">{updateError}</Text>}
+              {updateInfo?.has_update && (
+                <Alert
+                  type="info"
+                  showIcon
+                  message={`最新版 v${updateInfo.latest_version} が利用可能です`}
                   description={
-                    <Space direction="vertical" size={0}>
-                      <Text>
-                        このディレクトリ自身:{' '}
-                        {dir.parent_open_mode === 'none'
-                          ? '表示しない'
-                          : dir.parent_open_mode === 'finder'
-                            ? 'Finderで開く'
-                            : `${dir.parent_editor || 'エディタ'}で開く`}
-                      </Text>
-                      <Text>
-                        配下のディレクトリ:{' '}
-                        {dir.subdirs_open_mode === 'none'
-                          ? '表示しない'
-                          : dir.subdirs_open_mode === 'finder'
-                            ? 'Finderで開く'
-                            : `${dir.subdirs_editor || 'エディタ'}で開く`}
-                      </Text>
-                      <Text>
-                        アプリスキャン: {dir.scan_for_apps ? 'はい' : 'いいえ'}
-                      </Text>
-                    </Space>
+                    updateInfo.html_url ? (
+                      <a
+                        href={updateInfo.html_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        ダウンロードページを開く
+                      </a>
+                    ) : null
                   }
                 />
-              </List.Item>
-            )}
-          />
-        </div>
+              )}
+            </Card>
+
+            <Card title="デフォルトターミナル" bodyStyle={{ paddingBottom: 0 }}>
+              <Form.Item
+                name="default_terminal"
+                label="検索結果でディレクトリを選択して→キーを押したときに開くターミナル"
+              >
+                <Radio.Group style={{ width: '100%' }}>
+                  {installedTerminals.map((terminal) => {
+                    const label =
+                      terminal === 'terminal'
+                        ? 'macOSデフォルトターミナル'
+                        : terminal === 'iterm2'
+                          ? 'iTerm2'
+                          : 'Warp';
+                    return (
+                      <Radio
+                        key={terminal}
+                        value={terminal}
+                        style={{ display: 'block', padding: '6px 0' }}
+                      >
+                        <Space align="center">
+                          {terminalIcons.get(terminal) && (
+                            <img
+                              src={terminalIcons.get(terminal)}
+                              alt={label}
+                              style={{
+                                width: 16,
+                                height: 16,
+                                verticalAlign: 'middle',
+                              }}
+                            />
+                          )}
+                          {label}
+                        </Space>
+                      </Radio>
+                    );
+                  })}
+                  {installedTerminals.length === 0 && (
+                    <Text type="secondary">
+                      利用可能なターミナルが見つかりませんでした
+                    </Text>
+                  )}
+                </Radio.Group>
+              </Form.Item>
+            </Card>
+
+            <Card title="キャッシュ更新" bodyStyle={{ paddingBottom: 0 }}>
+              <Form.Item
+                name="update_on_startup"
+                label="起動時に更新"
+                valuePropName="checked"
+              >
+                <Switch />
+              </Form.Item>
+
+              <Form.Item
+                name="auto_update_enabled"
+                label="自動更新を有効化"
+                valuePropName="checked"
+              >
+                <Switch />
+              </Form.Item>
+
+              <Form.Item noStyle shouldUpdate>
+                {() => {
+                  const autoUpdateEnabled = form.getFieldValue(
+                    'auto_update_enabled',
+                  );
+                  return (
+                    autoUpdateEnabled && (
+                      <Form.Item
+                        name="auto_update_interval_hours"
+                        label="自動更新間隔（時間）"
+                      >
+                        <InputNumber min={1} max={24} />
+                      </Form.Item>
+                    )
+                  );
+                }}
+              </Form.Item>
+
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={handleRefreshCache}
+                loading={loading}
+                style={{ width: '100%', marginTop: 8, marginBottom: 4 }}
+              >
+                今すぐキャッシュを更新
+              </Button>
+            </Card>
+
+            <Card
+              title="登録ディレクトリ"
+              bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+            >
+              <Button
+                icon={<FolderAddOutlined />}
+                onClick={handleAddDirectory}
+                style={{ width: '100%' }}
+              >
+                ディレクトリを追加
+              </Button>
+
+              <List
+                dataSource={
+                  settings?.registered_directories
+                    ? [...settings.registered_directories].sort((a, b) =>
+                        a.path.localeCompare(b.path),
+                      )
+                    : []
+                }
+                renderItem={(dir) => (
+                  <List.Item
+                    actions={[
+                      <Button
+                        key="edit"
+                        type="link"
+                        icon={<EditOutlined />}
+                        onClick={() => handleEditDirectory(dir)}
+                      >
+                        編集
+                      </Button>,
+                      <Button
+                        key="delete"
+                        type="link"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={() => handleRemoveDirectory(dir.path)}
+                      >
+                        削除
+                      </Button>,
+                    ]}
+                  >
+                    <List.Item.Meta
+                      title={dir.path}
+                      description={
+                        <Space direction="vertical" size={0}>
+                          <Text>
+                            このディレクトリ自身:{' '}
+                            {dir.parent_open_mode === 'none'
+                              ? '表示しない'
+                              : dir.parent_open_mode === 'finder'
+                                ? 'Finderで開く'
+                                : `${dir.parent_editor || 'エディタ'}で開く`}
+                          </Text>
+                          <Text>
+                            配下のディレクトリ:{' '}
+                            {dir.subdirs_open_mode === 'none'
+                              ? '表示しない'
+                              : dir.subdirs_open_mode === 'finder'
+                                ? 'Finderで開く'
+                                : `${dir.subdirs_editor || 'エディタ'}で開く`}
+                          </Text>
+                          <Text>
+                            アプリスキャン:{' '}
+                            {dir.scan_for_apps ? 'はい' : 'いいえ'}
+                          </Text>
+                        </Space>
+                      }
+                    />
+                  </List.Item>
+                )}
+              />
+            </Card>
+          </div>
+        </Form>
       </div>
 
       {/* ディレクトリ追加/編集モーダル */}
