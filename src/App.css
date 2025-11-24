@@ -10,6 +10,7 @@
   user-select: none;
 }
 
+[data-tauri-drag-region-exclude],
 .drag-exclude {
   -webkit-app-region: no-drag;
   user-select: auto;
@@ -74,6 +75,10 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  user-drag: none;
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Ant Design Input のカスタマイズ */

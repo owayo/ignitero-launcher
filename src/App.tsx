@@ -183,6 +183,7 @@ function App() {
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]); // リスト項目のref配列
   const defaultTerminal = useRef<'terminal' | 'iterm2' | 'warp'>('terminal'); // デフォルトターミナル
   const moveSaveTimeout = useRef<number | null>(null);
+  const appWindowRef = useRef(getCurrentWindow());
 
   // デフォルトターミナル設定を読み込む
   useEffect(() => {
@@ -562,6 +563,33 @@ function App() {
     [searchQuery, selectionHistory],
   );
 
+  const handleAppMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (e.button !== 0) {
+        return;
+      }
+
+      const target = e.target as HTMLElement;
+      const isExcluded =
+        target.closest('[data-tauri-drag-region-exclude]') ||
+        target.closest('.drag-exclude');
+
+      console.log('Drag attempt', {
+        tag: target.tagName,
+        className: target.className,
+        excluded: !!isExcluded,
+        dataset: target.dataset,
+      });
+
+      if (!isExcluded) {
+        appWindowRef.current.startDragging().catch((error) => {
+          console.error('Failed to start window drag:', error);
+        });
+      }
+    },
+    [],
+  );
+
   // キーボードナビゲーション
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -646,14 +674,26 @@ function App() {
   );
 
   return (
-    <div className="app-container" data-tauri-drag-region>
-      <div className="drag-bar" data-tauri-drag-region />
-      <div className="search-box" data-tauri-drag-region>
-        <div className="search-box-content drag-exclude">
-          <div className="app-logo" data-tauri-drag-region>
-            <img src="/app-icon.png" alt="Ignitero Launcher" />
+    <div
+      className="app-container"
+      data-tauri-drag-region
+      onMouseDown={handleAppMouseDown}
+    >
+      <div className="drag-bar" />
+      <div className="search-box">
+        <div className="search-box-content">
+          <div className="app-logo">
+            <img
+              src="/app-icon.png"
+              alt="Ignitero Launcher"
+              draggable={false}
+            />
           </div>
-          <Space.Compact style={{ flex: 1 }}>
+          <Space.Compact
+            style={{ flex: 1 }}
+            className="drag-exclude"
+            data-tauri-drag-region-exclude
+          >
             <Input
               ref={inputRef}
               size="large"
@@ -661,6 +701,7 @@ function App() {
               prefix={<SearchOutlined />}
               value={searchQuery}
               className="drag-exclude"
+              data-tauri-drag-region-exclude
               onChange={(e) => {
                 const value = e.target.value;
                 setSearchQuery(value);
@@ -678,6 +719,7 @@ function App() {
             <Tooltip title="キャッシュを更新">
               <Button
                 className="icon-button-no-hover drag-exclude"
+                data-tauri-drag-region-exclude
                 size="large"
                 icon={<ReloadOutlined />}
                 onClick={() => {
@@ -690,6 +732,7 @@ function App() {
             <Tooltip title="設定">
               <Button
                 className="icon-button-no-hover drag-exclude"
+                data-tauri-drag-region-exclude
                 size="large"
                 icon={<SettingOutlined />}
                 onClick={() => {
@@ -706,6 +749,7 @@ function App() {
       {updateInfo && updateInfo.has_update && (
         <Alert
           className="drag-exclude"
+          data-tauri-drag-region-exclude
           message={`v${updateInfo.latest_version} がリリースされています`}
           type="info"
           showIcon
@@ -735,7 +779,10 @@ function App() {
         />
       )}
 
-      <div className="results-container drag-exclude">
+      <div
+        className="results-container drag-exclude"
+        data-tauri-drag-region-exclude
+      >
         <List
           dataSource={results}
           renderItem={(item, index) => {
