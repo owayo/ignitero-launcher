@@ -8,12 +8,16 @@
 [data-tauri-drag-region] {
   -webkit-app-region: drag;
   user-select: none;
+  -webkit-user-select: none;
+  cursor: move;
 }
 
 [data-tauri-drag-region-exclude],
 .drag-exclude {
   -webkit-app-region: no-drag;
   user-select: auto;
+  -webkit-user-select: auto;
+  cursor: auto;
 }
 
 .app-container {
@@ -36,6 +40,8 @@
   overflow: hidden;
   color: rgba(40, 40, 45, 0.9);
   box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .drag-bar {
@@ -69,6 +75,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: move;
 }
 
 .app-logo img {
@@ -79,6 +88,7 @@
   -webkit-user-drag: none;
   user-select: none;
   -webkit-user-select: none;
+  pointer-events: none;
 }
 
 /* Ant Design Input のカスタマイズ */
