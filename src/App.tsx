@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from 'react';
 import { Input, List, Typography, Space, Button, Tooltip, Alert } from 'antd';
 import {
   AppstoreOutlined,
@@ -7,12 +13,14 @@ import {
   SettingOutlined,
   ReloadOutlined,
   MoreOutlined,
+  CalculatorOutlined,
 } from '@ant-design/icons';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-shell';
 import type { AppItem, DirectoryItem, WindowState } from './types';
+import { evaluateExpression } from './calculator';
 import './App.css';
 
 const { Text } = Typography;
@@ -184,6 +192,11 @@ function App() {
   const defaultTerminal = useRef<'terminal' | 'iterm2' | 'warp'>('terminal'); // デフォルトターミナル
   const moveSaveTimeout = useRef<number | null>(null);
   const appWindowRef = useRef(getCurrentWindow());
+
+  // 計算式の評価結果
+  const calculationResult = useMemo(() => {
+    return evaluateExpression(searchQuery);
+  }, [searchQuery]);
 
   // デフォルトターミナル設定を読み込む
   useEffect(() => {
@@ -658,15 +671,32 @@ function App() {
         } else {
           console.log('No item selected');
         }
-      } else if (e.key === 'Enter' && results[selectedIndex]) {
+      } else if (e.key === 'Enter') {
         e.preventDefault();
-        handleLaunch(results[selectedIndex]);
+        // 計算結果がある場合はクリップボードにコピー
+        if (calculationResult) {
+          navigator.clipboard
+            .writeText(String(calculationResult.result))
+            .then(() => {
+              console.log('Copied to clipboard:', calculationResult.result);
+              // コピー後にウィンドウを閉じる
+              invoke('hide_window');
+              setSearchQuery('');
+              setDisplayQuery('');
+            })
+            .catch((error) => {
+              console.error('Failed to copy to clipboard:', error);
+            });
+        } else if (results[selectedIndex]) {
+          handleLaunch(results[selectedIndex]);
+        }
       }
     },
     [
       results,
       selectedIndex,
       isComposing,
+      calculationResult,
       handleOpenInTerminal,
       handleLaunch,
       handleOpenEditorPickerWindow,
@@ -745,6 +775,30 @@ function App() {
           </Space.Compact>
         </div>
       </div>
+
+      {calculationResult && (
+        <div
+          className="calculation-result drag-exclude"
+          data-tauri-drag-region-exclude
+        >
+          <div className="calculation-result-content">
+            <Space>
+              <CalculatorOutlined
+                style={{ fontSize: '24px', color: '#1890ff' }}
+              />
+              <Text strong style={{ fontSize: '24px' }}>
+                = {calculationResult.formatted}
+              </Text>
+            </Space>
+            <Text
+              type="secondary"
+              style={{ fontSize: '12px', marginTop: '4px' }}
+            >
+              Enter でクリップボードにコピー
+            </Text>
+          </div>
+        </div>
+      )}
 
       {updateInfo && updateInfo.has_update && (
         <Alert

@@ -221,3 +221,27 @@
 .ant-empty-description {
   color: rgba(100, 100, 110, 0.6);
 }
+
+/* 計算結果の表示 */
+.calculation-result {
+  padding: 12px 16px;
+  background: linear-gradient(
+    90deg,
+    rgba(24, 144, 255, 0.12),
+    rgba(24, 144, 255, 0.06)
+  );
+  border-left: 3px solid rgba(24, 144, 255, 0.8);
+}
+
+.calculation-result-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.calculation-result .ant-typography {
+  color: rgba(40, 40, 45, 0.95);
+}
+
+.calculation-result .ant-typography-secondary {
+  color: rgba(60, 60, 70, 0.85);
+}
