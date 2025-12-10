@@ -1,4 +1,6 @@
 packages: []
 
 minimumReleaseAge: 14400
+minimumReleaseAgeExclude:
+  - react
 trustPolicy: no-downgrade
