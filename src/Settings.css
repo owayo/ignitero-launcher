@@ -84,3 +84,12 @@
   border-color: #ff7847;
   box-shadow: 0 0 0 2px rgba(255, 120, 71, 0.2);
 }
+
+/* 削除ボタンを背景と区別しやすくする */
+.settings-content .ant-btn-link.ant-btn-dangerous {
+  color: #a8071a;
+}
+
+.settings-content .ant-btn-link.ant-btn-dangerous:hover {
+  color: #cf1322;
+}
