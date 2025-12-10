@@ -227,10 +227,10 @@
   padding: 12px 16px;
   background: linear-gradient(
     90deg,
-    rgba(24, 144, 255, 0.12),
-    rgba(24, 144, 255, 0.06)
+    rgba(228, 87, 46, 0.12),
+    rgba(228, 87, 46, 0.06)
   );
-  border-left: 3px solid rgba(24, 144, 255, 0.8);
+  border-left: 3px solid rgba(228, 87, 46, 0.8);
 }
 
 .calculation-result-content {

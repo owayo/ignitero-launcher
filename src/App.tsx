@@ -127,7 +127,7 @@ const ItemIcon: React.FC<{ item: SearchResult }> = ({ item }) => {
 
   // コマンドアイテムの場合は専用アイコンを表示
   if (isCommandItem(item)) {
-    return <CodeOutlined style={{ fontSize: '32px', color: '#52c41a' }} />;
+    return <CodeOutlined style={{ fontSize: '32px', color: '#f7a500' }} />;
   }
 
   if (isAppItem(item)) {
@@ -158,7 +158,7 @@ const ItemIcon: React.FC<{ item: SearchResult }> = ({ item }) => {
           <FolderFilled
             style={{
               fontSize: '32px',
-              color: '#1890ff',
+              color: '#f3c07a',
               position: 'absolute',
               top: 0,
               left: 0,
@@ -186,7 +186,7 @@ const ItemIcon: React.FC<{ item: SearchResult }> = ({ item }) => {
     }
 
     // エディタなしまたはアイコン読み込み失敗時は通常のフォルダアイコン
-    return <FolderFilled style={{ fontSize: '32px', color: '#1890ff' }} />;
+    return <FolderFilled style={{ fontSize: '32px', color: '#f3c07a' }} />;
   }
 };
 
@@ -822,7 +822,7 @@ function App() {
           <div className="calculation-result-content">
             <Space>
               <CalculatorOutlined
-                style={{ fontSize: '24px', color: '#1890ff' }}
+                style={{ fontSize: '24px', color: '#e4572e' }}
               />
               <Text strong style={{ fontSize: '24px' }}>
                 = {calculationResult.formatted}
