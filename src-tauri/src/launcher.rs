@@ -1,6 +1,8 @@
 use crate::types::TerminalType;
 use serde::{Deserialize, Serialize};
 use std::fs;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -253,22 +255,27 @@ impl Launcher {
                     .map_err(|e| format!("Failed to execute command in iTerm2: {}", e))?;
             }
             TerminalType::Warp => {
-                // Warp（AppleScript経由）
-                let script = format!(
-                    r#"tell application "Warp"
-                        activate
-                        tell application "System Events"
-                            keystroke "t" using command down
-                            delay 0.3
-                            keystroke "{}"
-                            keystroke return
-                        end tell
-                    end tell"#,
-                    escaped_command
-                );
-                Command::new("osascript")
-                    .arg("-e")
-                    .arg(&script)
+                // Warpは直接的なAppleScriptコマンド実行に対応していないため、
+                // 一時的な.commandファイルを作成してWarpで開く
+                let temp_dir = std::env::temp_dir();
+                let script_path =
+                    temp_dir.join(format!("ignitero_cmd_{}.command", std::process::id()));
+
+                // スクリプト内容を作成（実行後もシェルを維持）
+                let script_content = format!("#!/bin/bash\n{}\nexec $SHELL", full_command);
+                fs::write(&script_path, &script_content)
+                    .map_err(|e| format!("Failed to write temp script: {}", e))?;
+
+                // 実行権限を付与
+                #[cfg(unix)]
+                fs::set_permissions(&script_path, fs::Permissions::from_mode(0o755))
+                    .map_err(|e| format!("Failed to set script permissions: {}", e))?;
+
+                // Warpでスクリプトを開く
+                Command::new("open")
+                    .arg("-a")
+                    .arg("Warp")
+                    .arg(&script_path)
                     .spawn()
                     .map_err(|e| format!("Failed to execute command in Warp: {}", e))?;
             }
