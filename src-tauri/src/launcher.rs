@@ -202,7 +202,20 @@ impl Launcher {
     }
 
     /// カスタムコマンドをターミナルで実行
-    pub fn execute_command(command: &str, terminal_type: &TerminalType) -> Result<(), String> {
+    pub fn execute_command(
+        command: &str,
+        working_directory: Option<&str>,
+        terminal_type: &TerminalType,
+    ) -> Result<(), String> {
+        // 実行ディレクトリが指定されている場合、cdコマンドを先頭に追加
+        let full_command = if let Some(dir) = working_directory {
+            // パスにスペースが含まれる場合に備えてクォートする
+            format!("cd '{}' && {}", dir.replace('\'', "'\\''"), command)
+        } else {
+            command.to_string()
+        };
+        let escaped_command = full_command.replace('\\', "\\\\").replace('"', "\\\"");
+
         match terminal_type {
             TerminalType::Terminal => {
                 // macOSデフォルトターミナル（AppleScript経由）
@@ -211,7 +224,7 @@ impl Launcher {
                         activate
                         do script "{}"
                     end tell"#,
-                    command.replace('\\', "\\\\").replace('"', "\\\"")
+                    escaped_command
                 );
                 Command::new("osascript")
                     .arg("-e")
@@ -231,7 +244,7 @@ impl Launcher {
                             end tell
                         end tell
                     end tell"#,
-                    command.replace('\\', "\\\\").replace('"', "\\\"")
+                    escaped_command
                 );
                 Command::new("osascript")
                     .arg("-e")
@@ -251,7 +264,7 @@ impl Launcher {
                             keystroke return
                         end tell
                     end tell"#,
-                    command.replace('\\', "\\\\").replace('"', "\\\"")
+                    escaped_command
                 );
                 Command::new("osascript")
                     .arg("-e")

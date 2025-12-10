@@ -16,14 +16,16 @@ pub struct DirectoryItem {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CustomCommand {
-    pub alias: String,   // 検索キーワード（エイリアス）
-    pub command: String, // 実行するコマンド
+    pub alias: String,                     // 検索キーワード（エイリアス）
+    pub command: String,                   // 実行するコマンド
+    pub working_directory: Option<String>, // 実行ディレクトリ（省略時はホームディレクトリ）
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommandItem {
     pub alias: String,
     pub command: String,
+    pub working_directory: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

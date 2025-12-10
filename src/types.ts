@@ -13,11 +13,13 @@ export interface DirectoryItem {
 export interface CustomCommand {
   alias: string;
   command: string;
+  working_directory?: string;
 }
 
 export interface CommandItem {
   alias: string;
   command: string;
+  working_directory?: string;
 }
 
 export interface WindowPosition {

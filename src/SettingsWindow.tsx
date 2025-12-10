@@ -278,6 +278,7 @@ const SettingsWindow: React.FC = () => {
       const cmd: CustomCommand = {
         alias: values.alias,
         command: values.command,
+        working_directory: values.working_directory || undefined,
       };
       await invoke('add_command', { cmd });
       setAddCmdModalVisible(false);
@@ -294,6 +295,7 @@ const SettingsWindow: React.FC = () => {
     addCmdForm.setFieldsValue({
       alias: cmd.alias,
       command: cmd.command,
+      working_directory: cmd.working_directory || '',
     });
     setAddCmdModalVisible(true);
   };
@@ -655,15 +657,27 @@ const SettingsWindow: React.FC = () => {
                               <List.Item.Meta
                                 title={cmd.alias}
                                 description={
-                                  <Text
-                                    code
-                                    style={{
-                                      wordBreak: 'break-all',
-                                      whiteSpace: 'pre-wrap',
-                                    }}
-                                  >
-                                    {cmd.command}
-                                  </Text>
+                                  <div>
+                                    <Text
+                                      code
+                                      style={{
+                                        wordBreak: 'break-all',
+                                        whiteSpace: 'pre-wrap',
+                                      }}
+                                    >
+                                      {cmd.command}
+                                    </Text>
+                                    {cmd.working_directory && (
+                                      <div style={{ marginTop: 4 }}>
+                                        <Text
+                                          type="secondary"
+                                          style={{ fontSize: 12 }}
+                                        >
+                                          📁 {cmd.working_directory}
+                                        </Text>
+                                      </div>
+                                    )}
+                                  </div>
                                 }
                               />
                             </List.Item>
@@ -961,13 +975,21 @@ const SettingsWindow: React.FC = () => {
             rules={[{ required: true, message: 'コマンドを入力してください' }]}
           >
             <Input.TextArea
-              placeholder="例: cd ~/project && npm run deploy"
+              placeholder="例: npm run deploy"
               autoSize={{ minRows: 2, maxRows: 6 }}
             />
           </Form.Item>
 
+          <Form.Item
+            name="working_directory"
+            label="実行ディレクトリ（省略可）"
+          >
+            <Input placeholder="例: ~/project または /Users/name/project" />
+          </Form.Item>
+
           <Text type="secondary">
             コマンドは設定されたデフォルトターミナルで実行されます。
+            実行ディレクトリを指定すると、そのディレクトリでコマンドが実行されます。
           </Text>
         </Form>
       </Modal>

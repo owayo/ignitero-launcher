@@ -590,7 +590,7 @@ function App() {
           // コマンドを実行
           await invoke('execute_command', {
             command: item.command,
-            terminalType: defaultTerminal.current,
+            workingDirectory: item.working_directory,
           });
         } else if (isAppItem(item)) {
           await invoke('launch_app', { path: item.path });
@@ -884,7 +884,11 @@ function App() {
 
             // 表示名とサブテキストを決定
             const displayName = isCommand ? item.alias : item.name;
-            const subText = isCommand ? item.command : item.path;
+            const subText = isCommand
+              ? item.working_directory
+                ? `${item.command} (📁 ${item.working_directory})`
+                : item.command
+              : item.path;
 
             return (
               <div

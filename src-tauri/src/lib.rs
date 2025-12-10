@@ -77,9 +77,13 @@ fn remove_command(alias: String, state: State<AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn execute_command(command: String, state: State<AppState>) -> Result<(), String> {
+fn execute_command(
+    command: String,
+    working_directory: Option<String>,
+    state: State<AppState>,
+) -> Result<(), String> {
     let settings = state.settings_manager.get_settings();
-    Launcher::execute_command(&command, &settings.default_terminal)
+    Launcher::execute_command(&command, working_directory.as_deref(), &settings.default_terminal)
 }
 
 fn refresh_commands(state: State<AppState>) -> Result<(), String> {
@@ -89,6 +93,7 @@ fn refresh_commands(state: State<AppState>) -> Result<(), String> {
         .map(|c| CommandItem {
             alias: c.alias,
             command: c.command,
+            working_directory: c.working_directory,
         })
         .collect();
     *state.commands.lock().unwrap() = command_items;
@@ -769,6 +774,7 @@ pub fn run() {
                     .map(|c| CommandItem {
                         alias: c.alias,
                         command: c.command,
+                        working_directory: c.working_directory,
                     })
                     .collect();
                 *state.commands.lock().unwrap() = command_items;
