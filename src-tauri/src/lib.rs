@@ -31,11 +31,15 @@ use system_tray::setup_system_tray;
 use tauri::tray::TrayIcon;
 use tauri::{Manager, PhysicalPosition, State};
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
-use types::{AppItem, DirectoryItem, RegisteredDirectory, Settings, WindowPosition};
+use types::{
+    AppItem, CommandItem, CustomCommand, DirectoryItem, RegisteredDirectory, Settings,
+    WindowPosition,
+};
 
 pub struct AppState {
     pub apps: Mutex<Vec<AppItem>>,
     pub directories: Mutex<Vec<DirectoryItem>>,
+    pub commands: Mutex<Vec<CommandItem>>,
     pub search_engine: SearchEngine,
     pub settings_manager: SettingsManager,
     pub cache_db: Mutex<CacheDB>,
@@ -52,6 +56,43 @@ fn search_apps(query: String, state: State<AppState>) -> Vec<AppItem> {
 fn search_directories(query: String, state: State<AppState>) -> Vec<DirectoryItem> {
     let directories = state.directories.lock().unwrap();
     state.search_engine.search_directories(&directories, &query)
+}
+
+#[tauri::command]
+fn search_commands(query: String, state: State<AppState>) -> Vec<CommandItem> {
+    let commands = state.commands.lock().unwrap();
+    state.search_engine.search_commands(&commands, &query)
+}
+
+#[tauri::command]
+fn add_command(command: CustomCommand, state: State<AppState>) -> Result<(), String> {
+    state.settings_manager.add_command(command)?;
+    refresh_commands(state)
+}
+
+#[tauri::command]
+fn remove_command(alias: String, state: State<AppState>) -> Result<(), String> {
+    state.settings_manager.remove_command(&alias)?;
+    refresh_commands(state)
+}
+
+#[tauri::command]
+fn execute_command(command: String, state: State<AppState>) -> Result<(), String> {
+    let settings = state.settings_manager.get_settings();
+    Launcher::execute_command(&command, &settings.default_terminal)
+}
+
+fn refresh_commands(state: State<AppState>) -> Result<(), String> {
+    let custom_commands = state.settings_manager.get_custom_commands();
+    let command_items: Vec<CommandItem> = custom_commands
+        .into_iter()
+        .map(|c| CommandItem {
+            alias: c.alias,
+            command: c.command,
+        })
+        .collect();
+    *state.commands.lock().unwrap() = command_items;
+    Ok(())
 }
 
 // テスト用の公開関数
@@ -694,6 +735,7 @@ pub fn run() {
             app.manage(AppState {
                 apps: Mutex::new(Vec::new()),
                 directories: Mutex::new(Vec::new()),
+                commands: Mutex::new(Vec::new()),
                 search_engine,
                 settings_manager,
                 cache_db: Mutex::new(cache_db),
@@ -716,6 +758,20 @@ pub fn run() {
 
             if let Err(e) = prime_cache(&app.state::<AppState>(), &settings) {
                 eprintln!("Warning: Failed to prime cache: {}", e);
+            }
+
+            // カスタムコマンドを読み込み
+            {
+                let state = app.state::<AppState>();
+                let custom_commands = state.settings_manager.get_custom_commands();
+                let command_items: Vec<CommandItem> = custom_commands
+                    .into_iter()
+                    .map(|c| CommandItem {
+                        alias: c.alias,
+                        command: c.command,
+                    })
+                    .collect();
+                *state.commands.lock().unwrap() = command_items;
             }
 
             // グローバルホットキーの設定 (Option+Space)
@@ -898,9 +954,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             search_apps,
             search_directories,
+            search_commands,
             launch_app,
             open_directory,
             open_in_terminal,
+            execute_command,
             hide_window,
             show_window,
             save_main_window_position,
@@ -911,6 +969,8 @@ pub fn run() {
             save_settings,
             add_directory,
             remove_directory,
+            add_command,
+            remove_command,
             refresh_cache,
             show_folder_picker,
             get_available_editors,

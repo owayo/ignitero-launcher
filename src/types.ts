@@ -10,6 +10,16 @@ export interface DirectoryItem {
   editor?: string;
 }
 
+export interface CustomCommand {
+  alias: string;
+  command: string;
+}
+
+export interface CommandItem {
+  alias: string;
+  command: string;
+}
+
 export interface WindowPosition {
   x: number;
   y: number;
@@ -55,6 +65,7 @@ export interface CacheUpdateSettings {
 
 export interface Settings {
   registered_directories: RegisteredDirectory[];
+  custom_commands: CustomCommand[];
   cache_update: CacheUpdateSettings;
   default_terminal: TerminalType;
   main_window_position?: WindowPosition | null;

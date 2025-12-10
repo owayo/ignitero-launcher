@@ -1,4 +1,4 @@
-use crate::types::{RegisteredDirectory, Settings, WindowPosition};
+use crate::types::{CustomCommand, RegisteredDirectory, Settings, WindowPosition};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -99,6 +99,33 @@ impl SettingsManager {
 
     pub fn get_registered_directories(&self) -> Vec<RegisteredDirectory> {
         self.get_settings().registered_directories
+    }
+
+    pub fn add_command(&self, cmd: CustomCommand) -> Result<(), String> {
+        let mut settings = self.get_settings();
+
+        // 既に存在する場合は更新
+        if let Some(existing) = settings
+            .custom_commands
+            .iter_mut()
+            .find(|c| c.alias == cmd.alias)
+        {
+            *existing = cmd;
+        } else {
+            settings.custom_commands.push(cmd);
+        }
+
+        self.save_settings(settings)
+    }
+
+    pub fn remove_command(&self, alias: &str) -> Result<(), String> {
+        let mut settings = self.get_settings();
+        settings.custom_commands.retain(|c| c.alias != alias);
+        self.save_settings(settings)
+    }
+
+    pub fn get_custom_commands(&self) -> Vec<CustomCommand> {
+        self.get_settings().custom_commands
     }
 
     pub fn get_update_cache(&self) -> crate::types::UpdateCache {

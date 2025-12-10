@@ -65,6 +65,7 @@ describe('Type definitions', () => {
   it('should create Settings correctly', () => {
     const settings: Settings = {
       registered_directories: [],
+      custom_commands: [],
       cache_update: {
         update_on_startup: true,
         auto_update_enabled: false,
@@ -74,6 +75,7 @@ describe('Type definitions', () => {
     };
 
     expect(settings.registered_directories).toEqual([]);
+    expect(settings.custom_commands).toEqual([]);
     expect(settings.cache_update.update_on_startup).toBe(true);
     expect(settings.default_terminal).toBe('terminal');
   });
@@ -82,6 +84,7 @@ describe('Type definitions', () => {
     const mainWindowPosition: WindowPosition = { x: 120, y: 260 };
     const settings: Settings = {
       registered_directories: [],
+      custom_commands: [],
       cache_update: {
         update_on_startup: true,
         auto_update_enabled: false,
@@ -184,6 +187,7 @@ describe('Type definitions', () => {
     terminals.forEach((terminal) => {
       const settings: Settings = {
         registered_directories: [],
+        custom_commands: [],
         cache_update: {
           update_on_startup: true,
           auto_update_enabled: false,

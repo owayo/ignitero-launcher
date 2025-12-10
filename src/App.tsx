@@ -8,6 +8,7 @@ import React, {
 import { Input, List, Typography, Space, Button, Tooltip, Alert } from 'antd';
 import {
   AppstoreOutlined,
+  CodeOutlined,
   FolderFilled,
   SearchOutlined,
   SettingOutlined,
@@ -19,7 +20,7 @@ import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-shell';
-import type { AppItem, DirectoryItem, WindowState } from './types';
+import type { AppItem, DirectoryItem, WindowState, CommandItem } from './types';
 import { evaluateExpression } from './calculator';
 import './App.css';
 
@@ -32,10 +33,14 @@ interface UpdateInfo {
   html_url: string | null;
 }
 
-type SearchResult = AppItem | DirectoryItem;
+type SearchResult = AppItem | DirectoryItem | CommandItem;
 
 function isAppItem(item: SearchResult): item is AppItem {
   return 'icon_path' in item;
+}
+
+function isCommandItem(item: SearchResult): item is CommandItem {
+  return 'command' in item && 'alias' in item && !('path' in item);
 }
 
 // 選択履歴の型定義
@@ -91,9 +96,13 @@ const ItemIcon: React.FC<{ item: SearchResult }> = ({ item }) => {
     null,
   );
 
+  // DirectoryItemかつeditorが設定されている場合のみeditorを取得
+  const editorForDep =
+    !isAppItem(item) && !isCommandItem(item) ? item.editor : undefined;
+
   // エディタアイコンのPNGパスを取得
   useEffect(() => {
-    if (!isAppItem(item) && item.editor) {
+    if (!isAppItem(item) && !isCommandItem(item) && item.editor) {
       // キャッシュをチェック
       const cached = editorIconCache.get(item.editor);
       if (cached) {
@@ -114,7 +123,12 @@ const ItemIcon: React.FC<{ item: SearchResult }> = ({ item }) => {
           console.error('Failed to get editor icon path:', error);
         });
     }
-  }, [!isAppItem(item) ? item.editor : undefined]); // DirectoryItemの場合のみeditorを依存に
+  }, [editorForDep]); // DirectoryItemの場合のみeditorを依存に
+
+  // コマンドアイテムの場合は専用アイコンを表示
+  if (isCommandItem(item)) {
+    return <CodeOutlined style={{ fontSize: '32px', color: '#52c41a' }} />;
+  }
 
   if (isAppItem(item)) {
     if (item.icon_path && !hasError) {
@@ -289,8 +303,10 @@ function App() {
         const [
           romajiAppResults,
           romajiDirResults,
+          romajiCmdResults,
           kanaAppResults,
           kanaDirResults,
+          kanaCmdResults,
         ] = await Promise.all([
           romajiQuery.trim()
             ? invoke<AppItem[]>('search_apps', { query: romajiQuery })
@@ -300,6 +316,9 @@ function App() {
                 query: romajiQuery,
               })
             : Promise.resolve([]),
+          romajiQuery.trim()
+            ? invoke<CommandItem[]>('search_commands', { query: romajiQuery })
+            : Promise.resolve([]),
           kanaQuery.trim()
             ? invoke<AppItem[]>('search_apps', { query: kanaQuery })
             : Promise.resolve([]),
@@ -308,13 +327,18 @@ function App() {
                 query: kanaQuery,
               })
             : Promise.resolve([]),
+          kanaQuery.trim()
+            ? invoke<CommandItem[]>('search_commands', { query: kanaQuery })
+            : Promise.resolve([]),
         ]);
 
         console.log('Search results:', {
           romajiApps: romajiAppResults.length,
           romajiDirs: romajiDirResults.length,
+          romajiCmds: romajiCmdResults.length,
           kanaApps: kanaAppResults.length,
           kanaDirs: kanaDirResults.length,
+          kanaCmds: kanaCmdResults.length,
         });
 
         // 結果をマージして重複を削除
@@ -328,23 +352,23 @@ function App() {
           dirMap.set(dir.path, dir);
         });
 
+        const cmdMap = new Map<string, CommandItem>();
+        [...romajiCmdResults, ...kanaCmdResults].forEach((cmd) => {
+          cmdMap.set(cmd.alias, cmd);
+        });
+
         const allResults: SearchResult[] = [
           ...Array.from(appMap.values()),
           ...Array.from(dirMap.values()),
+          ...Array.from(cmdMap.values()),
         ];
 
-        // 履歴に基づいて結果をソート
+        // 履歴に基づいて結果をソート（コマンドはpathがないのでaliasを使用）
         const sortedResults = allResults.sort((a, b) => {
-          const freqA = calculateFrequency(
-            romajiQuery,
-            a.path,
-            selectionHistory,
-          );
-          const freqB = calculateFrequency(
-            romajiQuery,
-            b.path,
-            selectionHistory,
-          );
+          const keyA = isCommandItem(a) ? a.alias : a.path;
+          const keyB = isCommandItem(b) ? b.alias : b.path;
+          const freqA = calculateFrequency(romajiQuery, keyA, selectionHistory);
+          const freqB = calculateFrequency(romajiQuery, keyB, selectionHistory);
           return freqB - freqA; // 頻度が高い順
         });
 
@@ -397,7 +421,10 @@ function App() {
         block: 'nearest',
       });
     }
-  }, [selectedIndex, results.map((r) => r.path).join(',')]);
+  }, [
+    selectedIndex,
+    results.map((r) => (isCommandItem(r) ? r.alias : r.path)).join(','),
+  ]);
 
   // ウィンドウの可視性変更イベントを監視
   useEffect(() => {
@@ -531,15 +558,16 @@ function App() {
     [],
   );
 
-  // アプリ/ディレクトリ起動
+  // アプリ/ディレクトリ/コマンド起動
   const handleLaunch = useCallback(
     async (item: SearchResult) => {
       try {
-        // 履歴に記録
+        // 履歴に記録（コマンドの場合はaliasを使用）
         if (searchQuery.trim()) {
+          const selectedKey = isCommandItem(item) ? item.alias : item.path;
           const newHistory: SelectionHistory = {
             keyword: searchQuery.trim(),
-            selectedPath: item.path,
+            selectedPath: selectedKey,
             timestamp: Date.now(),
           };
 
@@ -553,12 +581,18 @@ function App() {
 
           console.log('履歴に記録:', {
             keyword: searchQuery.trim(),
-            path: item.path,
-            name: item.name,
+            selectedKey,
+            name: isCommandItem(item) ? item.alias : item.name,
           });
         }
 
-        if (isAppItem(item)) {
+        if (isCommandItem(item)) {
+          // コマンドを実行
+          await invoke('execute_command', {
+            command: item.command,
+            terminalType: defaultTerminal.current,
+          });
+        } else if (isAppItem(item)) {
           await invoke('launch_app', { path: item.path });
         } else {
           await invoke('open_directory', {
@@ -634,15 +668,17 @@ function App() {
         setSelectedIndex((prev) => Math.max(prev - 1, 0));
       } else if (e.key === 'ArrowRight' && results[selectedIndex]) {
         e.preventDefault();
-        // ディレクトリの場合、デフォルトターミナルで開く
+        // ディレクトリの場合、デフォルトターミナルで開く（コマンドは対象外）
         const item = results[selectedIndex];
         console.log(
           'ArrowRight pressed, item:',
           item,
           'isAppItem:',
           isAppItem(item),
+          'isCommandItem:',
+          isCommandItem(item),
         );
-        if (!isAppItem(item)) {
+        if (!isAppItem(item) && !isCommandItem(item)) {
           handleOpenInTerminal(item);
         }
       } else if (e.key === 'ArrowLeft') {
@@ -653,7 +689,7 @@ function App() {
           'results:',
           results,
         );
-        // ディレクトリの場合、エディタ選択ウィンドウを開く
+        // ディレクトリの場合、エディタ選択ウィンドウを開く（コマンドは対象外）
         if (results[selectedIndex]) {
           const item = results[selectedIndex];
           console.log(
@@ -661,12 +697,14 @@ function App() {
             item,
             'isAppItem:',
             isAppItem(item),
+            'isCommandItem:',
+            isCommandItem(item),
           );
-          if (!isAppItem(item)) {
+          if (!isAppItem(item) && !isCommandItem(item)) {
             console.log('Opening editor picker window...');
             handleOpenEditorPickerWindow(item);
           } else {
-            console.log('Item is an app, not opening editor picker');
+            console.log('Item is an app or command, not opening editor picker');
           }
         } else {
           console.log('No item selected');
@@ -840,8 +878,13 @@ function App() {
         <List
           dataSource={results}
           renderItem={(item, index) => {
-            const isDirectory = !isAppItem(item);
+            const isCommand = isCommandItem(item);
+            const isDirectory = !isAppItem(item) && !isCommand;
             const isSelected = index === selectedIndex;
+
+            // 表示名とサブテキストを決定
+            const displayName = isCommand ? item.alias : item.name;
+            const subText = isCommand ? item.command : item.path;
 
             return (
               <div
@@ -858,10 +901,19 @@ function App() {
                   <Space style={{ flex: 1 }}>
                     <ItemIcon item={item} />
                     <div style={{ flex: 1 }}>
-                      <Text strong>{item.name}</Text>
+                      <Text strong>{displayName}</Text>
                       <br />
-                      <Text type="secondary" style={{ fontSize: '12px' }}>
-                        {item.path}
+                      <Text
+                        type="secondary"
+                        style={{
+                          fontSize: '12px',
+                          ...(isCommand && {
+                            fontFamily: 'monospace',
+                            wordBreak: 'break-all',
+                          }),
+                        }}
+                      >
+                        {subText}
                       </Text>
                       {isDirectory && item.editor && (
                         <>

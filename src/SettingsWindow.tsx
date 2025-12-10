@@ -15,6 +15,7 @@ import {
   Select,
   Space,
   Switch,
+  Tabs,
   Typography,
 } from 'antd';
 import {
@@ -22,12 +23,13 @@ import {
   DeleteOutlined,
   EditOutlined,
   FolderAddOutlined,
+  PlusOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { emit } from '@tauri-apps/api/event';
-import type { Settings, RegisteredDirectory } from './types';
+import type { Settings, RegisteredDirectory, CustomCommand } from './types';
 import packageJson from '../package.json';
 import './Settings.css';
 
@@ -52,6 +54,11 @@ const SettingsWindow: React.FC = () => {
   const [availableTerminals, setAvailableTerminals] = useState<string[]>([]);
   const [editingDirectory, setEditingDirectory] =
     useState<RegisteredDirectory | null>(null);
+  const [addCmdModalVisible, setAddCmdModalVisible] = useState(false);
+  const [addCmdForm] = Form.useForm();
+  const [editingCommand, setEditingCommand] = useState<CustomCommand | null>(
+    null,
+  );
   const [editorIcons, setEditorIcons] = useState<Map<string, string>>(
     new Map(),
   );
@@ -254,6 +261,50 @@ const SettingsWindow: React.FC = () => {
       loadSettings();
     } catch (error) {
       console.error('Failed to remove directory:', error);
+    }
+  };
+
+  // コマンドを追加
+  const handleAddCommand = () => {
+    setEditingCommand(null);
+    addCmdForm.resetFields();
+    setAddCmdModalVisible(true);
+  };
+
+  // コマンド追加/編集を確定
+  const handleConfirmAddCommand = async () => {
+    try {
+      const values = await addCmdForm.validateFields();
+      const cmd: CustomCommand = {
+        alias: values.alias,
+        command: values.command,
+      };
+      await invoke('add_command', { cmd });
+      setAddCmdModalVisible(false);
+      setEditingCommand(null);
+      loadSettings();
+    } catch (error) {
+      console.error('Failed to add command:', error);
+    }
+  };
+
+  // コマンドを編集
+  const handleEditCommand = (cmd: CustomCommand) => {
+    setEditingCommand(cmd);
+    addCmdForm.setFieldsValue({
+      alias: cmd.alias,
+      command: cmd.command,
+    });
+    setAddCmdModalVisible(true);
+  };
+
+  // コマンドを削除
+  const handleRemoveCommand = async (alias: string) => {
+    try {
+      await invoke('remove_command', { alias });
+      loadSettings();
+    } catch (error) {
+      console.error('Failed to remove command:', error);
     }
   };
 
@@ -461,77 +512,167 @@ const SettingsWindow: React.FC = () => {
               </Button>
             </Card>
 
-            <Card
-              title="登録ディレクトリ"
-              bodyStyle={{ display: 'flex', flexDirection: 'column', gap: 12 }}
-            >
-              <Button
-                icon={<FolderAddOutlined />}
-                onClick={handleAddDirectory}
-                style={{ width: '100%' }}
-              >
-                ディレクトリを追加
-              </Button>
+            <Card bodyStyle={{ padding: 0 }}>
+              <Tabs
+                defaultActiveKey="directories"
+                items={[
+                  {
+                    key: 'directories',
+                    label: 'ディレクトリ',
+                    children: (
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 12,
+                          padding: '12px 16px',
+                        }}
+                      >
+                        <Button
+                          icon={<FolderAddOutlined />}
+                          onClick={handleAddDirectory}
+                          style={{ width: '100%' }}
+                        >
+                          ディレクトリを追加
+                        </Button>
 
-              <List
-                dataSource={
-                  settings?.registered_directories
-                    ? [...settings.registered_directories].sort((a, b) =>
-                        a.path.localeCompare(b.path),
-                      )
-                    : []
-                }
-                renderItem={(dir) => (
-                  <List.Item
-                    actions={[
-                      <Button
-                        key="edit"
-                        type="link"
-                        icon={<EditOutlined />}
-                        onClick={() => handleEditDirectory(dir)}
+                        <List
+                          dataSource={
+                            settings?.registered_directories
+                              ? [...settings.registered_directories].sort(
+                                  (a, b) => a.path.localeCompare(b.path),
+                                )
+                              : []
+                          }
+                          renderItem={(dir) => (
+                            <List.Item
+                              actions={[
+                                <Button
+                                  key="edit"
+                                  type="link"
+                                  icon={<EditOutlined />}
+                                  onClick={() => handleEditDirectory(dir)}
+                                >
+                                  編集
+                                </Button>,
+                                <Button
+                                  key="delete"
+                                  type="link"
+                                  danger
+                                  icon={<DeleteOutlined />}
+                                  onClick={() =>
+                                    handleRemoveDirectory(dir.path)
+                                  }
+                                >
+                                  削除
+                                </Button>,
+                              ]}
+                            >
+                              <List.Item.Meta
+                                title={dir.path}
+                                description={
+                                  <Space direction="vertical" size={0}>
+                                    <Text>
+                                      このディレクトリ自身:{' '}
+                                      {dir.parent_open_mode === 'none'
+                                        ? '表示しない'
+                                        : dir.parent_open_mode === 'finder'
+                                          ? 'Finderで開く'
+                                          : `${dir.parent_editor || 'エディタ'}で開く`}
+                                    </Text>
+                                    <Text>
+                                      配下のディレクトリ:{' '}
+                                      {dir.subdirs_open_mode === 'none'
+                                        ? '表示しない'
+                                        : dir.subdirs_open_mode === 'finder'
+                                          ? 'Finderで開く'
+                                          : `${dir.subdirs_editor || 'エディタ'}で開く`}
+                                    </Text>
+                                    <Text>
+                                      アプリスキャン:{' '}
+                                      {dir.scan_for_apps ? 'はい' : 'いいえ'}
+                                    </Text>
+                                  </Space>
+                                }
+                              />
+                            </List.Item>
+                          )}
+                        />
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'commands',
+                    label: 'コマンド',
+                    children: (
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 12,
+                          padding: '12px 16px',
+                        }}
                       >
-                        編集
-                      </Button>,
-                      <Button
-                        key="delete"
-                        type="link"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={() => handleRemoveDirectory(dir.path)}
-                      >
-                        削除
-                      </Button>,
-                    ]}
-                  >
-                    <List.Item.Meta
-                      title={dir.path}
-                      description={
-                        <Space direction="vertical" size={0}>
-                          <Text>
-                            このディレクトリ自身:{' '}
-                            {dir.parent_open_mode === 'none'
-                              ? '表示しない'
-                              : dir.parent_open_mode === 'finder'
-                                ? 'Finderで開く'
-                                : `${dir.parent_editor || 'エディタ'}で開く`}
-                          </Text>
-                          <Text>
-                            配下のディレクトリ:{' '}
-                            {dir.subdirs_open_mode === 'none'
-                              ? '表示しない'
-                              : dir.subdirs_open_mode === 'finder'
-                                ? 'Finderで開く'
-                                : `${dir.subdirs_editor || 'エディタ'}で開く`}
-                          </Text>
-                          <Text>
-                            アプリスキャン:{' '}
-                            {dir.scan_for_apps ? 'はい' : 'いいえ'}
-                          </Text>
-                        </Space>
-                      }
-                    />
-                  </List.Item>
-                )}
+                        <Button
+                          icon={<PlusOutlined />}
+                          onClick={handleAddCommand}
+                          style={{ width: '100%' }}
+                        >
+                          コマンドを追加
+                        </Button>
+
+                        <List
+                          dataSource={
+                            settings?.custom_commands
+                              ? [...settings.custom_commands].sort((a, b) =>
+                                  a.alias.localeCompare(b.alias),
+                                )
+                              : []
+                          }
+                          locale={{ emptyText: 'コマンドが登録されていません' }}
+                          renderItem={(cmd) => (
+                            <List.Item
+                              actions={[
+                                <Button
+                                  key="edit"
+                                  type="link"
+                                  icon={<EditOutlined />}
+                                  onClick={() => handleEditCommand(cmd)}
+                                >
+                                  編集
+                                </Button>,
+                                <Button
+                                  key="delete"
+                                  type="link"
+                                  danger
+                                  icon={<DeleteOutlined />}
+                                  onClick={() => handleRemoveCommand(cmd.alias)}
+                                >
+                                  削除
+                                </Button>,
+                              ]}
+                            >
+                              <List.Item.Meta
+                                title={cmd.alias}
+                                description={
+                                  <Text
+                                    code
+                                    style={{
+                                      wordBreak: 'break-all',
+                                      whiteSpace: 'pre-wrap',
+                                    }}
+                                  >
+                                    {cmd.command}
+                                  </Text>
+                                }
+                              />
+                            </List.Item>
+                          )}
+                        />
+                      </div>
+                    ),
+                  },
+                ]}
               />
             </Card>
           </div>
@@ -788,6 +929,46 @@ const SettingsWindow: React.FC = () => {
               このディレクトリ配下の.appファイルもスキャンする
             </Checkbox>
           </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* コマンド追加/編集モーダル */}
+      <Modal
+        title={editingCommand ? 'コマンドを編集' : 'コマンドを追加'}
+        open={addCmdModalVisible}
+        onCancel={() => {
+          setAddCmdModalVisible(false);
+          setEditingCommand(null);
+        }}
+        onOk={handleConfirmAddCommand}
+        okText={editingCommand ? '更新' : '追加'}
+        cancelText="キャンセル"
+      >
+        <Form form={addCmdForm} layout="vertical">
+          <Form.Item
+            name="alias"
+            label="エイリアス（検索キーワード）"
+            rules={[
+              { required: true, message: 'エイリアスを入力してください' },
+            ]}
+          >
+            <Input placeholder="例: deploy, build, test" />
+          </Form.Item>
+
+          <Form.Item
+            name="command"
+            label="実行するコマンド"
+            rules={[{ required: true, message: 'コマンドを入力してください' }]}
+          >
+            <Input.TextArea
+              placeholder="例: cd ~/project && npm run deploy"
+              autoSize={{ minRows: 2, maxRows: 6 }}
+            />
+          </Form.Item>
+
+          <Text type="secondary">
+            コマンドは設定されたデフォルトターミナルで実行されます。
+          </Text>
         </Form>
       </Modal>
     </div>

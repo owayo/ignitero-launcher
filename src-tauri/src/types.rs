@@ -15,6 +15,18 @@ pub struct DirectoryItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomCommand {
+    pub alias: String,   // 検索キーワード（エイリアス）
+    pub command: String, // 実行するコマンド
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandItem {
+    pub alias: String,
+    pub command: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowPosition {
     pub x: i32,
     pub y: i32,
@@ -87,6 +99,8 @@ pub struct UpdateCache {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Settings {
     pub registered_directories: Vec<RegisteredDirectory>,
+    #[serde(default)]
+    pub custom_commands: Vec<CustomCommand>,
     #[serde(default)]
     pub cache_update: CacheUpdateSettings,
     #[serde(default)]

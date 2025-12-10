@@ -1,4 +1,4 @@
-use crate::types::{AppItem, DirectoryItem};
+use crate::types::{AppItem, CommandItem, DirectoryItem};
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 
@@ -79,6 +79,31 @@ impl SearchEngine {
 
         // 上位20件を返す
         results.into_iter().take(20).map(|(_, dir)| dir).collect()
+    }
+
+    /// コマンドを検索
+    pub fn search_commands(&self, commands: &[CommandItem], query: &str) -> Vec<CommandItem> {
+        if query.is_empty() {
+            return Vec::new();
+        }
+
+        let normalized_query = normalize_for_search(query);
+
+        let mut results: Vec<(i64, CommandItem)> = commands
+            .iter()
+            .filter_map(|cmd| {
+                let normalized_alias = normalize_for_search(&cmd.alias);
+                self.matcher
+                    .fuzzy_match(&normalized_alias, &normalized_query)
+                    .map(|score| (score, cmd.clone()))
+            })
+            .collect();
+
+        // スコアで降順ソート
+        results.sort_by(|a, b| b.0.cmp(&a.0));
+
+        // 上位20件を返す
+        results.into_iter().take(20).map(|(_, cmd)| cmd).collect()
     }
 }
 

@@ -201,6 +201,69 @@ impl Launcher {
         None
     }
 
+    /// カスタムコマンドをターミナルで実行
+    pub fn execute_command(command: &str, terminal_type: &TerminalType) -> Result<(), String> {
+        match terminal_type {
+            TerminalType::Terminal => {
+                // macOSデフォルトターミナル（AppleScript経由）
+                let script = format!(
+                    r#"tell application "Terminal"
+                        activate
+                        do script "{}"
+                    end tell"#,
+                    command.replace('\\', "\\\\").replace('"', "\\\"")
+                );
+                Command::new("osascript")
+                    .arg("-e")
+                    .arg(&script)
+                    .spawn()
+                    .map_err(|e| format!("Failed to execute command in Terminal: {}", e))?;
+            }
+            TerminalType::Iterm2 => {
+                // iTerm2（AppleScript経由）
+                let script = format!(
+                    r#"tell application "iTerm"
+                        activate
+                        tell current window
+                            create tab with default profile
+                            tell current session
+                                write text "{}"
+                            end tell
+                        end tell
+                    end tell"#,
+                    command.replace('\\', "\\\\").replace('"', "\\\"")
+                );
+                Command::new("osascript")
+                    .arg("-e")
+                    .arg(&script)
+                    .spawn()
+                    .map_err(|e| format!("Failed to execute command in iTerm2: {}", e))?;
+            }
+            TerminalType::Warp => {
+                // Warp（AppleScript経由）
+                let script = format!(
+                    r#"tell application "Warp"
+                        activate
+                        tell application "System Events"
+                            keystroke "t" using command down
+                            delay 0.3
+                            keystroke "{}"
+                            keystroke return
+                        end tell
+                    end tell"#,
+                    command.replace('\\', "\\\\").replace('"', "\\\"")
+                );
+                Command::new("osascript")
+                    .arg("-e")
+                    .arg(&script)
+                    .spawn()
+                    .map_err(|e| format!("Failed to execute command in Warp: {}", e))?;
+            }
+        }
+
+        Ok(())
+    }
+
     /// ディレクトリをターミナルで開く
     pub fn open_in_terminal(path: &str, terminal_type: &TerminalType) -> Result<(), String> {
         // パスを正規化して検証
