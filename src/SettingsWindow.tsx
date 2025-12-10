@@ -334,10 +334,6 @@ const SettingsWindow: React.FC = () => {
 
   return (
     <div className="settings-container">
-      <div className="settings-header">
-        <Title level={3}>設定</Title>
-      </div>
-
       <div className="settings-layout settings-content">
         <Form
           form={form}
