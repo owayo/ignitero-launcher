@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Alert,
   Button,
-  Card,
   Checkbox,
-  Descriptions,
   Divider,
   Form,
   Input,
@@ -14,17 +12,19 @@ import {
   Radio,
   Select,
   Space,
-  Switch,
   Tabs,
   Typography,
 } from 'antd';
 import {
   CloudSyncOutlined,
+  CodeOutlined,
   DeleteOutlined,
   EditOutlined,
   FolderAddOutlined,
+  FolderOpenOutlined,
   PlusOutlined,
   ReloadOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
@@ -364,332 +364,381 @@ const SettingsWindow: React.FC = () => {
             }
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div
-              style={{
-                display: 'grid',
-                gap: 16,
-                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                alignItems: 'start',
-              }}
-            >
-              <Card
-                title="バージョンチェック"
-                bodyStyle={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 12,
-                }}
-              >
-                <Descriptions size="small" column={1}>
-                  <Descriptions.Item label="現在のバージョン">
-                    v{packageJson.version}
-                  </Descriptions.Item>
-                </Descriptions>
-                <Space>
-                  <Button
-                    type="primary"
-                    icon={<CloudSyncOutlined />}
-                    loading={checkingUpdate}
-                    onClick={handleCheckUpdates}
+          <Tabs
+            type="line"
+            defaultActiveKey="general"
+            style={{ marginTop: -8 }}
+            items={[
+              {
+                key: 'general',
+                label: (
+                  <span>
+                    <SettingOutlined />
+                    <span style={{ marginLeft: 8 }}>全般</span>
+                  </span>
+                ),
+                children: (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 24,
+                    }}
                   >
-                    更新を確認
-                  </Button>
-                  {updateInfo && !updateInfo.has_update && (
-                    <Text type="secondary">最新バージョンです</Text>
-                  )}
-                </Space>
-                {updateError && <Text type="danger">{updateError}</Text>}
-                {updateInfo?.has_update && (
-                  <Alert
-                    type="info"
-                    showIcon
-                    message={`最新版 v${updateInfo.latest_version} が利用可能です`}
-                    description={
-                      updateInfo.html_url ? (
-                        <a
-                          href={updateInfo.html_url}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          ダウンロードページを開く
-                        </a>
-                      ) : null
-                    }
-                  />
-                )}
-              </Card>
+                    {/* バージョンチェック */}
+                    <div>
+                      <Title level={5} style={{ marginBottom: 12 }}>
+                        バージョン
+                      </Title>
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Space>
+                          <Text>現在のバージョン:</Text>
+                          <Text strong>v{packageJson.version}</Text>
+                          {updateInfo && !updateInfo.has_update && (
+                            <Text
+                              type="success"
+                              style={{
+                                fontSize: 12,
+                                background: '#f6ffed',
+                                padding: '2px 8px',
+                                borderRadius: 4,
+                              }}
+                            >
+                              最新です
+                            </Text>
+                          )}
+                        </Space>
+                        <Space>
+                          <Button
+                            icon={<CloudSyncOutlined />}
+                            loading={checkingUpdate}
+                            onClick={handleCheckUpdates}
+                            size="small"
+                          >
+                            更新を確認
+                          </Button>
+                        </Space>
+                        {updateError && (
+                          <Text type="danger">{updateError}</Text>
+                        )}
+                        {updateInfo?.has_update && (
+                          <Alert
+                            type="info"
+                            showIcon
+                            message={`最新版 v${updateInfo.latest_version} が利用可能です`}
+                            description={
+                              updateInfo.html_url ? (
+                                <a
+                                  href={updateInfo.html_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  ダウンロードページを開く
+                                </a>
+                              ) : null
+                            }
+                          />
+                        )}
+                      </Space>
+                    </div>
 
-              <Card
-                title="デフォルトターミナル"
-                bodyStyle={{ paddingBottom: 0 }}
-              >
-                <Form.Item
-                  name="default_terminal"
-                  label="検索結果でディレクトリを選択して→キーを押したときに開くターミナル"
-                >
-                  <Radio.Group style={{ width: '100%' }}>
-                    {installedTerminals.map((terminal) => {
-                      const label =
-                        terminal === 'terminal'
-                          ? 'macOSデフォルトターミナル'
-                          : terminal === 'iterm2'
-                            ? 'iTerm2'
-                            : 'Warp';
-                      return (
-                        <Radio
-                          key={terminal}
-                          value={terminal}
-                          style={{ display: 'block', padding: '6px 0' }}
-                        >
-                          <Space align="center">
-                            {terminalIcons.get(terminal) && (
-                              <img
-                                src={terminalIcons.get(terminal)}
-                                alt={label}
-                                style={{
-                                  width: 16,
-                                  height: 16,
-                                  verticalAlign: 'middle',
-                                }}
-                              />
-                            )}
-                            {label}
-                          </Space>
-                        </Radio>
-                      );
-                    })}
-                    {installedTerminals.length === 0 && (
-                      <Text type="secondary">
-                        利用可能なターミナルが見つかりませんでした
+                    <Divider style={{ margin: 0 }} />
+
+                    {/* デフォルトターミナル */}
+                    <div>
+                      <Title level={5} style={{ marginBottom: 12 }}>
+                        デフォルトターミナル
+                      </Title>
+                      <Text
+                        type="secondary"
+                        style={{ display: 'block', marginBottom: 12 }}
+                      >
+                        ディレクトリを選択して→キーを押したとき、またはコマンドを実行するときに使用するターミナル
                       </Text>
-                    )}
-                  </Radio.Group>
-                </Form.Item>
-              </Card>
-            </div>
-
-            <Card title="キャッシュ更新" bodyStyle={{ paddingBottom: 0 }}>
-              <Form.Item
-                name="update_on_startup"
-                label="起動時に更新"
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-
-              <Form.Item
-                name="auto_update_enabled"
-                label="自動更新を有効化"
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-
-              <Form.Item noStyle shouldUpdate>
-                {() => {
-                  const autoUpdateEnabled = form.getFieldValue(
-                    'auto_update_enabled',
-                  );
-                  return (
-                    autoUpdateEnabled && (
-                      <Form.Item
-                        name="auto_update_interval_hours"
-                        label="自動更新間隔（時間）"
-                      >
-                        <InputNumber min={1} max={24} />
-                      </Form.Item>
-                    )
-                  );
-                }}
-              </Form.Item>
-
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={handleRefreshCache}
-                loading={loading}
-                style={{ width: '100%', marginTop: 8, marginBottom: 4 }}
-              >
-                今すぐキャッシュを更新
-              </Button>
-            </Card>
-
-            <Card bodyStyle={{ padding: 0 }}>
-              <Tabs
-                defaultActiveKey="directories"
-                items={[
-                  {
-                    key: 'directories',
-                    label: 'ディレクトリ',
-                    children: (
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 12,
-                          padding: '12px 16px',
-                        }}
-                      >
-                        <Button
-                          icon={<FolderAddOutlined />}
-                          onClick={handleAddDirectory}
-                          style={{ width: '100%' }}
-                        >
-                          ディレクトリを追加
-                        </Button>
-
-                        <List
-                          dataSource={
-                            settings?.registered_directories
-                              ? [...settings.registered_directories].sort(
-                                  (a, b) => a.path.localeCompare(b.path),
-                                )
-                              : []
-                          }
-                          renderItem={(dir) => (
-                            <List.Item
-                              actions={[
-                                <Button
-                                  key="edit"
-                                  type="link"
-                                  icon={<EditOutlined />}
-                                  onClick={() => handleEditDirectory(dir)}
-                                >
-                                  編集
-                                </Button>,
-                                <Button
-                                  key="delete"
-                                  type="link"
-                                  danger
-                                  icon={<DeleteOutlined />}
-                                  onClick={() =>
-                                    handleRemoveDirectory(dir.path)
-                                  }
-                                >
-                                  削除
-                                </Button>,
-                              ]}
-                            >
-                              <List.Item.Meta
-                                title={dir.path}
-                                description={
-                                  <Space direction="vertical" size={0}>
-                                    <Text>
-                                      このディレクトリ自身:{' '}
-                                      {dir.parent_open_mode === 'none'
-                                        ? '表示しない'
-                                        : dir.parent_open_mode === 'finder'
-                                          ? 'Finderで開く'
-                                          : `${dir.parent_editor || 'エディタ'}で開く`}
-                                    </Text>
-                                    <Text>
-                                      配下のディレクトリ:{' '}
-                                      {dir.subdirs_open_mode === 'none'
-                                        ? '表示しない'
-                                        : dir.subdirs_open_mode === 'finder'
-                                          ? 'Finderで開く'
-                                          : `${dir.subdirs_editor || 'エディタ'}で開く`}
-                                    </Text>
-                                    <Text>
-                                      アプリスキャン:{' '}
-                                      {dir.scan_for_apps ? 'はい' : 'いいえ'}
-                                    </Text>
-                                  </Space>
-                                }
-                              />
-                            </List.Item>
-                          )}
-                        />
-                      </div>
-                    ),
-                  },
-                  {
-                    key: 'commands',
-                    label: 'コマンド',
-                    children: (
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 12,
-                          padding: '12px 16px',
-                        }}
-                      >
-                        <Button
-                          icon={<PlusOutlined />}
-                          onClick={handleAddCommand}
-                          style={{ width: '100%' }}
-                        >
-                          コマンドを追加
-                        </Button>
-
-                        <List
-                          dataSource={
-                            settings?.custom_commands
-                              ? [...settings.custom_commands].sort((a, b) =>
-                                  a.alias.localeCompare(b.alias),
-                                )
-                              : []
-                          }
-                          locale={{ emptyText: 'コマンドが登録されていません' }}
-                          renderItem={(cmd) => (
-                            <List.Item
-                              actions={[
-                                <Button
-                                  key="edit"
-                                  type="link"
-                                  icon={<EditOutlined />}
-                                  onClick={() => handleEditCommand(cmd)}
-                                >
-                                  編集
-                                </Button>,
-                                <Button
-                                  key="delete"
-                                  type="link"
-                                  danger
-                                  icon={<DeleteOutlined />}
-                                  onClick={() => handleRemoveCommand(cmd.alias)}
-                                >
-                                  削除
-                                </Button>,
-                              ]}
-                            >
-                              <List.Item.Meta
-                                title={cmd.alias}
-                                description={
-                                  <div>
-                                    <Text
-                                      code
+                      <Form.Item name="default_terminal" style={{ margin: 0 }}>
+                        <Radio.Group style={{ width: '100%' }}>
+                          {installedTerminals.map((terminal) => {
+                            const label =
+                              terminal === 'terminal'
+                                ? 'macOSデフォルトターミナル'
+                                : terminal === 'iterm2'
+                                  ? 'iTerm2'
+                                  : 'Warp';
+                            return (
+                              <Radio
+                                key={terminal}
+                                value={terminal}
+                                style={{ display: 'block', padding: '6px 0' }}
+                              >
+                                <Space align="center">
+                                  {terminalIcons.get(terminal) && (
+                                    <img
+                                      src={terminalIcons.get(terminal)}
+                                      alt={label}
                                       style={{
-                                        wordBreak: 'break-all',
-                                        whiteSpace: 'pre-wrap',
+                                        width: 16,
+                                        height: 16,
+                                        verticalAlign: 'middle',
                                       }}
-                                    >
-                                      {cmd.command}
-                                    </Text>
-                                    {cmd.working_directory && (
-                                      <div style={{ marginTop: 4 }}>
-                                        <Text
-                                          type="secondary"
-                                          style={{ fontSize: 12 }}
-                                        >
-                                          📁 {cmd.working_directory}
-                                        </Text>
-                                      </div>
-                                    )}
-                                  </div>
-                                }
-                              />
-                            </List.Item>
+                                    />
+                                  )}
+                                  {label}
+                                </Space>
+                              </Radio>
+                            );
+                          })}
+                          {installedTerminals.length === 0 && (
+                            <Text type="secondary">
+                              利用可能なターミナルが見つかりませんでした
+                            </Text>
                           )}
-                        />
-                      </div>
-                    ),
-                  },
-                ]}
-              />
-            </Card>
-          </div>
+                        </Radio.Group>
+                      </Form.Item>
+                    </div>
+
+                    <Divider style={{ margin: 0 }} />
+
+                    {/* キャッシュ更新 */}
+                    <div>
+                      <Title level={5} style={{ marginBottom: 12 }}>
+                        キャッシュ更新
+                      </Title>
+                      <Space
+                        direction="vertical"
+                        size="middle"
+                        style={{ width: '100%' }}
+                      >
+                        <Form.Item
+                          name="update_on_startup"
+                          valuePropName="checked"
+                          style={{ margin: 0 }}
+                        >
+                          <Checkbox>起動時にキャッシュを更新する</Checkbox>
+                        </Form.Item>
+
+                        <Form.Item
+                          name="auto_update_enabled"
+                          valuePropName="checked"
+                          style={{ margin: 0 }}
+                        >
+                          <Checkbox>自動更新を有効にする</Checkbox>
+                        </Form.Item>
+
+                        <Form.Item noStyle shouldUpdate>
+                          {() => {
+                            const autoUpdateEnabled = form.getFieldValue(
+                              'auto_update_enabled',
+                            );
+                            return (
+                              autoUpdateEnabled && (
+                                <Form.Item
+                                  name="auto_update_interval_hours"
+                                  label="自動更新間隔（時間）"
+                                  style={{ margin: 0, marginLeft: 24 }}
+                                >
+                                  <InputNumber
+                                    min={1}
+                                    max={24}
+                                    style={{ width: 80 }}
+                                  />
+                                </Form.Item>
+                              )
+                            );
+                          }}
+                        </Form.Item>
+
+                        <Button
+                          icon={<ReloadOutlined />}
+                          onClick={handleRefreshCache}
+                          loading={loading}
+                        >
+                          今すぐキャッシュを更新
+                        </Button>
+                      </Space>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                key: 'directories',
+                label: (
+                  <span>
+                    <FolderOpenOutlined />
+                    <span style={{ marginLeft: 8 }}>ディレクトリ</span>
+                  </span>
+                ),
+                children: (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 12,
+                    }}
+                  >
+                    <Button
+                      type="primary"
+                      icon={<FolderAddOutlined />}
+                      onClick={handleAddDirectory}
+                    >
+                      ディレクトリを追加
+                    </Button>
+
+                    <List
+                      dataSource={
+                        settings?.registered_directories
+                          ? [...settings.registered_directories].sort((a, b) =>
+                              a.path.localeCompare(b.path),
+                            )
+                          : []
+                      }
+                      locale={{
+                        emptyText: 'ディレクトリが登録されていません',
+                      }}
+                      renderItem={(dir) => (
+                        <List.Item
+                          actions={[
+                            <Button
+                              key="edit"
+                              type="link"
+                              icon={<EditOutlined />}
+                              onClick={() => handleEditDirectory(dir)}
+                            >
+                              編集
+                            </Button>,
+                            <Button
+                              key="delete"
+                              type="link"
+                              danger
+                              icon={<DeleteOutlined />}
+                              onClick={() => handleRemoveDirectory(dir.path)}
+                            >
+                              削除
+                            </Button>,
+                          ]}
+                        >
+                          <List.Item.Meta
+                            title={dir.path}
+                            description={
+                              <Space direction="vertical" size={0}>
+                                <Text type="secondary">
+                                  このディレクトリ:{' '}
+                                  {dir.parent_open_mode === 'none'
+                                    ? '表示しない'
+                                    : dir.parent_open_mode === 'finder'
+                                      ? 'Finderで開く'
+                                      : `${dir.parent_editor || 'エディタ'}で開く`}
+                                </Text>
+                                <Text type="secondary">
+                                  配下のディレクトリ:{' '}
+                                  {dir.subdirs_open_mode === 'none'
+                                    ? '表示しない'
+                                    : dir.subdirs_open_mode === 'finder'
+                                      ? 'Finderで開く'
+                                      : `${dir.subdirs_editor || 'エディタ'}で開く`}
+                                </Text>
+                                {dir.scan_for_apps && (
+                                  <Text type="secondary">
+                                    アプリスキャン: 有効
+                                  </Text>
+                                )}
+                              </Space>
+                            }
+                          />
+                        </List.Item>
+                      )}
+                    />
+                  </div>
+                ),
+              },
+              {
+                key: 'commands',
+                label: (
+                  <span>
+                    <CodeOutlined />
+                    <span style={{ marginLeft: 8 }}>コマンド</span>
+                  </span>
+                ),
+                children: (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 12,
+                    }}
+                  >
+                    <Button
+                      type="primary"
+                      icon={<PlusOutlined />}
+                      onClick={handleAddCommand}
+                    >
+                      コマンドを追加
+                    </Button>
+
+                    <List
+                      dataSource={
+                        settings?.custom_commands
+                          ? [...settings.custom_commands].sort((a, b) =>
+                              a.alias.localeCompare(b.alias),
+                            )
+                          : []
+                      }
+                      locale={{ emptyText: 'コマンドが登録されていません' }}
+                      renderItem={(cmd) => (
+                        <List.Item
+                          actions={[
+                            <Button
+                              key="edit"
+                              type="link"
+                              icon={<EditOutlined />}
+                              onClick={() => handleEditCommand(cmd)}
+                            >
+                              編集
+                            </Button>,
+                            <Button
+                              key="delete"
+                              type="link"
+                              danger
+                              icon={<DeleteOutlined />}
+                              onClick={() => handleRemoveCommand(cmd.alias)}
+                            >
+                              削除
+                            </Button>,
+                          ]}
+                        >
+                          <List.Item.Meta
+                            title={cmd.alias}
+                            description={
+                              <div>
+                                <Text
+                                  code
+                                  style={{
+                                    wordBreak: 'break-all',
+                                    whiteSpace: 'pre-wrap',
+                                  }}
+                                >
+                                  {cmd.command}
+                                </Text>
+                                {cmd.working_directory && (
+                                  <div style={{ marginTop: 4 }}>
+                                    <Text
+                                      type="secondary"
+                                      style={{ fontSize: 12 }}
+                                    >
+                                      📁 {cmd.working_directory}
+                                    </Text>
+                                  </div>
+                                )}
+                              </div>
+                            }
+                          />
+                        </List.Item>
+                      )}
+                    />
+                  </div>
+                ),
+              },
+            ]}
+          />
         </Form>
       </div>
 
