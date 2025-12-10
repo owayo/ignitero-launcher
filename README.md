@@ -286,7 +286,6 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 設定は以下の場所に保存されます：
 - 設定ファイル: `~/.config/ignitero-launcher/settings.json`
 - キャッシュDB: `~/.config/ignitero-launcher/cache.db`
-- アクセシビリティ権限キャッシュ: `~/.config/ignitero-launcher/accessibility.json`
 - アイコンキャッシュ: `~/.cache/ignitero/icons/`
 
 ## ショートカット
