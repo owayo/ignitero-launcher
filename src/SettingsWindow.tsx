@@ -280,7 +280,7 @@ const SettingsWindow: React.FC = () => {
         command: values.command,
         working_directory: values.working_directory || undefined,
       };
-      await invoke('add_command', { cmd });
+      await invoke('add_command', { command: cmd });
       setAddCmdModalVisible(false);
       setEditingCommand(null);
       loadSettings();
