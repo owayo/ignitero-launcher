@@ -39,6 +39,7 @@ fn create_test_state() -> AppState {
     AppState {
         apps: Mutex::new(test_apps),
         directories: Mutex::new(test_dirs),
+        commands: Mutex::new(vec![]),
         search_engine: SearchEngineExport::new(),
         settings_manager: SettingsManagerExport::new(),
         cache_db: Mutex::new(CacheDB::new_in_memory().unwrap()),
@@ -132,6 +133,7 @@ fn test_multiple_results() {
     let state = AppState {
         apps: Mutex::new(test_apps),
         directories: Mutex::new(vec![]),
+        commands: Mutex::new(vec![]),
         search_engine: SearchEngineExport::new(),
         settings_manager: SettingsManagerExport::new(),
         cache_db: Mutex::new(CacheDB::new_in_memory().unwrap()),

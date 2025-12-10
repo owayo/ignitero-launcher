@@ -83,7 +83,11 @@ fn execute_command(
     state: State<AppState>,
 ) -> Result<(), String> {
     let settings = state.settings_manager.get_settings();
-    Launcher::execute_command(&command, working_directory.as_deref(), &settings.default_terminal)
+    Launcher::execute_command(
+        &command,
+        working_directory.as_deref(),
+        &settings.default_terminal,
+    )
 }
 
 fn refresh_commands(state: State<AppState>) -> Result<(), String> {
