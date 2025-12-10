@@ -844,7 +844,11 @@ function App() {
             const isSelected = index === selectedIndex;
 
             return (
-              <div ref={(el) => (itemRefs.current[index] = el)}>
+              <div
+                ref={(el) => {
+                  itemRefs.current[index] = el;
+                }}
+              >
                 <List.Item
                   className={`result-item ${isSelected ? 'selected' : ''}`}
                   onClick={() => handleLaunch(item)}
