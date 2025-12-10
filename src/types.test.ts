@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import type {
   AppItem,
   DirectoryItem,
+  CustomCommand,
+  CommandItem,
   EditorInfo,
   WindowState,
   WindowPosition,
@@ -34,6 +36,54 @@ describe('Type definitions', () => {
     expect(dir.name).toBe('Projects');
     expect(dir.path).toBe('/Users/test/Projects');
     expect(dir.editor).toBe('cursor');
+  });
+
+  // CustomCommand 型のテスト
+  it('should create CustomCommand correctly', () => {
+    const cmd: CustomCommand = {
+      alias: 'dev',
+      command: 'pnpm dev',
+    };
+
+    expect(cmd.alias).toBe('dev');
+    expect(cmd.command).toBe('pnpm dev');
+    expect(cmd.working_directory).toBeUndefined();
+  });
+
+  it('should create CustomCommand with working_directory', () => {
+    const cmd: CustomCommand = {
+      alias: 'build',
+      command: 'pnpm build',
+      working_directory: '/Users/test/project',
+    };
+
+    expect(cmd.alias).toBe('build');
+    expect(cmd.command).toBe('pnpm build');
+    expect(cmd.working_directory).toBe('/Users/test/project');
+  });
+
+  // CommandItem 型のテスト
+  it('should create CommandItem correctly', () => {
+    const item: CommandItem = {
+      alias: 'test',
+      command: 'pnpm test',
+    };
+
+    expect(item.alias).toBe('test');
+    expect(item.command).toBe('pnpm test');
+    expect(item.working_directory).toBeUndefined();
+  });
+
+  it('should create CommandItem with working_directory', () => {
+    const item: CommandItem = {
+      alias: 'lint',
+      command: 'pnpm lint',
+      working_directory: '/Users/test/project',
+    };
+
+    expect(item.alias).toBe('lint');
+    expect(item.command).toBe('pnpm lint');
+    expect(item.working_directory).toBe('/Users/test/project');
   });
 
   it('should support OpenMode types', () => {
@@ -216,5 +266,37 @@ describe('Type definitions', () => {
       expect(registeredDir.parent_editor).toBe(editorId);
       expect(registeredDir.subdirs_editor).toBe(editorId);
     });
+  });
+
+  // カスタムコマンドを含むSettings
+  it('should create Settings with custom commands', () => {
+    const settings: Settings = {
+      registered_directories: [],
+      custom_commands: [
+        {
+          alias: 'dev',
+          command: 'pnpm dev',
+        },
+        {
+          alias: 'build',
+          command: 'pnpm build',
+          working_directory: '/Users/test/project',
+        },
+      ],
+      cache_update: {
+        update_on_startup: true,
+        auto_update_enabled: false,
+        auto_update_interval_hours: 24,
+      },
+      default_terminal: 'terminal',
+    };
+
+    expect(settings.custom_commands).toHaveLength(2);
+    expect(settings.custom_commands[0].alias).toBe('dev');
+    expect(settings.custom_commands[0].working_directory).toBeUndefined();
+    expect(settings.custom_commands[1].alias).toBe('build');
+    expect(settings.custom_commands[1].working_directory).toBe(
+      '/Users/test/project',
+    );
   });
 });
