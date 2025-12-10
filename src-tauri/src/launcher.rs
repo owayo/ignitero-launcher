@@ -257,12 +257,28 @@ impl Launcher {
             TerminalType::Warp => {
                 // Warpは直接的なAppleScriptコマンド実行に対応していないため、
                 // 一時的な.commandファイルを作成してWarpで開く
+                // 参考: Warpには AppleScript辞書がなく、CLIもエージェント用のみ
                 let temp_dir = std::env::temp_dir();
                 let script_path =
                     temp_dir.join(format!("ignitero_cmd_{}.command", std::process::id()));
 
-                // スクリプト内容を作成（実行後もシェルを維持）
-                let script_content = format!("#!/bin/bash\n{}\nexec $SHELL", full_command);
+                // コマンドの短い説明を作成（タブタイトル用）
+                let tab_title = if full_command.len() > 30 {
+                    format!("{}...", &full_command[..27])
+                } else {
+                    full_command.clone()
+                };
+                // タブタイトルに使えない文字をエスケープ
+                let tab_title = tab_title.replace('\n', " ").replace('\r', "");
+
+                // スクリプト内容を作成
+                // - OSC エスケープシーケンスでタブタイトルを上書き
+                // - 実行後もシェルを維持
+                let script_content = format!(
+                    "#!/bin/zsh\nprintf '\\033]0;%s\\007' \"{}\"\n{}\nexec $SHELL",
+                    tab_title.replace('"', "\\\""),
+                    full_command
+                );
                 fs::write(&script_path, &script_content)
                     .map_err(|e| format!("Failed to write temp script: {}", e))?;
 
