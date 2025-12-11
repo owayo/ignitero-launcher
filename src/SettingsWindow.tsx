@@ -404,16 +404,14 @@ const SettingsWindow: React.FC = () => {
                             </Text>
                           )}
                         </Space>
-                        <Space>
-                          <Button
-                            icon={<CloudSyncOutlined />}
-                            loading={checkingUpdate}
-                            onClick={handleCheckUpdates}
-                            size="small"
-                          >
-                            更新を確認
-                          </Button>
-                        </Space>
+                        <Button
+                          type="primary"
+                          icon={<CloudSyncOutlined />}
+                          loading={checkingUpdate}
+                          onClick={handleCheckUpdates}
+                        >
+                          更新を確認
+                        </Button>
                         {updateError && (
                           <Text type="danger">{updateError}</Text>
                         )}
@@ -544,6 +542,7 @@ const SettingsWindow: React.FC = () => {
                         </Form.Item>
 
                         <Button
+                          type="primary"
                           icon={<ReloadOutlined />}
                           onClick={handleRefreshCache}
                           loading={loading}
@@ -1029,7 +1028,34 @@ const SettingsWindow: React.FC = () => {
             name="working_directory"
             label="実行ディレクトリ（省略可）"
           >
-            <Input placeholder="例: ~/project または /Users/name/project" />
+            <Space.Compact style={{ width: '100%' }}>
+              <Form.Item name="working_directory" noStyle>
+                <Input
+                  placeholder="例: ~/project または /Users/name/project"
+                  style={{ flex: 1 }}
+                />
+              </Form.Item>
+              <Button
+                icon={<FolderOpenOutlined />}
+                onClick={async () => {
+                  try {
+                    const selected = await open({
+                      directory: true,
+                      multiple: false,
+                      defaultPath:
+                        addCmdForm.getFieldValue('working_directory') || '/',
+                    });
+                    if (selected && typeof selected === 'string') {
+                      addCmdForm.setFieldValue('working_directory', selected);
+                    }
+                  } catch (error) {
+                    console.error('Failed to open folder picker:', error);
+                  }
+                }}
+              >
+                選択
+              </Button>
+            </Space.Compact>
           </Form.Item>
 
           <Text type="secondary">

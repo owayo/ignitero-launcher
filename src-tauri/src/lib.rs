@@ -569,7 +569,8 @@ fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
             WebviewWindowBuilder::new(&app, "settings", WebviewUrl::App("settings.html".into()))
                 .title("設定 - Ignitero Launcher")
                 .inner_size(800.0, 600.0)
-                .resizable(true);
+                .resizable(true)
+                .always_on_top(true);
 
         // メインウィンドウと同じディスプレイに表示
         if let Some(pos) = main_window_position {
