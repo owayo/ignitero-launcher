@@ -158,7 +158,7 @@ const ItemIcon: React.FC<{ item: SearchResult }> = ({ item }) => {
           <FolderFilled
             style={{
               fontSize: '32px',
-              color: '#f3c07a',
+              color: '#5EB3F4',
               position: 'absolute',
               top: 0,
               left: 0,
@@ -186,7 +186,7 @@ const ItemIcon: React.FC<{ item: SearchResult }> = ({ item }) => {
     }
 
     // エディタなしまたはアイコン読み込み失敗時は通常のフォルダアイコン
-    return <FolderFilled style={{ fontSize: '32px', color: '#f3c07a' }} />;
+    return <FolderFilled style={{ fontSize: '32px', color: '#5EB3F4' }} />;
   }
 };
 
