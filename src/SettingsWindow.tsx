@@ -719,7 +719,10 @@ const SettingsWindow: React.FC = () => {
                                       type="secondary"
                                       style={{ fontSize: 12 }}
                                     >
-                                      📁 {cmd.working_directory}
+                                      <FolderOpenOutlined
+                                        style={{ marginRight: 4 }}
+                                      />
+                                      {cmd.working_directory}
                                     </Text>
                                   </div>
                                 )}
