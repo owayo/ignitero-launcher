@@ -79,10 +79,10 @@ impl IconConverter {
 
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().and_then(|s| s.to_str()) == Some("png") {
-                if std::fs::remove_file(&path).is_ok() {
-                    deleted_count += 1;
-                }
+            if path.extension().and_then(|s| s.to_str()) == Some("png")
+                && std::fs::remove_file(&path).is_ok()
+            {
+                deleted_count += 1;
             }
         }
 
