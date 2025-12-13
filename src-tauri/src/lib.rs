@@ -287,6 +287,14 @@ fn convert_icon_to_png(icon_path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn clear_icon_cache() -> Result<usize, String> {
+    use icon_converter::IconConverter;
+
+    let converter = IconConverter::new()?;
+    converter.clear_cache()
+}
+
+#[tauri::command]
 fn get_editor_icon_path(editor: String) -> Result<Option<String>, String> {
     let app_path = match editor.as_str() {
         "windsurf" => std::path::PathBuf::from("/Applications/Windsurf.app"),
@@ -990,6 +998,7 @@ pub fn run() {
             get_terminal_list,
             force_english_input_wrapper,
             convert_icon_to_png,
+            clear_icon_cache,
             get_editor_icon_path,
             get_terminal_icon_path,
             check_update,

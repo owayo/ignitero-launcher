@@ -8,6 +8,7 @@ import {
   Input,
   InputNumber,
   List,
+  message,
   Modal,
   Radio,
   Select,
@@ -46,7 +47,6 @@ interface UpdateInfo {
 const SettingsWindow: React.FC = () => {
   const [form] = Form.useForm();
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [loading, setLoading] = useState(false);
   const [addDirModalVisible, setAddDirModalVisible] = useState(false);
   const [addDirForm] = Form.useForm();
   const [selectedPath, setSelectedPath] = useState<string>('');
@@ -68,6 +68,7 @@ const SettingsWindow: React.FC = () => {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [refreshingCache, setRefreshingCache] = useState(false);
 
   // インストール済みエディタを取得
   const loadAvailableEditors = async () => {
@@ -313,14 +314,31 @@ const SettingsWindow: React.FC = () => {
   // キャッシュを手動更新
   const handleRefreshCache = async () => {
     try {
-      setLoading(true);
+      setRefreshingCache(true);
       await invoke('refresh_cache');
-      alert('キャッシュを更新しました');
+      message.success('キャッシュを更新しました');
     } catch (error) {
       console.error('Failed to refresh cache:', error);
-      alert('キャッシュの更新に失敗しました');
+      message.error('キャッシュの更新に失敗しました');
     } finally {
-      setLoading(false);
+      setRefreshingCache(false);
+    }
+  };
+
+  // アイコンキャッシュを更新（クリア後に再生成）
+  const handleRefreshIconCache = async () => {
+    try {
+      setRefreshingCache(true);
+      // キャッシュをクリア
+      await invoke<number>('clear_icon_cache');
+      // 再スキャンしてアイコンを再生成
+      await invoke('refresh_cache');
+      message.success('アイコンキャッシュを更新しました');
+    } catch (error) {
+      console.error('Failed to refresh icon cache:', error);
+      message.error('アイコンキャッシュの更新に失敗しました');
+    } finally {
+      setRefreshingCache(false);
     }
   };
 
@@ -541,14 +559,27 @@ const SettingsWindow: React.FC = () => {
                           }}
                         </Form.Item>
 
-                        <Button
-                          type="primary"
-                          icon={<ReloadOutlined />}
-                          onClick={handleRefreshCache}
-                          loading={loading}
-                        >
-                          今すぐキャッシュを更新
-                        </Button>
+                        <Space direction="vertical" size="small">
+                          <Button
+                            type="primary"
+                            icon={<ReloadOutlined />}
+                            onClick={handleRefreshCache}
+                            loading={refreshingCache}
+                          >
+                            今すぐキャッシュを更新
+                          </Button>
+                          <Button
+                            type="primary"
+                            icon={<ReloadOutlined />}
+                            onClick={handleRefreshIconCache}
+                            loading={refreshingCache}
+                          >
+                            アイコンキャッシュを更新
+                          </Button>
+                          <Text type="secondary">
+                            アプリのアイコンが変わった場合はアイコンキャッシュを更新してください
+                          </Text>
+                        </Space>
                       </Space>
                     </div>
                   </div>

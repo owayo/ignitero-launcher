@@ -65,4 +65,27 @@ impl IconConverter {
         path.hash(&mut hasher);
         format!("{:x}", hasher.finish())
     }
+
+    /// アイコンキャッシュディレクトリ内のすべてのPNGファイルを削除
+    pub fn clear_cache(&self) -> Result<usize, String> {
+        let mut deleted_count = 0;
+
+        if !self.cache_dir.exists() {
+            return Ok(0);
+        }
+
+        let entries = std::fs::read_dir(&self.cache_dir)
+            .map_err(|e| format!("Failed to read cache directory: {}", e))?;
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) == Some("png") {
+                if std::fs::remove_file(&path).is_ok() {
+                    deleted_count += 1;
+                }
+            }
+        }
+
+        Ok(deleted_count)
+    }
 }
