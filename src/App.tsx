@@ -14,6 +14,8 @@ import {
   SettingOutlined,
   ReloadOutlined,
   CalculatorOutlined,
+  LeftOutlined,
+  RightOutlined,
 } from '@ant-design/icons';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
@@ -972,7 +974,7 @@ function App() {
                           color: 'rgba(60, 60, 70, 0.8)',
                         }}
                       >
-                        <span style={{ fontWeight: 500 }}>←</span>
+                        <LeftOutlined style={{ fontSize: 10 }} />
                         <span>エディタ選択</span>
                       </div>
                       <div
@@ -988,7 +990,7 @@ function App() {
                           color: 'rgba(60, 60, 70, 0.8)',
                         }}
                       >
-                        <span style={{ fontWeight: 500 }}>→</span>
+                        <RightOutlined style={{ fontSize: 10 }} />
                         <span>ターミナル</span>
                       </div>
                     </div>
