@@ -13,7 +13,6 @@ import {
   SearchOutlined,
   SettingOutlined,
   ReloadOutlined,
-  MoreOutlined,
   CalculatorOutlined,
 } from '@ant-design/icons';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
@@ -949,21 +948,26 @@ function App() {
                     </div>
                   </Space>
                   {isDirectory && isSelected && (
-                    <Button
-                      icon={<MoreOutlined />}
-                      size="small"
-                      type="text"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenEditorPickerWindow(item);
-                      }}
+                    <div
                       style={{
                         position: 'absolute',
                         right: 8,
                         top: '50%',
                         transform: 'translateY(-50%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        border: '1px solid rgba(255, 120, 71, 0.4)',
+                        background: 'rgba(255, 255, 255, 0.8)',
+                        fontSize: 11,
+                        color: 'rgba(60, 60, 70, 0.8)',
                       }}
-                    />
+                    >
+                      <span style={{ fontWeight: 500 }}>→</span>
+                      <span>ターミナル</span>
+                    </div>
                   )}
                 </List.Item>
               </div>
