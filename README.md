@@ -2,6 +2,8 @@
 
 <img src="./app-icon.png" alt="Ignitero Launcher" width="100">
 
+[![CI](https://github.com/owayo/ignitero-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/owayo/ignitero-launcher/actions/workflows/ci.yml)
+
 **`Option` + `Space`で即座に呼び出せるメニューバー常駐ランチャー。** Antigravity・Cursor・VS Code・Windsurfをプロジェクトごとに切り替えられ、検索して`Enter`を押すだけで指定エディタが瞬時に立ち上がるから、複数エディタ併用派でも迷子にならない。
 
 `→`キーひとつでターミナルを開き、macOSターミナル/iTerm2/WarpからClaude Code・Codex・Gemini CLIなどをすぐ呼び出せるので、相談しながらコードを書く流れが止まらない。プロジェクト切り替えもキーボード操作だけで完結し、現代のマルチツール開発ワークフローを高速化する「手が覚える」ランチャーです。
