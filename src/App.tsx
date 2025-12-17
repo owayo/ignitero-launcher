@@ -91,7 +91,17 @@ const calculateFrequency = (
 const editorIconCache = new Map<string, string>();
 
 // アイコンコンポーネント
-const ItemIcon: React.FC<{ item: SearchResult }> = ({ item }) => {
+const ItemIcon: React.FC<{ item: SearchResult; isSelected?: boolean }> = ({
+  item,
+  isSelected = false,
+}) => {
+  const iconStyle = {
+    transition: 'transform 140ms ease, filter 160ms ease',
+    transform: isSelected ? 'scale(1.25)' : 'scale(1)',
+    filter: isSelected
+      ? 'drop-shadow(0 2px 6px rgba(255, 120, 71, 0.18))'
+      : 'none',
+  };
   const [hasError, setHasError] = React.useState(false);
   const [editorIconPath, setEditorIconPath] = React.useState<string | null>(
     null,
@@ -128,7 +138,11 @@ const ItemIcon: React.FC<{ item: SearchResult }> = ({ item }) => {
 
   // コマンドアイテムの場合は専用アイコンを表示
   if (isCommandItem(item)) {
-    return <CodeOutlined style={{ fontSize: '32px', color: '#f7a500' }} />;
+    return (
+      <CodeOutlined
+        style={{ fontSize: '32px', color: '#f7a500', ...iconStyle }}
+      />
+    );
   }
 
   if (isAppItem(item)) {
@@ -139,7 +153,7 @@ const ItemIcon: React.FC<{ item: SearchResult }> = ({ item }) => {
         <img
           src={iconUrl}
           alt=""
-          style={{ width: 32, height: 32, borderRadius: 4 }}
+          style={{ width: 32, height: 32, borderRadius: 4, ...iconStyle }}
           onError={() => {
             console.error('Failed to load icon:', item.icon_path, '→', iconUrl);
             setHasError(true);
@@ -147,7 +161,7 @@ const ItemIcon: React.FC<{ item: SearchResult }> = ({ item }) => {
         />
       );
     }
-    return <AppstoreOutlined style={{ fontSize: '32px' }} />;
+    return <AppstoreOutlined style={{ fontSize: '32px', ...iconStyle }} />;
   } else {
     // ディレクトリアイコン
     // エディタが設定されている場合、フォルダアイコンの中央にエディタアイコンを重ねる
@@ -155,7 +169,9 @@ const ItemIcon: React.FC<{ item: SearchResult }> = ({ item }) => {
       const editorIconUrl = convertFileSrc(editorIconPath);
 
       return (
-        <div style={{ position: 'relative', width: 32, height: 32 }}>
+        <div
+          style={{ position: 'relative', width: 32, height: 32, ...iconStyle }}
+        >
           <FolderFilled
             style={{
               fontSize: '32px',
@@ -187,7 +203,11 @@ const ItemIcon: React.FC<{ item: SearchResult }> = ({ item }) => {
     }
 
     // エディタなしまたはアイコン読み込み失敗時は通常のフォルダアイコン
-    return <FolderFilled style={{ fontSize: '32px', color: '#5EB3F4' }} />;
+    return (
+      <FolderFilled
+        style={{ fontSize: '32px', color: '#5EB3F4', ...iconStyle }}
+      />
+    );
   }
 };
 
@@ -900,9 +920,20 @@ function App() {
                   style={{ position: 'relative' }}
                 >
                   <Space style={{ flex: 1 }}>
-                    <ItemIcon item={item} />
+                    <ItemIcon item={item} isSelected={isSelected} />
                     <div style={{ flex: 1 }}>
-                      <Text strong>{displayName}</Text>
+                      <Text
+                        strong
+                        style={{
+                          fontSize: isSelected ? 17 : 14,
+                          fontWeight: isSelected ? 600 : 500,
+                          color: isSelected ? '#d84d21' : undefined,
+                          transition:
+                            'font-size 140ms ease, font-weight 140ms ease, color 160ms ease',
+                        }}
+                      >
+                        {displayName}
+                      </Text>
                       <br />
                       <Text
                         type="secondary"
