@@ -112,3 +112,169 @@ pub struct Settings {
     #[serde(default)]
     pub main_window_position: Option<WindowPosition>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_open_mode_default() {
+        let mode: OpenMode = Default::default();
+        assert_eq!(mode, OpenMode::None);
+    }
+
+    #[test]
+    fn test_terminal_type_default() {
+        let terminal: TerminalType = Default::default();
+        assert_eq!(terminal, TerminalType::Terminal);
+    }
+
+    #[test]
+    fn test_cache_update_settings_default() {
+        let settings = CacheUpdateSettings::default();
+        assert!(settings.update_on_startup);
+        assert!(settings.auto_update_enabled);
+        assert_eq!(settings.auto_update_interval_hours, 6);
+    }
+
+    #[test]
+    fn test_update_cache_default() {
+        let cache = UpdateCache::default();
+        assert!(cache.last_checked.is_none());
+        assert!(cache.latest_version.is_none());
+        assert!(cache.html_url.is_none());
+        assert!(cache.dismissed_version.is_none());
+    }
+
+    #[test]
+    fn test_settings_default() {
+        let settings = Settings::default();
+        assert!(settings.registered_directories.is_empty());
+        assert!(settings.custom_commands.is_empty());
+        assert_eq!(settings.default_terminal, TerminalType::Terminal);
+        assert!(settings.main_window_position.is_none());
+    }
+
+    #[test]
+    fn test_app_item_serialization() {
+        let app = AppItem {
+            name: "Safari".to_string(),
+            path: "/Applications/Safari.app".to_string(),
+            icon_path: Some("/path/to/icon.png".to_string()),
+        };
+        let json = serde_json::to_string(&app).unwrap();
+        assert!(json.contains("Safari"));
+        assert!(json.contains("/Applications/Safari.app"));
+
+        let deserialized: AppItem = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.name, "Safari");
+        assert_eq!(deserialized.path, "/Applications/Safari.app");
+        assert_eq!(
+            deserialized.icon_path,
+            Some("/path/to/icon.png".to_string())
+        );
+    }
+
+    #[test]
+    fn test_directory_item_serialization() {
+        let dir = DirectoryItem {
+            name: "Projects".to_string(),
+            path: "/Users/test/Projects".to_string(),
+            editor: Some("cursor".to_string()),
+        };
+        let json = serde_json::to_string(&dir).unwrap();
+        let deserialized: DirectoryItem = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.name, "Projects");
+        assert_eq!(deserialized.editor, Some("cursor".to_string()));
+    }
+
+    #[test]
+    fn test_custom_command_serialization() {
+        let cmd = CustomCommand {
+            alias: "dev".to_string(),
+            command: "pnpm dev".to_string(),
+            working_directory: Some("/Users/test/project".to_string()),
+        };
+        let json = serde_json::to_string(&cmd).unwrap();
+        let deserialized: CustomCommand = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.alias, "dev");
+        assert_eq!(deserialized.command, "pnpm dev");
+        assert_eq!(
+            deserialized.working_directory,
+            Some("/Users/test/project".to_string())
+        );
+    }
+
+    #[test]
+    fn test_open_mode_serialization() {
+        let modes = vec![OpenMode::None, OpenMode::Finder, OpenMode::Editor];
+        for mode in modes {
+            let json = serde_json::to_string(&mode).unwrap();
+            let deserialized: OpenMode = serde_json::from_str(&json).unwrap();
+            assert_eq!(deserialized, mode);
+        }
+    }
+
+    #[test]
+    fn test_terminal_type_serialization() {
+        let terminals = vec![
+            TerminalType::Terminal,
+            TerminalType::Iterm2,
+            TerminalType::Warp,
+        ];
+        for terminal in terminals {
+            let json = serde_json::to_string(&terminal).unwrap();
+            let deserialized: TerminalType = serde_json::from_str(&json).unwrap();
+            assert_eq!(deserialized, terminal);
+        }
+    }
+
+    #[test]
+    fn test_registered_directory_with_defaults() {
+        let json = r#"{
+            "path": "/Users/test/Projects",
+            "scan_for_apps": true
+        }"#;
+        let dir: RegisteredDirectory = serde_json::from_str(json).unwrap();
+        assert_eq!(dir.path, "/Users/test/Projects");
+        assert_eq!(dir.parent_open_mode, OpenMode::None);
+        assert_eq!(dir.subdirs_open_mode, OpenMode::None);
+        assert!(dir.scan_for_apps);
+        assert!(dir.parent_editor.is_none());
+        assert!(dir.subdirs_editor.is_none());
+    }
+
+    #[test]
+    fn test_window_position() {
+        let pos = WindowPosition { x: 100, y: 200 };
+        let json = serde_json::to_string(&pos).unwrap();
+        let deserialized: WindowPosition = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.x, 100);
+        assert_eq!(deserialized.y, 200);
+    }
+
+    #[test]
+    fn test_command_item_without_working_directory() {
+        let cmd = CommandItem {
+            alias: "build".to_string(),
+            command: "pnpm build".to_string(),
+            working_directory: None,
+        };
+        let json = serde_json::to_string(&cmd).unwrap();
+        assert!(json.contains("build"));
+        let deserialized: CommandItem = serde_json::from_str(&json).unwrap();
+        assert!(deserialized.working_directory.is_none());
+    }
+
+    #[test]
+    fn test_app_item_without_icon() {
+        let app = AppItem {
+            name: "TestApp".to_string(),
+            path: "/Applications/TestApp.app".to_string(),
+            icon_path: None,
+        };
+        let json = serde_json::to_string(&app).unwrap();
+        let deserialized: AppItem = serde_json::from_str(&json).unwrap();
+        assert!(deserialized.icon_path.is_none());
+    }
+}

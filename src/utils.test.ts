@@ -1,11 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { AppItem, DirectoryItem } from './types';
+import type { AppItem, DirectoryItem, CommandItem } from './types';
 
 // ユーティリティ関数を再定義（App.tsxから抽出）
-type SearchResult = AppItem | DirectoryItem;
+type SearchResult = AppItem | DirectoryItem | CommandItem;
 
 function isAppItem(item: SearchResult): item is AppItem {
   return 'icon_path' in item;
+}
+
+function isCommandItem(item: SearchResult): item is CommandItem {
+  return 'command' in item && 'alias' in item && !('path' in item);
 }
 
 interface SelectionHistory {
@@ -56,6 +60,83 @@ describe('Utility Functions', () => {
       };
 
       expect(isAppItem(appItem)).toBe(true);
+    });
+
+    it('should return false for CommandItem', () => {
+      const cmdItem: CommandItem = {
+        alias: 'dev',
+        command: 'pnpm dev',
+      };
+
+      expect(isAppItem(cmdItem)).toBe(false);
+    });
+  });
+
+  describe('isCommandItem', () => {
+    it('should return true for CommandItem', () => {
+      const cmdItem: CommandItem = {
+        alias: 'dev',
+        command: 'pnpm dev',
+      };
+
+      expect(isCommandItem(cmdItem)).toBe(true);
+    });
+
+    it('should return true for CommandItem with working_directory', () => {
+      const cmdItem: CommandItem = {
+        alias: 'build',
+        command: 'pnpm build',
+        working_directory: '/Users/test/project',
+      };
+
+      expect(isCommandItem(cmdItem)).toBe(true);
+    });
+
+    it('should return false for AppItem', () => {
+      const appItem: AppItem = {
+        name: 'Safari',
+        path: '/Applications/Safari.app',
+        icon_path: undefined,
+      };
+
+      expect(isCommandItem(appItem)).toBe(false);
+    });
+
+    it('should return false for DirectoryItem', () => {
+      const dirItem: DirectoryItem = {
+        name: 'Projects',
+        path: '/Users/test/Projects',
+        editor: undefined,
+      };
+
+      expect(isCommandItem(dirItem)).toBe(false);
+    });
+
+    it('should return false for item with path property even if it has command and alias', () => {
+      // This tests the !('path' in item) condition
+      const mixedItem = {
+        alias: 'test',
+        command: 'test command',
+        path: '/some/path',
+      };
+
+      expect(isCommandItem(mixedItem as SearchResult)).toBe(false);
+    });
+
+    it('should return false for item with only command property', () => {
+      const partialItem = {
+        command: 'test command',
+      };
+
+      expect(isCommandItem(partialItem as SearchResult)).toBe(false);
+    });
+
+    it('should return false for item with only alias property', () => {
+      const partialItem = {
+        alias: 'test',
+      };
+
+      expect(isCommandItem(partialItem as SearchResult)).toBe(false);
     });
   });
 
