@@ -941,9 +941,7 @@ function App() {
                               gap: '4px',
                             }}
                           >
-                            <FolderFilled
-                              style={{ fontSize: '11px', color: '#5EB3F4' }}
-                            />
+                            <FolderFilled style={{ fontSize: '11px' }} />
                             {item.working_directory}
                           </Text>
                         </>
