@@ -8,14 +8,14 @@ import React, {
 import { Input, List, Typography, Space, Button, Tooltip, Alert } from 'antd';
 import {
   AppstoreOutlined,
+  ArrowLeftOutlined,
+  ArrowRightOutlined,
   CodeOutlined,
   FolderFilled,
   SearchOutlined,
   SettingOutlined,
   ReloadOutlined,
   CalculatorOutlined,
-  LeftOutlined,
-  RightOutlined,
 } from '@ant-design/icons';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
@@ -974,7 +974,7 @@ function App() {
                           color: 'rgba(60, 60, 70, 0.8)',
                         }}
                       >
-                        <LeftOutlined style={{ fontSize: 10 }} />
+                        <ArrowLeftOutlined style={{ fontSize: 10 }} />
                         <span>エディタ選択</span>
                       </div>
                       <div
@@ -990,7 +990,7 @@ function App() {
                           color: 'rgba(60, 60, 70, 0.8)',
                         }}
                       >
-                        <RightOutlined style={{ fontSize: 10 }} />
+                        <ArrowRightOutlined style={{ fontSize: 10 }} />
                         <span>ターミナル</span>
                       </div>
                     </div>
