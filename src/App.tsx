@@ -956,17 +956,41 @@ function App() {
                         transform: 'translateY(-50%)',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 4,
-                        padding: '2px 8px',
-                        borderRadius: 4,
-                        border: '1px solid rgba(255, 120, 71, 0.4)',
-                        background: 'rgba(255, 255, 255, 0.8)',
-                        fontSize: 11,
-                        color: 'rgba(60, 60, 70, 0.8)',
+                        gap: 8,
                       }}
                     >
-                      <span style={{ fontWeight: 500 }}>→</span>
-                      <span>ターミナル</span>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          border: '1px solid rgba(255, 120, 71, 0.4)',
+                          background: 'rgba(255, 255, 255, 0.8)',
+                          fontSize: 11,
+                          color: 'rgba(60, 60, 70, 0.8)',
+                        }}
+                      >
+                        <span style={{ fontWeight: 500 }}>←</span>
+                        <span>エディタ選択</span>
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          border: '1px solid rgba(255, 120, 71, 0.4)',
+                          background: 'rgba(255, 255, 255, 0.8)',
+                          fontSize: 11,
+                          color: 'rgba(60, 60, 70, 0.8)',
+                        }}
+                      >
+                        <span style={{ fontWeight: 500 }}>→</span>
+                        <span>ターミナル</span>
+                      </div>
                     </div>
                   )}
                 </List.Item>
