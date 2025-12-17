@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
+import { CodeOutlined } from '@ant-design/icons';
 import type { EditorInfo } from './types';
 import './index.css';
 
@@ -485,7 +486,7 @@ export const EditorPickerWindow: React.FC = () => {
                       : '0 2px 8px rgba(0, 0, 0, 0.15)',
                   }}
                 >
-                  📝
+                  <CodeOutlined />
                 </div>
               )}
               <div

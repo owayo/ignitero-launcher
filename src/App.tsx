@@ -884,11 +884,7 @@ function App() {
 
             // 表示名とサブテキストを決定
             const displayName = isCommand ? item.alias : item.name;
-            const subText = isCommand
-              ? item.working_directory
-                ? `${item.command} (📁 ${item.working_directory})`
-                : item.command
-              : item.path;
+            const subText = isCommand ? item.command : item.path;
 
             return (
               <div
@@ -930,6 +926,25 @@ function App() {
                             }}
                           >
                             {item.editor}で開く
+                          </Text>
+                        </>
+                      )}
+                      {isCommand && item.working_directory && (
+                        <>
+                          <br />
+                          <Text
+                            type="secondary"
+                            style={{
+                              fontSize: '11px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                          >
+                            <FolderFilled
+                              style={{ fontSize: '11px', color: '#5EB3F4' }}
+                            />
+                            {item.working_directory}
                           </Text>
                         </>
                       )}
