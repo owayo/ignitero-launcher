@@ -927,9 +927,8 @@ function App() {
                         style={{
                           fontSize: isSelected ? 17 : 14,
                           fontWeight: isSelected ? 600 : 500,
-                          color: isSelected ? '#d84d21' : undefined,
                           transition:
-                            'font-size 140ms ease, font-weight 140ms ease, color 160ms ease',
+                            'font-size 140ms ease, font-weight 140ms ease',
                         }}
                       >
                         {displayName}
