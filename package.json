@@ -10,7 +10,6 @@
     "fmt": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "tauri": "tauri",
     "tauri:build": "pnpm fmt && pnpm tauri:fmt && tauri build",
-    "tauri:release-build": "node update-version.js && pnpm fmt && pnpm tauri:fmt && tauri build",
     "tauri:fmt": "cd src-tauri && cargo fmt",
     "tauri:update": "pnpm update --latest @tauri-apps/cli @tauri-apps/api @tauri-apps/plugin-dialog @tauri-apps/plugin-global-shortcut @tauri-apps/plugin-shell",
     "tauri:update:cargo": "cd src-tauri && cargo update",
