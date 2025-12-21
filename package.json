@@ -1,7 +1,7 @@
 {
   "name": "ignitero-launcher",
   "private": true,
-  "version": "25.12.100",
+  "version": "25.12.101",
   "type": "module",
   "scripts": {
     "dev": "vite",

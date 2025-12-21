@@ -1714,7 +1714,7 @@ dependencies = [
 
 [[package]]
 name = "ignitero-launcher"
-version = "25.12.100"
+version = "25.12.101"
 dependencies = [
  "core-foundation 0.9.4",
  "fuzzy-matcher",
