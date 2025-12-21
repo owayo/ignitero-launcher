@@ -4,7 +4,20 @@
 
 <h1 align="center">Ignitero Launcher</h1>
 
-[![CI](https://github.com/owayo/ignitero-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/owayo/ignitero-launcher/actions/workflows/ci.yml)
+<p align="center">
+  <a href="https://github.com/owayo/ignitero-launcher/actions/workflows/ci.yml">
+    <img alt="CI" src="https://github.com/owayo/ignitero-launcher/actions/workflows/ci.yml/badge.svg">
+  </a>
+  <a href="https://github.com/owayo/ignitero-launcher/actions/workflows/release.yml">
+    <img alt="Release" src="https://github.com/owayo/ignitero-launcher/actions/workflows/release.yml/badge.svg">
+  </a>
+  <a href="https://github.com/owayo/ignitero-launcher/releases/latest">
+    <img alt="Version" src="https://img.shields.io/github/v/release/owayo/ignitero-launcher">
+  </a>
+  <a href="LICENSE">
+    <img alt="License" src="https://img.shields.io/github/license/owayo/ignitero-launcher">
+  </a>
+</p>
 
 **`Option` + `Space`で即座に呼び出せるメニューバー常駐ランチャー。** Antigravity・Cursor・VS Code・Windsurfをプロジェクトごとに切り替えられ、検索して`Enter`を押すだけで指定エディタが瞬時に立ち上がるから、複数エディタ併用派でも迷子にならない。
 
