@@ -1,6 +1,8 @@
-# Ignitero Launcher
+<p align="center">
+  <img src="docs/images/icon.png" width="128" alt="Ignitero Launcher">
+</p>
 
-<img src="./app-icon.png" alt="Ignitero Launcher" width="100">
+<h1 align="center">Ignitero Launcher</h1>
 
 [![CI](https://github.com/owayo/ignitero-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/owayo/ignitero-launcher/actions/workflows/ci.yml)
 
