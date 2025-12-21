@@ -95,9 +95,6 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
-            args: --target universal-apple-darwin
-            artifact_suffix: universal
-          - platform: macos-latest
             args: --target x86_64-apple-darwin
             artifact_suffix: x86_64
           - platform: macos-latest
