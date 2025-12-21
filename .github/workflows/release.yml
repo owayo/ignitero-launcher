@@ -1,0 +1,214 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (skip actual release)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  prepare-release:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      tag: ${{ steps.bump.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version
+        id: bump
+        run: |
+          # Use 2-digit year (YY) for Windows MSI compatibility (major version must be <= 255)
+          YEAR=$(date +%y)
+          MONTH=$(date +%-m)
+
+          CURRENT=$(grep '"version"' src-tauri/tauri.conf.json | head -1 | sed 's/.*"\([0-9][^"]*\)".*/\1/')
+          echo "Current version: ${CURRENT}"
+
+          if echo "${CURRENT}" | grep -qE '^[0-9]{2,4}\.[0-9]{1,2}\.[0-9]+$'; then
+            OLD_YEAR=$(echo "${CURRENT}" | cut -d. -f1)
+            OLD_MONTH=$(echo "${CURRENT}" | cut -d. -f2)
+            OLD_COUNTER=$(echo "${CURRENT}" | cut -d. -f3)
+            # Handle both 2-digit and 4-digit year formats
+            OLD_YEAR_2DIGIT=$(echo "${OLD_YEAR}" | sed 's/^20//')
+            if [ "${OLD_YEAR_2DIGIT}" = "${YEAR}" ] && [ "${OLD_MONTH}" = "${MONTH}" ]; then
+              NEW_COUNTER=$((OLD_COUNTER + 1))
+            else
+              NEW_COUNTER=100
+            fi
+          else
+            NEW_COUNTER=100
+          fi
+
+          NEW_VERSION="${YEAR}.${MONTH}.${NEW_COUNTER}"
+          echo "New version: ${NEW_VERSION}"
+
+          # Update version files
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${NEW_VERSION}\"/" package.json
+          sed -i "s/^version = \"[^\"]*\"/version = \"${NEW_VERSION}\"/" src-tauri/Cargo.toml
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${NEW_VERSION}\"/" src-tauri/tauri.conf.json
+
+          # Update Cargo.lock if exists
+          if [ -f "src-tauri/Cargo.lock" ]; then
+            cd src-tauri && cargo generate-lockfile 2>/dev/null || true && cd ..
+          fi
+
+          echo "version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${NEW_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Commit and tag
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
+          [ -f "pnpm-lock.yaml" ] && git add pnpm-lock.yaml || true
+          [ -f "src-tauri/Cargo.lock" ] && git add src-tauri/Cargo.lock || true
+
+          git commit -m "Release ${{ steps.bump.outputs.tag }}"
+          git tag -a "${{ steps.bump.outputs.tag }}" -m "Release ${{ steps.bump.outputs.tag }}"
+          git push origin HEAD "${{ steps.bump.outputs.tag }}"
+
+      - name: Dry run info
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "Dry run mode - skipping commit and tag"
+          echo "Would release: ${{ steps.bump.outputs.tag }}"
+
+  build-tauri:
+    name: Build Tauri App
+    needs: prepare-release
+    if: ${{ !inputs.dry_run }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+            artifact_suffix: universal
+          - platform: macos-latest
+            args: --target x86_64-apple-darwin
+            artifact_suffix: x86_64
+          - platform: macos-latest
+            args: --target aarch64-apple-darwin
+            artifact_suffix: aarch64
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.tag }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_SIGNING_IDENTITY: '-'
+          ENABLE_CODE_SIGNING: false
+          TAURI_SKIP_DEVSERVER_CHECK: true
+        with:
+          args: ${{ matrix.args }}
+          includeUpdaterJson: false
+
+      - name: Apply ad-hoc signature and remove quarantine
+        run: |
+          # Apply ad-hoc signature to .app bundles
+          find src-tauri/target -name "*.app" -type d | while read app; do
+            echo "Ad-hoc signing: $app"
+            codesign --remove-signature "$app" 2>/dev/null || true
+            codesign --force --deep --sign - "$app"
+            xattr -cr "$app"
+          done
+
+          # Process DMG files
+          find src-tauri/target -name "*.dmg" -type f | while read dmg; do
+            echo "Processing DMG: $dmg"
+            MOUNT_POINT=$(mktemp -d)
+
+            hdiutil attach "$dmg" -nobrowse -mountpoint "$MOUNT_POINT"
+
+            find "$MOUNT_POINT" -name "*.app" -type d | while read app; do
+              echo "Removing quarantine from app in DMG: $app"
+              xattr -cr "$app"
+            done
+
+            hdiutil detach "$MOUNT_POINT"
+            xattr -cr "$dmg"
+          done
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ignitero-launcher-${{ matrix.artifact_suffix }}
+          path: |
+            src-tauri/target/*/release/bundle/dmg/*.dmg
+          retention-days: 7
+
+  create-release:
+    name: Create Release
+    needs: [prepare-release, build-tauri]
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.tag }}
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -laR ./artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.prepare-release.outputs.tag }}
+          name: Release ${{ needs.prepare-release.outputs.tag }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            ./artifacts/**/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release summary
+        run: echo "Released ${{ needs.prepare-release.outputs.tag }}"
