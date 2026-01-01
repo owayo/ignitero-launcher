@@ -9,6 +9,7 @@ mod settings;
 mod system_tray;
 pub mod types;
 mod update_checker;
+mod window_corners;
 
 use app_scanner::AppScanner;
 use cache::CacheDB;
@@ -438,6 +439,11 @@ fn open_editor_picker_window(
         e.to_string()
     })?;
 
+    // macOS 26 (Tahoe) 対応: ウィンドウに角丸マスクを適用
+    if let Err(e) = window_corners::apply_window_corners(&window) {
+        eprintln!("[editor-picker] failed to apply window corners: {e}");
+    }
+
     // 中央に配置（メインウィンドウと同じディスプレイ上で）
     if let Err(e) = window.center() {
         eprintln!("[editor-picker] failed to center window: {e}");
@@ -763,7 +769,7 @@ pub fn run() {
             // キャッシュを初期化
             let settings = app.state::<AppState>().settings_manager.get_settings();
 
-            // 前回位置が保存されていれば復元
+            // 前回位置が保存されていれば復元し、角丸マスクを適用
             if let Some(window) = app.get_webview_window("main") {
                 if let Some(ref position) = settings.main_window_position {
                     if let Err(e) =
@@ -771,6 +777,11 @@ pub fn run() {
                     {
                         eprintln!("Failed to restore main window position: {}", e);
                     }
+                }
+
+                // macOS 26 (Tahoe) 対応: ウィンドウに角丸マスクを適用
+                if let Err(e) = window_corners::apply_window_corners(&window) {
+                    eprintln!("Failed to apply window corners to main window: {}", e);
                 }
             }
 
