@@ -172,7 +172,7 @@
 }
 
 .result-item {
-  cursor: pointer;
+  cursor: default;
   padding: 12px 16px;
   border-left: 3px solid transparent;
   transition: all 0.2s ease;
@@ -180,11 +180,6 @@
 
 .result-item .ant-space {
   margin-left: 5px;
-}
-
-.result-item:hover {
-  background: rgba(255, 255, 255, 0.4);
-  color: rgba(40, 40, 45, 0.95);
 }
 
 .result-item.selected {
@@ -202,7 +197,6 @@
   color: inherit;
 }
 
-.result-item:hover .ant-typography,
 .result-item.selected .ant-typography {
   color: inherit;
 }
@@ -212,7 +206,6 @@
   color: rgba(100, 100, 110, 0.65);
 }
 
-.result-item:hover .ant-typography-secondary,
 .result-item.selected .ant-typography-secondary {
   color: rgba(80, 80, 90, 0.75);
 }

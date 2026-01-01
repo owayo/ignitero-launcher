@@ -74,17 +74,42 @@ const saveHistory = (history: SelectionHistory[]) => {
   }
 };
 
-// キーワードで選択された項目の頻度を計算
-const calculateFrequency = (
-  keyword: string,
+// 履歴マッチング結果の型定義
+interface HistoryMatch {
+  frequency: number;
+  matchType: 'exact' | 'prefix' | 'none';
+}
+
+// キーワードに対する選択履歴のマッチングスコアを計算
+const calculateHistoryMatch = (
+  currentKeyword: string,
   path: string,
   history: SelectionHistory[],
-): number => {
-  return history.filter(
+): HistoryMatch => {
+  const normalizedCurrent = currentKeyword.toLowerCase().trim();
+
+  // 完全一致の履歴をカウント
+  const exactMatches = history.filter(
     (h) =>
-      h.keyword.toLowerCase() === keyword.toLowerCase() &&
+      h.keyword.toLowerCase() === normalizedCurrent && h.selectedPath === path,
+  );
+
+  if (exactMatches.length > 0) {
+    return { frequency: exactMatches.length, matchType: 'exact' };
+  }
+
+  // 前方一致の履歴をカウント（currentKeyword が履歴キーワードの前方部分）
+  const prefixMatches = history.filter(
+    (h) =>
+      h.keyword.toLowerCase().startsWith(normalizedCurrent) &&
       h.selectedPath === path,
-  ).length;
+  );
+
+  if (prefixMatches.length > 0) {
+    return { frequency: prefixMatches.length, matchType: 'prefix' };
+  }
+
+  return { frequency: 0, matchType: 'none' };
 };
 
 // エディタアイコンキャッシュ（アプリ全体で共有）
@@ -388,9 +413,26 @@ function App() {
         const sortedResults = allResults.sort((a, b) => {
           const keyA = isCommandItem(a) ? a.alias : a.path;
           const keyB = isCommandItem(b) ? b.alias : b.path;
-          const freqA = calculateFrequency(romajiQuery, keyA, selectionHistory);
-          const freqB = calculateFrequency(romajiQuery, keyB, selectionHistory);
-          return freqB - freqA; // 頻度が高い順
+
+          const matchA = calculateHistoryMatch(
+            romajiQuery,
+            keyA,
+            selectionHistory,
+          );
+          const matchB = calculateHistoryMatch(
+            romajiQuery,
+            keyB,
+            selectionHistory,
+          );
+
+          // 1. マッチタイプで優先度を決定（exact > prefix > none）
+          const typeOrder = { exact: 2, prefix: 1, none: 0 };
+          const typeCompare =
+            typeOrder[matchB.matchType] - typeOrder[matchA.matchType];
+          if (typeCompare !== 0) return typeCompare;
+
+          // 2. 同じマッチタイプ内では頻度順
+          return matchB.frequency - matchA.frequency;
         });
 
         setResults(sortedResults);
@@ -915,8 +957,6 @@ function App() {
               >
                 <List.Item
                   className={`result-item ${isSelected ? 'selected' : ''}`}
-                  onClick={() => handleLaunch(item)}
-                  onMouseEnter={() => setSelectedIndex(index)}
                   style={{ position: 'relative' }}
                 >
                   <Space style={{ flex: 1 }}>
