@@ -1,6 +1,6 @@
 [package]
 name = "ignitero-launcher"
-version = "26.1.100"
+version = "26.1.101"
 description = "Ignitero Launcher - A powerful app and directory launcher for macOS"
 authors = ["you"]
 edition = "2021"
