@@ -12,6 +12,7 @@ fn test_cache_db_lifecycle() {
         name: "TestApp".to_string(),
         path: "/Applications/TestApp.app".to_string(),
         icon_path: None,
+        original_name: None,
     }];
 
     cache.save_apps(&test_apps).expect("Failed to save apps");
@@ -50,6 +51,7 @@ fn test_search_engine_with_large_dataset() {
             name: format!("App{}", i),
             path: format!("/Applications/App{}.app", i),
             icon_path: None,
+            original_name: None,
         })
         .collect();
 
@@ -95,16 +97,19 @@ fn test_integration_search_flow() {
             name: "Safari".to_string(),
             path: "/Applications/Safari.app".to_string(),
             icon_path: None,
+            original_name: None,
         },
         types::AppItem {
             name: "Mail".to_string(),
             path: "/Applications/Mail.app".to_string(),
             icon_path: None,
+            original_name: None,
         },
         types::AppItem {
             name: "Calendar".to_string(),
             path: "/Applications/Calendar.app".to_string(),
             icon_path: None,
+            original_name: None,
         },
     ];
 
@@ -130,11 +135,13 @@ fn test_cache_save_load_cycle() {
             name: "App1".to_string(),
             path: "/Applications/App1.app".to_string(),
             icon_path: None,
+            original_name: None,
         },
         types::AppItem {
             name: "App2".to_string(),
             path: "/Applications/App2.app".to_string(),
             icon_path: Some("/path/to/icon.png".to_string()),
+            original_name: None,
         },
     ];
 
@@ -194,11 +201,13 @@ fn test_concurrent_search() {
             name: "Safari".to_string(),
             path: "/Applications/Safari.app".to_string(),
             icon_path: None,
+            original_name: None,
         },
         types::AppItem {
             name: "Mail".to_string(),
             path: "/Applications/Mail.app".to_string(),
             icon_path: None,
+            original_name: None,
         },
     ]);
 

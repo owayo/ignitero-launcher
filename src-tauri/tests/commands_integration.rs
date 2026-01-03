@@ -10,16 +10,19 @@ fn create_test_state() -> AppState {
             name: "Safari".to_string(),
             path: "/Applications/Safari.app".to_string(),
             icon_path: None,
+            original_name: None,
         },
         types::AppItem {
             name: "Mail".to_string(),
             path: "/Applications/Mail.app".to_string(),
             icon_path: None,
+            original_name: None,
         },
         types::AppItem {
             name: "Calendar".to_string(),
             path: "/Applications/Calendar.app".to_string(),
             icon_path: None,
+            original_name: None,
         },
     ];
 
@@ -127,6 +130,7 @@ fn test_multiple_results() {
             name: format!("TestApp{}", i),
             path: format!("/Applications/TestApp{}.app", i),
             icon_path: None,
+            original_name: None,
         });
     }
 

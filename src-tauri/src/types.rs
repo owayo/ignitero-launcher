@@ -5,6 +5,9 @@ pub struct AppItem {
     pub name: String,
     pub path: String,
     pub icon_path: Option<String>,
+    /// オリジナルのファイルシステム名（英語名）。検索時に使用。
+    #[serde(default)]
+    pub original_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -161,6 +164,7 @@ mod tests {
             name: "Safari".to_string(),
             path: "/Applications/Safari.app".to_string(),
             icon_path: Some("/path/to/icon.png".to_string()),
+            original_name: Some("Safari".to_string()),
         };
         let json = serde_json::to_string(&app).unwrap();
         assert!(json.contains("Safari"));
@@ -173,6 +177,7 @@ mod tests {
             deserialized.icon_path,
             Some("/path/to/icon.png".to_string())
         );
+        assert_eq!(deserialized.original_name, Some("Safari".to_string()));
     }
 
     #[test]
@@ -272,9 +277,11 @@ mod tests {
             name: "TestApp".to_string(),
             path: "/Applications/TestApp.app".to_string(),
             icon_path: None,
+            original_name: None,
         };
         let json = serde_json::to_string(&app).unwrap();
         let deserialized: AppItem = serde_json::from_str(&json).unwrap();
         assert!(deserialized.icon_path.is_none());
+        assert!(deserialized.original_name.is_none());
     }
 }

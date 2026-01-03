@@ -47,14 +47,27 @@ impl CacheDB {
                 name TEXT NOT NULL,
                 path TEXT NOT NULL UNIQUE,
                 icon_path TEXT,
+                original_name TEXT,
                 last_updated INTEGER NOT NULL
             )",
             [],
         )?;
 
+        // original_name カラムを追加（既存テーブルのマイグレーション）
+        // カラムが存在しない場合のみ追加
+        let _ = self
+            .conn
+            .execute("ALTER TABLE apps ADD COLUMN original_name TEXT", []);
+
         // アプリ名の検索用インデックス
         self.conn
             .execute("CREATE INDEX IF NOT EXISTS idx_apps_name ON apps(name)", [])?;
+
+        // original_name の検索用インデックス
+        self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_apps_original_name ON apps(original_name)",
+            [],
+        )?;
 
         // ディレクトリテーブル
         self.conn.execute(
@@ -101,8 +114,8 @@ impl CacheDB {
 
         for app in apps {
             tx.execute(
-                "INSERT INTO apps (name, path, icon_path, last_updated) VALUES (?, ?, ?, ?)",
-                params![app.name, app.path, app.icon_path, now],
+                "INSERT INTO apps (name, path, icon_path, original_name, last_updated) VALUES (?, ?, ?, ?, ?)",
+                params![app.name, app.path, app.icon_path, app.original_name, now],
             )?;
         }
 
@@ -114,7 +127,7 @@ impl CacheDB {
     pub fn load_apps(&self) -> Result<Vec<AppItem>> {
         let mut stmt = self
             .conn
-            .prepare("SELECT name, path, icon_path FROM apps ORDER BY name")?;
+            .prepare("SELECT name, path, icon_path, original_name FROM apps ORDER BY name")?;
 
         let apps = stmt
             .query_map([], |row| {
@@ -122,6 +135,7 @@ impl CacheDB {
                     name: row.get(0)?,
                     path: row.get(1)?,
                     icon_path: row.get(2)?,
+                    original_name: row.get(3)?,
                 })
             })?
             .collect::<Result<Vec<_>>>()?;
@@ -253,11 +267,13 @@ mod tests {
                 name: "Safari".to_string(),
                 path: "/Applications/Safari.app".to_string(),
                 icon_path: None,
+                original_name: None,
             },
             AppItem {
                 name: "Mail".to_string(),
                 path: "/Applications/Mail.app".to_string(),
                 icon_path: Some("/path/to/icon.png".to_string()),
+                original_name: None,
             },
         ];
 
@@ -308,6 +324,7 @@ mod tests {
             name: "TestApp".to_string(),
             path: "/Applications/TestApp.app".to_string(),
             icon_path: None,
+            original_name: None,
         }];
 
         cache.save_apps(&apps).expect("Failed to save apps");
@@ -380,6 +397,7 @@ mod tests {
             name: "App1".to_string(),
             path: "/Applications/App1.app".to_string(),
             icon_path: None,
+            original_name: None,
         }];
         cache.save_apps(&apps1).expect("Failed to save apps");
 
@@ -389,11 +407,13 @@ mod tests {
                 name: "App2".to_string(),
                 path: "/Applications/App2.app".to_string(),
                 icon_path: None,
+                original_name: None,
             },
             AppItem {
                 name: "App3".to_string(),
                 path: "/Applications/App3.app".to_string(),
                 icon_path: None,
+                original_name: None,
             },
         ];
         cache.save_apps(&apps2).expect("Failed to save apps");
@@ -427,11 +447,13 @@ mod tests {
                 name: "App1".to_string(),
                 path: "/Applications/App1.app".to_string(),
                 icon_path: Some("/path/to/icon1.png".to_string()),
+                original_name: None,
             },
             AppItem {
                 name: "App2".to_string(),
                 path: "/Applications/App2.app".to_string(),
                 icon_path: None,
+                original_name: None,
             },
         ];
 
@@ -444,6 +466,44 @@ mod tests {
 
         assert_eq!(app1.icon_path, Some("/path/to/icon1.png".to_string()));
         assert_eq!(app2.icon_path, None);
+    }
+
+    #[test]
+    fn test_original_name_persistence() {
+        let cache = CacheDB::new_in_memory().expect("Failed to create cache");
+
+        let apps = vec![
+            AppItem {
+                name: "ターミナル".to_string(),
+                path: "/Applications/Utilities/Terminal.app".to_string(),
+                icon_path: None,
+                original_name: Some("Terminal".to_string()),
+            },
+            AppItem {
+                name: "Safari".to_string(),
+                path: "/Applications/Safari.app".to_string(),
+                icon_path: None,
+                original_name: None, // 英語名と同じ場合はNone
+            },
+        ];
+
+        cache.save_apps(&apps).expect("Failed to save apps");
+        let loaded = cache.load_apps().expect("Failed to load apps");
+
+        assert_eq!(loaded.len(), 2);
+        let terminal = loaded
+            .iter()
+            .find(|app| app.path.contains("Terminal"))
+            .unwrap();
+        let safari = loaded
+            .iter()
+            .find(|app| app.path.contains("Safari"))
+            .unwrap();
+
+        assert_eq!(terminal.name, "ターミナル");
+        assert_eq!(terminal.original_name, Some("Terminal".to_string()));
+        assert_eq!(safari.name, "Safari");
+        assert_eq!(safari.original_name, None);
     }
 
     #[test]

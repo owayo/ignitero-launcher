@@ -50,18 +50,147 @@ impl AppScanner {
 
     /// .appバンドルから情報を抽出
     fn parse_app_bundle(app_path: &Path) -> Option<AppItem> {
-        let name = app_path.file_stem()?.to_str()?.to_string();
+        // ファイルシステム名（英語名）を original_name として保存
+        let original_name = app_path.file_stem()?.to_str()?.to_string();
 
         let path = app_path.to_str()?.to_string();
 
         // Info.plistからアイコン情報を取得（オプション）
         let icon_path = Self::get_app_icon_path(app_path);
 
+        // ローカライズ名を取得（なければファイルシステム名を使用）
+        let name = Self::get_localized_name(app_path).unwrap_or_else(|| original_name.clone());
+
+        // original_name が name と同じ場合は None にして冗長性を減らす
+        let original_name = if original_name == name {
+            None
+        } else {
+            Some(original_name)
+        };
+
         Some(AppItem {
             name,
             path,
             icon_path,
+            original_name,
         })
+    }
+
+    /// アプリのローカライズ名を取得
+    fn get_localized_name(app_path: &Path) -> Option<String> {
+        // まず mdls を使って Spotlight メタデータからローカライズ名を取得（最も信頼性が高い）
+        if let Some(name) = Self::get_localized_name_from_mdls(app_path) {
+            return Some(name);
+        }
+
+        // システムの言語設定を取得
+        let langs = Self::get_preferred_languages();
+
+        for lang in langs {
+            // .lproj/InfoPlist.strings からローカライズ名を取得
+            let lproj_path = app_path
+                .join("Contents")
+                .join("Resources")
+                .join(format!("{}.lproj", lang))
+                .join("InfoPlist.strings");
+
+            if let Some(name) = Self::read_localized_name_from_strings(&lproj_path) {
+                return Some(name);
+            }
+        }
+
+        // Info.plist から CFBundleDisplayName または CFBundleName を取得
+        let info_plist_path = app_path.join("Contents").join("Info.plist");
+        if info_plist_path.exists() {
+            if let Ok(plist) = Value::from_file(&info_plist_path) {
+                if let Some(dict) = plist.as_dictionary() {
+                    if let Some(display_name) =
+                        dict.get("CFBundleDisplayName").and_then(|v| v.as_string())
+                    {
+                        return Some(display_name.to_string());
+                    }
+                    if let Some(bundle_name) = dict.get("CFBundleName").and_then(|v| v.as_string())
+                    {
+                        return Some(bundle_name.to_string());
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    /// mdls コマンドを使って Spotlight メタデータからローカライズ名を取得
+    fn get_localized_name_from_mdls(app_path: &Path) -> Option<String> {
+        use std::process::Command;
+
+        let output = Command::new("mdls")
+            .arg("-name")
+            .arg("kMDItemDisplayName")
+            .arg("-raw")
+            .arg(app_path)
+            .output()
+            .ok()?;
+
+        if output.status.success() {
+            let name = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            // "(null)" や空文字列は無効
+            if !name.is_empty() && name != "(null)" {
+                return Some(name);
+            }
+        }
+
+        None
+    }
+
+    /// InfoPlist.strings からローカライズ名を読み取る
+    fn read_localized_name_from_strings(path: &Path) -> Option<String> {
+        if !path.exists() {
+            return None;
+        }
+
+        // .strings ファイルは plist 形式（binary または XML）の場合がある
+        if let Ok(plist) = Value::from_file(path) {
+            if let Some(dict) = plist.as_dictionary() {
+                // CFBundleDisplayName または CFBundleName を探す
+                if let Some(name) = dict.get("CFBundleDisplayName").and_then(|v| v.as_string()) {
+                    return Some(name.to_string());
+                }
+                if let Some(name) = dict.get("CFBundleName").and_then(|v| v.as_string()) {
+                    return Some(name.to_string());
+                }
+            }
+        }
+
+        None
+    }
+
+    /// システムの優先言語リストを取得
+    fn get_preferred_languages() -> Vec<String> {
+        // まず現在のロケールを確認
+        let mut langs = Vec::new();
+
+        // LANG 環境変数から言語を取得
+        if let Ok(lang) = std::env::var("LANG") {
+            if let Some(lang_code) = lang.split('.').next() {
+                // "ja_JP" -> "ja"
+                if let Some(primary) = lang_code.split('_').next() {
+                    langs.push(primary.to_string());
+                }
+                // "ja_JP" 形式もそのまま追加（"Japanese.lproj" 対応）
+                langs.push(lang_code.replace('_', "-"));
+            }
+        }
+
+        // macOS 固有の言語名もサポート
+        langs.extend(vec![
+            "Japanese".to_string(),
+            "ja".to_string(),
+            "en".to_string(),
+            "Base".to_string(),
+        ]);
+
+        langs
     }
 
     /// アプリのアイコンパスを取得
