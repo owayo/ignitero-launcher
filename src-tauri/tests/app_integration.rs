@@ -75,9 +75,17 @@ fn test_directory_scanner_with_nonexistent_path() {
     assert_eq!(dirs.len(), 0);
 }
 
+/// 実際の/Applications配下をスキャンするテスト
+/// CI環境ではスキップ
 #[test]
 fn test_app_scanner_static_method() {
     use ignitero_launcher_lib::AppScannerExport;
+
+    // CI環境ではスキップ
+    if std::env::var("CI").is_ok() {
+        println!("Skipping test in CI environment");
+        return;
+    }
 
     // AppScannerは静的メソッドを持つ
     // 実際の/Applications配下をスキャンするため、結果の検証は行わない
@@ -191,15 +199,21 @@ fn test_cache_directories() {
 }
 
 /// Terminal.app が "ter" で検索できることをテスト（実際のスキャン）
+/// CI環境ではスキップ
 #[test]
 fn test_terminal_app_search_by_english_name() {
     use ignitero_launcher_lib::AppScannerExport;
     use std::path::Path;
 
+    // CI環境ではスキップ
+    if std::env::var("CI").is_ok() {
+        println!("Skipping test in CI environment");
+        return;
+    }
+
     // Terminal.app のパスを確認
     let terminal_path = Path::new("/System/Applications/Utilities/Terminal.app");
     if !terminal_path.exists() {
-        // CI環境などでTerminal.appがない場合はスキップ
         println!("Skipping test: Terminal.app not found");
         return;
     }
