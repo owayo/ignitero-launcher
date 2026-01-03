@@ -39,7 +39,40 @@ impl CacheDB {
             .join("cache.db")
     }
 
+    /// 現在のスキーマバージョン
+    /// original_name サポート追加時に 2 に更新
+    const SCHEMA_VERSION: i64 = 2;
+
     fn init_tables(&self) -> Result<()> {
+        // スキーマバージョンテーブル
+        self.conn.execute(
+            "CREATE TABLE IF NOT EXISTS schema_version (
+                version INTEGER NOT NULL
+            )",
+            [],
+        )?;
+
+        // 現在のスキーマバージョンを確認
+        let current_version: i64 = self
+            .conn
+            .query_row("SELECT version FROM schema_version LIMIT 1", [], |row| {
+                row.get(0)
+            })
+            .unwrap_or(0);
+
+        // 古いバージョンの場合はアプリキャッシュをクリア
+        if current_version < Self::SCHEMA_VERSION {
+            // 古いアプリキャッシュを削除（再スキャンをトリガー）
+            let _ = self.conn.execute("DROP TABLE IF EXISTS apps", []);
+
+            // バージョンを更新
+            self.conn.execute("DELETE FROM schema_version", [])?;
+            self.conn.execute(
+                "INSERT INTO schema_version (version) VALUES (?)",
+                params![Self::SCHEMA_VERSION],
+            )?;
+        }
+
         // アプリテーブル
         self.conn.execute(
             "CREATE TABLE IF NOT EXISTS apps (
@@ -52,12 +85,6 @@ impl CacheDB {
             )",
             [],
         )?;
-
-        // original_name カラムを追加（既存テーブルのマイグレーション）
-        // カラムが存在しない場合のみ追加
-        let _ = self
-            .conn
-            .execute("ALTER TABLE apps ADD COLUMN original_name TEXT", []);
 
         // アプリ名の検索用インデックス
         self.conn
@@ -504,6 +531,25 @@ mod tests {
         assert_eq!(terminal.original_name, Some("Terminal".to_string()));
         assert_eq!(safari.name, "Safari");
         assert_eq!(safari.original_name, None);
+    }
+
+    #[test]
+    fn test_schema_version_is_set() {
+        let cache = CacheDB::new_in_memory().expect("Failed to create cache");
+
+        // スキーマバージョンが正しく設定されていることを確認
+        let version: i64 = cache
+            .conn
+            .query_row("SELECT version FROM schema_version LIMIT 1", [], |row| {
+                row.get(0)
+            })
+            .expect("Failed to get schema version");
+
+        assert_eq!(
+            version,
+            CacheDB::SCHEMA_VERSION,
+            "Schema version should be set to current version"
+        );
     }
 
     #[test]
