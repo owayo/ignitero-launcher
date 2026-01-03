@@ -122,12 +122,14 @@ describe('Type definitions', () => {
         auto_update_interval_hours: 24,
       },
       default_terminal: 'terminal',
+      excluded_apps: [],
     };
 
     expect(settings.registered_directories).toEqual([]);
     expect(settings.custom_commands).toEqual([]);
     expect(settings.cache_update.update_on_startup).toBe(true);
     expect(settings.default_terminal).toBe('terminal');
+    expect(settings.excluded_apps).toEqual([]);
   });
 
   it('should optionally keep window position in settings', () => {
@@ -142,6 +144,7 @@ describe('Type definitions', () => {
       },
       default_terminal: 'terminal',
       main_window_position: mainWindowPosition,
+      excluded_apps: [],
     };
 
     expect(settings.main_window_position?.x).toBe(120);
@@ -244,6 +247,7 @@ describe('Type definitions', () => {
           auto_update_interval_hours: 24,
         },
         default_terminal: terminal,
+        excluded_apps: [],
       };
 
       expect(settings.default_terminal).toBe(terminal);
@@ -289,6 +293,7 @@ describe('Type definitions', () => {
         auto_update_interval_hours: 24,
       },
       default_terminal: 'terminal',
+      excluded_apps: [],
     };
 
     expect(settings.custom_commands).toHaveLength(2);

@@ -50,7 +50,22 @@ pub struct AppState {
 #[tauri::command]
 fn search_apps(query: String, state: State<AppState>) -> Vec<AppItem> {
     let apps = state.apps.lock().unwrap();
-    state.search_engine.search_apps(&apps, &query)
+    let settings = state.settings_manager.get_settings();
+    let excluded_apps = &settings.excluded_apps;
+
+    // 検索結果から除外アプリをフィルタリング
+    state
+        .search_engine
+        .search_apps(&apps, &query)
+        .into_iter()
+        .filter(|app| !excluded_apps.contains(&app.path))
+        .collect()
+}
+
+#[tauri::command]
+fn get_all_apps(state: State<AppState>) -> Vec<AppItem> {
+    let apps = state.apps.lock().unwrap();
+    apps.clone()
 }
 
 #[tauri::command]
@@ -985,6 +1000,7 @@ pub fn run() {
             search_apps,
             search_directories,
             search_commands,
+            get_all_apps,
             launch_app,
             open_directory,
             open_in_terminal,

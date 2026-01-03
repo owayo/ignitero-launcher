@@ -17,6 +17,7 @@ import {
   Typography,
 } from 'antd';
 import {
+  AppstoreOutlined,
   CloudSyncOutlined,
   CodeOutlined,
   DeleteOutlined,
@@ -30,7 +31,12 @@ import {
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { emit } from '@tauri-apps/api/event';
-import type { Settings, RegisteredDirectory, CustomCommand } from './types';
+import type {
+  Settings,
+  RegisteredDirectory,
+  CustomCommand,
+  AppItem,
+} from './types';
 import packageJson from '../package.json';
 import './Settings.css';
 
@@ -69,6 +75,8 @@ const SettingsWindow: React.FC = () => {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [refreshingCache, setRefreshingCache] = useState(false);
+  const [allApps, setAllApps] = useState<AppItem[]>([]);
+  const [appSearchQuery, setAppSearchQuery] = useState<string>('');
 
   // インストール済みエディタを取得
   const loadAvailableEditors = async () => {
@@ -130,6 +138,44 @@ const SettingsWindow: React.FC = () => {
     setTerminalIcons(icons);
   };
 
+  // 全アプリを読み込み
+  const loadAllApps = async () => {
+    try {
+      const apps = await invoke<AppItem[]>('get_all_apps');
+      // 名前でソート
+      apps.sort((a, b) => a.name.localeCompare(b.name));
+      setAllApps(apps);
+    } catch (error) {
+      console.error('Failed to load all apps:', error);
+    }
+  };
+
+  // アプリの除外状態を切り替え
+  const handleToggleAppExclusion = async (
+    appPath: string,
+    excluded: boolean,
+  ) => {
+    if (!settings) return;
+
+    try {
+      const newExcludedApps = excluded
+        ? [...settings.excluded_apps, appPath]
+        : settings.excluded_apps.filter((path) => path !== appPath);
+
+      const updatedSettings: Settings = {
+        ...settings,
+        excluded_apps: newExcludedApps,
+      };
+
+      await invoke('save_settings', { settings: updatedSettings });
+      setSettings(updatedSettings);
+      await emit('settings-changed');
+    } catch (error) {
+      console.error('Failed to toggle app exclusion:', error);
+      message.error('除外設定の保存に失敗しました');
+    }
+  };
+
   // 設定を読み込み
   const loadSettings = async () => {
     try {
@@ -151,6 +197,7 @@ const SettingsWindow: React.FC = () => {
     loadSettings();
     loadAvailableEditors();
     loadAvailableTerminals();
+    loadAllApps();
   }, []);
 
   // バージョンを手動チェック
@@ -763,6 +810,145 @@ const SettingsWindow: React.FC = () => {
                         </List.Item>
                       )}
                     />
+                  </div>
+                ),
+              },
+              {
+                key: 'excluded-apps',
+                label: (
+                  <span>
+                    <AppstoreOutlined />
+                    <span style={{ marginLeft: 8 }}>除外アプリ</span>
+                  </span>
+                ),
+                children: (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 12,
+                    }}
+                  >
+                    <Text type="secondary">
+                      チェックを付けたアプリは検索結果から除外されます
+                    </Text>
+
+                    <Input
+                      placeholder="アプリ名で絞り込み..."
+                      value={appSearchQuery}
+                      onChange={(e) => setAppSearchQuery(e.target.value)}
+                      allowClear
+                      style={{ marginBottom: 8 }}
+                    />
+
+                    <div
+                      style={{
+                        maxHeight: 400,
+                        overflowY: 'auto',
+                        border: '1px solid #d9d9d9',
+                        borderRadius: 6,
+                      }}
+                    >
+                      <List
+                        size="small"
+                        dataSource={allApps.filter((app) =>
+                          appSearchQuery
+                            ? app.name
+                                .toLowerCase()
+                                .includes(appSearchQuery.toLowerCase()) ||
+                              app.path
+                                .toLowerCase()
+                                .includes(appSearchQuery.toLowerCase())
+                            : true,
+                        )}
+                        locale={{ emptyText: 'アプリが見つかりません' }}
+                        renderItem={(app) => {
+                          const isExcluded =
+                            settings?.excluded_apps?.includes(app.path) ??
+                            false;
+                          return (
+                            <List.Item
+                              style={{
+                                padding: '8px 12px',
+                                background: isExcluded
+                                  ? 'rgba(255, 77, 79, 0.1)'
+                                  : 'transparent',
+                              }}
+                            >
+                              <Checkbox
+                                checked={isExcluded}
+                                onChange={(e) =>
+                                  handleToggleAppExclusion(
+                                    app.path,
+                                    e.target.checked,
+                                  )
+                                }
+                                style={{ marginRight: 12 }}
+                              />
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  flex: 1,
+                                  minWidth: 0,
+                                }}
+                              >
+                                {app.icon_path && (
+                                  <img
+                                    src={convertFileSrc(app.icon_path)}
+                                    alt=""
+                                    style={{
+                                      width: 24,
+                                      height: 24,
+                                      marginRight: 8,
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                )}
+                                <div
+                                  style={{
+                                    minWidth: 0,
+                                    flex: 1,
+                                  }}
+                                >
+                                  <Text
+                                    strong
+                                    style={{
+                                      display: 'block',
+                                      textDecoration: isExcluded
+                                        ? 'line-through'
+                                        : 'none',
+                                      color: isExcluded ? '#999' : 'inherit',
+                                    }}
+                                  >
+                                    {app.name}
+                                  </Text>
+                                  <Text
+                                    type="secondary"
+                                    style={{
+                                      fontSize: 11,
+                                      display: 'block',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    {app.path}
+                                  </Text>
+                                </div>
+                              </div>
+                            </List.Item>
+                          );
+                        }}
+                      />
+                    </div>
+
+                    {settings?.excluded_apps &&
+                      settings.excluded_apps.length > 0 && (
+                        <Text type="secondary">
+                          {settings.excluded_apps.length} 件のアプリを除外中
+                        </Text>
+                      )}
                   </div>
                 ),
               },

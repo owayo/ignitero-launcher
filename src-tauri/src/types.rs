@@ -114,6 +114,9 @@ pub struct Settings {
     pub update_cache: UpdateCache,
     #[serde(default)]
     pub main_window_position: Option<WindowPosition>,
+    /// 検索から除外するアプリのパスリスト
+    #[serde(default)]
+    pub excluded_apps: Vec<String>,
 }
 
 #[cfg(test)]

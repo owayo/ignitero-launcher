@@ -71,4 +71,5 @@ export interface Settings {
   cache_update: CacheUpdateSettings;
   default_terminal: TerminalType;
   main_window_position?: WindowPosition | null;
+  excluded_apps: string[];
 }
