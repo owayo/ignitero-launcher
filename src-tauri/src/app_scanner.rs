@@ -6,7 +6,7 @@ use walkdir::WalkDir;
 pub struct AppScanner;
 
 impl AppScanner {
-    /// /Applicationsと~/Applications配下のアプリをスキャン
+    /// /Applications, /System/Applications, ~/Applications配下のアプリをスキャン
     pub fn scan_applications() -> Vec<AppItem> {
         let mut apps = Vec::new();
 
@@ -14,6 +14,13 @@ impl AppScanner {
         let system_app_dir = Path::new("/Applications");
         if system_app_dir.exists() {
             apps.extend(Self::scan_directory(system_app_dir, 2)); // 深さ2まで
+        }
+
+        // macOS標準アプリ（/System/Applications）
+        // Terminal.appなどは /System/Applications/Utilities/ にあるため深さ3
+        let macos_system_app_dir = Path::new("/System/Applications");
+        if macos_system_app_dir.exists() {
+            apps.extend(Self::scan_directory(macos_system_app_dir, 3));
         }
 
         // ユーザーのApplicationsディレクトリ

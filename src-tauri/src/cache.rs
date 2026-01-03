@@ -40,8 +40,9 @@ impl CacheDB {
     }
 
     /// 現在のスキーマバージョン
-    /// original_name サポート追加時に 2 に更新
-    const SCHEMA_VERSION: i64 = 2;
+    /// v2: original_name サポート追加
+    /// v3: /System/Applications スキャン対象追加
+    const SCHEMA_VERSION: i64 = 3;
 
     fn init_tables(&self) -> Result<()> {
         // スキーマバージョンテーブル
