@@ -190,6 +190,61 @@ fn test_cache_directories() {
     assert_eq!(loaded_dirs[1].name, "Projects");
 }
 
+/// Terminal.app が "ter" で検索できることをテスト（実際のスキャン）
+#[test]
+fn test_terminal_app_search_by_english_name() {
+    use ignitero_launcher_lib::AppScannerExport;
+    use std::path::Path;
+
+    // Terminal.app のパスを確認
+    let terminal_path = Path::new("/System/Applications/Utilities/Terminal.app");
+    if !terminal_path.exists() {
+        // CI環境などでTerminal.appがない場合はスキップ
+        println!("Skipping test: Terminal.app not found");
+        return;
+    }
+
+    // Terminal.app をスキャン
+    let apps = AppScannerExport::scan_directory(terminal_path.parent().unwrap(), 1);
+
+    // Terminal.app が見つかることを確認
+    let terminal_app = apps.iter().find(|app| app.path.contains("Terminal.app"));
+    assert!(
+        terminal_app.is_some(),
+        "Terminal.app should be found in scan results"
+    );
+
+    let terminal = terminal_app.unwrap();
+
+    // ローカライズ名が取得できていることを確認
+    println!("Terminal app name: {}", terminal.name);
+    println!("Terminal app original_name: {:?}", terminal.original_name);
+
+    // 日本語環境では name が "ターミナル", original_name が "Terminal" になるはず
+    // 英語環境では name が "Terminal" で original_name は None
+    // どちらの場合も "ter" で検索できることが重要
+
+    // 検索テスト
+    let engine = SearchEngineExport::new();
+    let results = engine.search_apps(&apps, "ter");
+
+    println!(
+        "Search results for 'ter': {:?}",
+        results.iter().map(|a| &a.name).collect::<Vec<_>>()
+    );
+
+    // Terminal.app が検索結果に含まれることを確認
+    let found = results.iter().any(|app| app.path.contains("Terminal.app"));
+    assert!(
+        found,
+        "Terminal.app should be found when searching for 'ter'. Results: {:?}",
+        results
+            .iter()
+            .map(|a| (&a.name, &a.original_name))
+            .collect::<Vec<_>>()
+    );
+}
+
 #[test]
 fn test_concurrent_search() {
     use std::sync::Arc;
