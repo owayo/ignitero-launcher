@@ -873,16 +873,22 @@ const SettingsWindow: React.FC = () => {
                                 background: isExcluded
                                   ? 'rgba(255, 77, 79, 0.1)'
                                   : 'transparent',
+                                cursor: 'pointer',
                               }}
+                              onClick={() =>
+                                handleToggleAppExclusion(app.path, !isExcluded)
+                              }
                             >
                               <Checkbox
                                 checked={isExcluded}
-                                onChange={(e) =>
+                                onChange={(e) => {
+                                  e.stopPropagation();
                                   handleToggleAppExclusion(
                                     app.path,
                                     e.target.checked,
-                                  )
-                                }
+                                  );
+                                }}
+                                onClick={(e) => e.stopPropagation()}
                                 style={{ marginRight: 12 }}
                               />
                               <div
