@@ -285,7 +285,7 @@ mod tests {
             settings.registered_directories[0].parent_open_mode,
             OpenMode::Editor
         );
-        assert_eq!(settings.registered_directories[0].scan_for_apps, true);
+        assert!(settings.registered_directories[0].scan_for_apps);
     }
 
     #[test]
@@ -370,7 +370,7 @@ mod tests {
                 settings.registered_directories[0].parent_open_mode,
                 OpenMode::Editor
             );
-            assert_eq!(settings.registered_directories[0].scan_for_apps, true);
+            assert!(settings.registered_directories[0].scan_for_apps);
         }
     }
 
@@ -431,8 +431,8 @@ mod tests {
             .expect("Failed to save settings");
 
         let loaded = manager.get_settings();
-        assert_eq!(loaded.cache_update.update_on_startup, false);
-        assert_eq!(loaded.cache_update.auto_update_enabled, true);
+        assert!(!loaded.cache_update.update_on_startup);
+        assert!(loaded.cache_update.auto_update_enabled);
         assert_eq!(loaded.cache_update.auto_update_interval_hours, 12);
     }
 

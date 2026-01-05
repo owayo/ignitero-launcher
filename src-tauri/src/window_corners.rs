@@ -207,7 +207,7 @@ mod tests {
     fn test_macos_version_clone() {
         // Clone trait が実装されていることを確認
         let original = MacOSVersion::Tahoe;
-        let cloned = original.clone();
+        let cloned = original;
         assert_eq!(original, cloned);
     }
 

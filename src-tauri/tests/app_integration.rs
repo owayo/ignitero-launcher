@@ -123,10 +123,10 @@ fn test_integration_search_flow() {
 
     // 段階的な検索
     let results = engine.search_apps(&apps, "s");
-    assert!(results.len() > 0);
+    assert!(!results.is_empty());
 
     let results = engine.search_apps(&apps, "sa");
-    assert!(results.len() > 0);
+    assert!(!results.is_empty());
 
     let results = engine.search_apps(&apps, "saf");
     assert_eq!(results.len(), 1);

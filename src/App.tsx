@@ -1,28 +1,28 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useRef,
-  useMemo,
-} from 'react';
-import { Input, List, Typography, Space, Button, Tooltip, Alert } from 'antd';
 import {
   AppstoreOutlined,
   ArrowLeftOutlined,
   ArrowRightOutlined,
+  CalculatorOutlined,
   CodeOutlined,
   FolderFilled,
+  ReloadOutlined,
   SearchOutlined,
   SettingOutlined,
-  ReloadOutlined,
-  CalculatorOutlined,
 } from '@ant-design/icons';
-import { invoke, convertFileSrc } from '@tauri-apps/api/core';
-import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { open } from '@tauri-apps/plugin-shell';
-import type { AppItem, DirectoryItem, WindowState, CommandItem } from './types';
+import { Alert, Button, Input, List, Space, Tooltip, Typography } from 'antd';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { evaluateExpression } from './calculator';
+import type { AppItem, CommandItem, DirectoryItem, WindowState } from './types';
 import './App.css';
 
 const { Text } = Typography;
@@ -132,10 +132,6 @@ const ItemIcon: React.FC<{ item: SearchResult; isSelected?: boolean }> = ({
     null,
   );
 
-  // DirectoryItemかつeditorが設定されている場合のみeditorを取得
-  const editorForDep =
-    !isAppItem(item) && !isCommandItem(item) ? item.editor : undefined;
-
   // エディタアイコンのPNGパスを取得
   useEffect(() => {
     if (!isAppItem(item) && !isCommandItem(item) && item.editor) {
@@ -159,7 +155,7 @@ const ItemIcon: React.FC<{ item: SearchResult; isSelected?: boolean }> = ({
           console.error('Failed to get editor icon path:', error);
         });
     }
-  }, [editorForDep]); // DirectoryItemの場合のみeditorを依存に
+  }, [item]); // DirectoryItemの場合のみeditorを依存に
 
   // コマンドアイテムの場合は専用アイコンを表示
   if (isCommandItem(item)) {
@@ -484,10 +480,7 @@ function App() {
         block: 'nearest',
       });
     }
-  }, [
-    selectedIndex,
-    results.map((r) => (isCommandItem(r) ? r.alias : r.path)).join(','),
-  ]);
+  }, [selectedIndex]);
 
   // ウィンドウの可視性変更イベントを監視
   useEffect(() => {
@@ -901,7 +894,7 @@ function App() {
         </div>
       )}
 
-      {updateInfo && updateInfo.has_update && (
+      {updateInfo?.has_update && (
         <Alert
           className="drag-exclude"
           data-tauri-drag-region-exclude

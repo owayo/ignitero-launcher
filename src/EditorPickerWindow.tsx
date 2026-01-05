@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { CodeOutlined } from '@ant-design/icons';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
+import type React from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { EditorInfo } from './types';
 import './index.css';
 
@@ -77,6 +78,46 @@ export const EditorPickerWindow: React.FC = () => {
     fetchEditors();
   }, []);
 
+  // handleClose を useCallback でラップ
+  const handleClose = useCallback(async () => {
+    try {
+      await invoke('close_editor_picker_window');
+    } catch (error) {
+      console.error('Failed to close picker window:', error);
+    }
+  }, []);
+
+  // handleSelectEditor を useCallback でラップ
+  const handleSelectEditor = useCallback(
+    async (editorId: string) => {
+      try {
+        console.log('handleSelectEditor called:', {
+          editorId,
+          directoryPath,
+        });
+
+        if (!directoryPath) {
+          console.error('No directory path set');
+          return;
+        }
+
+        await invoke('open_directory', {
+          path: directoryPath,
+          editor: editorId,
+        });
+
+        console.log('open_directory succeeded, hiding main window');
+        await invoke('hide_window');
+
+        console.log('Closing editor picker window');
+        await handleClose();
+      } catch (error) {
+        console.error('Failed to open with editor:', error);
+      }
+    },
+    [directoryPath, handleClose],
+  );
+
   // キーボード操作
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -136,42 +177,7 @@ export const EditorPickerWindow: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editors, selectedIndex, directoryPath]);
-
-  const handleSelectEditor = async (editorId: string) => {
-    try {
-      console.log('handleSelectEditor called:', {
-        editorId,
-        directoryPath,
-      });
-
-      if (!directoryPath) {
-        console.error('No directory path set');
-        return;
-      }
-
-      await invoke('open_directory', {
-        path: directoryPath,
-        editor: editorId,
-      });
-
-      console.log('open_directory succeeded, hiding main window');
-      await invoke('hide_window');
-
-      console.log('Closing editor picker window');
-      await handleClose();
-    } catch (error) {
-      console.error('Failed to open with editor:', error);
-    }
-  };
-
-  const handleClose = async () => {
-    try {
-      await invoke('close_editor_picker_window');
-    } catch (error) {
-      console.error('Failed to close picker window:', error);
-    }
-  };
+  }, [editors, selectedIndex, directoryPath, handleClose, handleSelectEditor]);
 
   if (editors.length === 0) {
     return null;

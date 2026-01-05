@@ -161,10 +161,10 @@ mod tests {
 
     #[test]
     fn test_compare_versions() {
-        assert_eq!(compare_versions("0.1.13", "0.1.13"), false);
-        assert_eq!(compare_versions("0.1.13", "0.1.14"), true);
-        assert_eq!(compare_versions("0.1.13", "0.2.0"), true);
-        assert_eq!(compare_versions("0.1.13", "1.0.0"), true);
-        assert_eq!(compare_versions("0.2.0", "0.1.13"), false);
+        assert!(!compare_versions("0.1.13", "0.1.13"));
+        assert!(compare_versions("0.1.13", "0.1.14"));
+        assert!(compare_versions("0.1.13", "0.2.0"));
+        assert!(compare_versions("0.1.13", "1.0.0"));
+        assert!(!compare_versions("0.2.0", "0.1.13"));
     }
 }

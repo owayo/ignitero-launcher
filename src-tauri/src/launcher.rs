@@ -467,7 +467,7 @@ mod tests {
     fn test_get_available_editors_structure() {
         // 最低でも1つ以上のエディタが定義されている
         // （実際にインストールされていなくても構造は確認できる）
-        let all_editors = vec![
+        let all_editors = [
             EditorInfo {
                 id: "windsurf".to_string(),
                 name: "Windsurf".to_string(),
