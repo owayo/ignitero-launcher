@@ -1,91 +1,89 @@
-import { CodeOutlined } from '@ant-design/icons';
-import { convertFileSrc, invoke } from '@tauri-apps/api/core';
-import type React from 'react';
-import { useCallback, useEffect, useState } from 'react';
-import type { EditorInfo } from './types';
-import './index.css';
+import { CodeOutlined } from '@ant-design/icons'
+import { convertFileSrc, invoke } from '@tauri-apps/api/core'
+import type React from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import type { EditorInfo } from './types'
+import './index.css'
 
 export const EditorPickerWindow: React.FC = () => {
-  const [editors, setEditors] = useState<EditorInfo[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [editorIcons, setEditorIcons] = useState<Map<string, string>>(
-    new Map(),
-  );
-  const [directoryPath, setDirectoryPath] = useState<string>('');
+  const [editors, setEditors] = useState<EditorInfo[]>([])
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [editorIcons, setEditorIcons] = useState<Map<string, string>>(new Map())
+  const [directoryPath, setDirectoryPath] = useState<string>('')
 
   // URLのクエリパラメータからディレクトリパスと現在のエディタを取得
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const path = params.get('path');
-    const editor = params.get('editor');
-    console.log('Getting parameters from URL:', { path, editor });
+    const params = new URLSearchParams(window.location.search)
+    const path = params.get('path')
+    const editor = params.get('editor')
+    console.log('Getting parameters from URL:', { path, editor })
     if (path) {
-      setDirectoryPath(decodeURIComponent(path));
-      console.log('Directory path set to:', decodeURIComponent(path));
+      setDirectoryPath(decodeURIComponent(path))
+      console.log('Directory path set to:', decodeURIComponent(path))
     }
     if (editor) {
-      const decodedEditor = decodeURIComponent(editor);
-      console.log('Current editor from URL:', decodedEditor);
+      const decodedEditor = decodeURIComponent(editor)
+      console.log('Current editor from URL:', decodedEditor)
       // エディタ一覧が読み込まれた後に初期選択を設定
-      setCurrentEditorId(decodedEditor);
+      setCurrentEditorId(decodedEditor)
     }
-  }, []);
+  }, [])
 
-  const [currentEditorId, setCurrentEditorId] = useState<string | null>(null);
+  const [currentEditorId, setCurrentEditorId] = useState<string | null>(null)
 
   // エディタ一覧が読み込まれたら、現在のエディタを選択
   useEffect(() => {
     if (editors.length > 0 && currentEditorId) {
-      const index = editors.findIndex((e) => e.id === currentEditorId);
+      const index = editors.findIndex((e) => e.id === currentEditorId)
       if (index !== -1) {
-        console.log('Setting initial selection to:', editors[index].name);
-        setSelectedIndex(index);
+        console.log('Setting initial selection to:', editors[index].name)
+        setSelectedIndex(index)
       }
     }
-  }, [editors, currentEditorId]);
+  }, [editors, currentEditorId])
 
   // エディタ一覧を取得
   useEffect(() => {
     const fetchEditors = async () => {
       try {
-        const editorList = await invoke<EditorInfo[]>('get_editor_list');
-        setEditors(editorList);
+        const editorList = await invoke<EditorInfo[]>('get_editor_list')
+        setEditors(editorList)
 
         // アイコンを取得
-        const iconMap = new Map<string, string>();
+        const iconMap = new Map<string, string>()
         await Promise.all(
           editorList.map(async (editor) => {
             try {
               const iconPath = await invoke<string | null>(
                 'get_editor_icon_path',
                 { editor: editor.id },
-              );
+              )
               if (iconPath) {
-                iconMap.set(editor.id, iconPath);
+                iconMap.set(editor.id, iconPath)
               }
             } catch (error) {
-              console.error(`Failed to get icon for ${editor.id}:`, error);
+              console.error(`Failed to get icon for ${editor.id}:`, error)
             }
           }),
-        );
+        )
 
-        setEditorIcons(iconMap);
+        setEditorIcons(iconMap)
       } catch (error) {
-        console.error('Failed to fetch editors:', error);
+        console.error('Failed to fetch editors:', error)
       }
-    };
+    }
 
-    fetchEditors();
-  }, []);
+    fetchEditors()
+  }, [])
 
   // handleClose を useCallback でラップ
   const handleClose = useCallback(async () => {
     try {
-      await invoke('close_editor_picker_window');
+      await invoke('close_editor_picker_window')
     } catch (error) {
-      console.error('Failed to close picker window:', error);
+      console.error('Failed to close picker window:', error)
     }
-  }, []);
+  }, [])
 
   // handleSelectEditor を useCallback でラップ
   const handleSelectEditor = useCallback(
@@ -94,106 +92,98 @@ export const EditorPickerWindow: React.FC = () => {
         console.log('handleSelectEditor called:', {
           editorId,
           directoryPath,
-        });
+        })
 
         if (!directoryPath) {
-          console.error('No directory path set');
-          return;
+          console.error('No directory path set')
+          return
         }
 
         await invoke('open_directory', {
           path: directoryPath,
           editor: editorId,
-        });
+        })
 
-        console.log('open_directory succeeded, hiding main window');
-        await invoke('hide_window');
+        console.log('open_directory succeeded, hiding main window')
+        await invoke('hide_window')
 
-        console.log('Closing editor picker window');
-        await handleClose();
+        console.log('Closing editor picker window')
+        await handleClose()
       } catch (error) {
-        console.error('Failed to open with editor:', error);
+        console.error('Failed to open with editor:', error)
       }
     },
     [directoryPath, handleClose],
-  );
+  )
 
   // キーボード操作
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // 頭文字キーでエディタを直接選択
-      const key = e.key.toLowerCase();
+      const key = e.key.toLowerCase()
       const editorShortcuts: { [key: string]: string } = {
         w: 'windsurf',
         c: 'cursor',
         v: 'code',
         a: 'antigravity',
-      };
+      }
 
       if (editorShortcuts[key]) {
-        e.preventDefault();
-        const editorId = editorShortcuts[key];
-        const editor = editors.find((e) => e.id === editorId);
+        e.preventDefault()
+        const editorId = editorShortcuts[key]
+        const editor = editors.find((e) => e.id === editorId)
         if (editor && directoryPath) {
           console.log(
             `Shortcut key '${key}' pressed, opening with ${editor.name}`,
-          );
-          handleSelectEditor(editor.id);
+          )
+          handleSelectEditor(editor.id)
         }
-        return;
+        return
       }
 
       if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSelectedIndex((prev) =>
-          prev === 0 ? editors.length - 1 : prev - 1,
-        );
+        e.preventDefault()
+        setSelectedIndex((prev) => (prev === 0 ? editors.length - 1 : prev - 1))
       } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSelectedIndex((prev) =>
-          prev === editors.length - 1 ? 0 : prev + 1,
-        );
+        e.preventDefault()
+        setSelectedIndex((prev) => (prev === editors.length - 1 ? 0 : prev + 1))
       } else if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        setSelectedIndex((prev) =>
-          prev === 0 ? editors.length - 1 : prev - 1,
-        );
+        e.preventDefault()
+        setSelectedIndex((prev) => (prev === 0 ? editors.length - 1 : prev - 1))
       } else if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        setSelectedIndex((prev) =>
-          prev === editors.length - 1 ? 0 : prev + 1,
-        );
+        e.preventDefault()
+        setSelectedIndex((prev) => (prev === editors.length - 1 ? 0 : prev + 1))
       } else if (e.key === 'Enter') {
-        e.preventDefault();
-        const selected = editors[selectedIndex];
+        e.preventDefault()
+        const selected = editors[selectedIndex]
         if (selected && directoryPath) {
-          handleSelectEditor(selected.id);
+          handleSelectEditor(selected.id)
         }
       } else if (e.key === 'Escape') {
-        e.preventDefault();
-        handleClose();
+        e.preventDefault()
+        handleClose()
       }
-    };
+    }
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editors, selectedIndex, directoryPath, handleClose, handleSelectEditor]);
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [editors, selectedIndex, directoryPath, handleClose, handleSelectEditor])
 
   if (editors.length === 0) {
-    return null;
+    return null
   }
 
-  const radius = 120;
-  const centerX = 200;
-  const centerY = 130; // SVG内での円の中心Y座標（上に移動）
-  const iconSize = 48;
-  const pathTop = 15; // パス表示の上端位置
-  const pathHeight = 36; // パス表示の高さ（padding込み）
-  const gapBetweenPathAndCircle = 10; // パスと円の間隔
-  const svgTop = pathTop + pathHeight + gapBetweenPathAndCircle; // SVGの開始位置（61px）
+  const radius = 120
+  const centerX = 200
+  const centerY = 130 // SVG内での円の中心Y座標（上に移動）
+  const iconSize = 48
+  const pathTop = 15 // パス表示の上端位置
+  const pathHeight = 36 // パス表示の高さ（padding込み）
+  const gapBetweenPathAndCircle = 10 // パスと円の間隔
+  const svgTop = pathTop + pathHeight + gapBetweenPathAndCircle // SVGの開始位置（61px）
 
   // 各エディタの角度を計算
-  const angleStep = (2 * Math.PI) / editors.length;
+  const angleStep = (2 * Math.PI) / editors.length
 
   return (
     <div
@@ -277,24 +267,24 @@ export const EditorPickerWindow: React.FC = () => {
 
           {/* 各エディタのセクション */}
           {editors.map((editor, index) => {
-            const startAngle = index * angleStep - Math.PI / 2;
-            const endAngle = (index + 1) * angleStep - Math.PI / 2;
-            const isSelected = index === selectedIndex;
+            const startAngle = index * angleStep - Math.PI / 2
+            const endAngle = (index + 1) * angleStep - Math.PI / 2
+            const isSelected = index === selectedIndex
 
             // 扇形のパスを計算
-            const x1 = centerX + radius * Math.cos(startAngle);
-            const y1 = centerY + radius * Math.sin(startAngle);
-            const x2 = centerX + radius * Math.cos(endAngle);
-            const y2 = centerY + radius * Math.sin(endAngle);
+            const x1 = centerX + radius * Math.cos(startAngle)
+            const y1 = centerY + radius * Math.sin(startAngle)
+            const x2 = centerX + radius * Math.cos(endAngle)
+            const y2 = centerY + radius * Math.sin(endAngle)
 
-            const largeArcFlag = angleStep > Math.PI ? 1 : 0;
+            const largeArcFlag = angleStep > Math.PI ? 1 : 0
 
             const pathData = `
               M ${centerX} ${centerY}
               L ${x1} ${y1}
               A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}
               Z
-            `;
+            `
 
             return (
               <g key={editor.id}>
@@ -325,7 +315,7 @@ export const EditorPickerWindow: React.FC = () => {
                   />
                 )}
               </g>
-            );
+            )
           })}
 
           {/* 中央の円 */}
@@ -431,12 +421,12 @@ export const EditorPickerWindow: React.FC = () => {
 
         {/* エディタアイコンとラベル */}
         {editors.map((editor, index) => {
-          const angle = index * angleStep + angleStep / 2 - Math.PI / 2;
-          const distance = radius * 0.7;
-          const x = centerX + distance * Math.cos(angle);
-          const y = centerY + distance * Math.sin(angle) + svgTop;
-          const isSelected = index === selectedIndex;
-          const iconPath = editorIcons.get(editor.id);
+          const angle = index * angleStep + angleStep / 2 - Math.PI / 2
+          const distance = radius * 0.7
+          const x = centerX + distance * Math.cos(angle)
+          const y = centerY + distance * Math.sin(angle) + svgTop
+          const isSelected = index === selectedIndex
+          const iconPath = editorIcons.get(editor.id)
 
           return (
             <div
@@ -514,9 +504,9 @@ export const EditorPickerWindow: React.FC = () => {
                 {editor.name}
               </div>
             </div>
-          );
+          )
         })}
       </div>
     </div>
-  );
-};
+  )
+}
