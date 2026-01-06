@@ -21,7 +21,7 @@
 
 **`Option` + `Space`で即座に呼び出せるメニューバー常駐ランチャー。** Antigravity・Cursor・VS Code・Windsurfをプロジェクトごとに切り替えられ、検索して`Enter`を押すだけで指定エディタが瞬時に立ち上がるから、複数エディタ併用派でも迷子にならない。
 
-`→`キーひとつでターミナルを開き、macOSターミナル/iTerm2/WarpからClaude Code・Codex・Gemini CLIなどをすぐ呼び出せるので、相談しながらコードを書く流れが止まらない。プロジェクト切り替えもキーボード操作だけで完結し、現代のマルチツール開発ワークフローを高速化する「手が覚える」ランチャーです。
+`→`キーひとつでターミナルを開き、macOSターミナル/iTerm2/Warp/GhosttyからClaude Code・Codex・Gemini CLIなどをすぐ呼び出せるので、相談しながらコードを書く流れが止まらない。プロジェクト切り替えもキーボード操作だけで完結し、現代のマルチツール開発ワークフローを高速化する「手が覚える」ランチャーです。
 
 ---
 
@@ -60,7 +60,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - よく使うコマンドをエイリアス（短縮名）で登録
 - 検索欄にエイリアスを入力して`Enter`でコマンドを実行
 - 実行ディレクトリを指定可能（オプション）
-- デフォルトターミナル（macOSターミナル / iTerm2 / Warp）で実行
+- デフォルトターミナル（macOSターミナル / iTerm2 / Warp / Ghostty）で実行
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
 ### アプリケーション検索・起動
@@ -89,7 +89,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
   - **頭文字キーで即座に起動**: `W`(Windsurf)、`C`(Cursor)、`V`(VS Code)、`A`(Antigravity)
   - 対応エディタ: Antigravity、Cursor、VS Code、Windsurf
 - **ターミナル統合**: ディレクトリ選択時に`→`キーでターミナルを開く
-  - 対応ターミナル: macOSターミナル（常に利用可能）、iTerm2、Warp
+  - 対応ターミナル: macOSターミナル（常に利用可能）、iTerm2、Warp、Ghostty
   - インストール済みのターミナルのみが選択肢に表示される
 
 ### キャッシュ管理
@@ -303,6 +303,7 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 - macOSデフォルトターミナル（常に利用可能）
 - iTerm2（インストール済みの場合）
 - Warp（インストール済みの場合）
+- Ghostty（インストール済みの場合）
 
 #### キャッシュ更新設定
 
