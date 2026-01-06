@@ -79,16 +79,16 @@ impl Launcher {
                 installed: Self::is_app_installed("iTerm"),
             },
             EditorInfo {
-                id: "warp".to_string(),
-                name: "Warp".to_string(),
-                app_name: "Warp".to_string(),
-                installed: Self::is_app_installed("Warp"),
-            },
-            EditorInfo {
                 id: "ghostty".to_string(),
                 name: "Ghostty".to_string(),
                 app_name: "Ghostty".to_string(),
                 installed: Self::is_app_installed("Ghostty"),
+            },
+            EditorInfo {
+                id: "warp".to_string(),
+                name: "Warp".to_string(),
+                app_name: "Warp".to_string(),
+                installed: Self::is_app_installed("Warp"),
             },
         ];
 
@@ -614,6 +614,42 @@ mod tests {
                 terminal.installed,
                 "All returned terminals should be installed"
             );
+        }
+    }
+
+    #[test]
+    fn test_open_in_terminal_with_ghostty_nonexistent_path() {
+        let result = Launcher::open_in_terminal("/nonexistent/path", &TerminalType::Ghostty);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid path"));
+    }
+
+    #[test]
+    fn test_open_in_terminal_with_ghostty_file_not_directory() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let file_path = temp_dir.path().join("test.txt");
+        fs::write(&file_path, "test").expect("Failed to write file");
+
+        let result =
+            Launcher::open_in_terminal(file_path.to_str().unwrap(), &TerminalType::Ghostty);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not a directory"));
+    }
+
+    #[test]
+    fn test_terminal_types_all_variants() {
+        // 全てのターミナルタイプが存在し、正しく処理されることを確認
+        let terminal_types = vec![
+            TerminalType::Terminal,
+            TerminalType::Iterm2,
+            TerminalType::Ghostty,
+            TerminalType::Warp,
+        ];
+
+        // 非存在パスで各ターミナルタイプのエラーハンドリングをテスト
+        for terminal_type in terminal_types {
+            let result = Launcher::open_in_terminal("/nonexistent/path", &terminal_type);
+            assert!(result.is_err(), "Expected error for {:?}", terminal_type);
         }
     }
 

@@ -514,7 +514,10 @@ const SettingsWindow: React.FC = () => {
                         ディレクトリを選択して→キーを押したとき、またはコマンドを実行するときに使用するターミナル
                       </Text>
                       <Form.Item name="default_terminal" style={{ margin: 0 }}>
-                        <Radio.Group style={{ width: '100%' }}>
+                        <Radio.Group
+                          style={{ width: '100%' }}
+                          className="terminal-radio-group"
+                        >
                           {installedTerminals.map((terminal) => {
                             const label =
                               terminal === 'terminal'
@@ -528,22 +531,23 @@ const SettingsWindow: React.FC = () => {
                               <Radio
                                 key={terminal}
                                 value={terminal}
-                                style={{ display: 'block', padding: '6px 0' }}
+                                style={{ display: 'block', marginBottom: 8 }}
                               >
-                                <Space align="center">
-                                  {terminalIcons.get(terminal) && (
-                                    <img
-                                      src={terminalIcons.get(terminal)}
-                                      alt={label}
-                                      style={{
-                                        width: 16,
-                                        height: 16,
-                                        verticalAlign: 'middle',
-                                      }}
-                                    />
-                                  )}
+                                {terminalIcons.get(terminal) && (
+                                  <img
+                                    src={terminalIcons.get(terminal)}
+                                    alt={label}
+                                    style={{
+                                      width: 16,
+                                      height: 16,
+                                      verticalAlign: 'middle',
+                                      marginRight: 8,
+                                    }}
+                                  />
+                                )}
+                                <span style={{ verticalAlign: 'middle' }}>
                                   {label}
-                                </Space>
+                                </span>
                               </Radio>
                             )
                           })}

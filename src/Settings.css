@@ -93,3 +93,20 @@
 .settings-content .ant-btn-link.ant-btn-dangerous:hover {
   color: #cf1322;
 }
+
+/* ターミナル選択のRadioボタン垂直中央揃え */
+.terminal-radio-group .ant-radio-wrapper {
+  display: flex !important;
+  align-items: center !important;
+  height: 32px !important;
+}
+
+.terminal-radio-group .ant-radio-wrapper .ant-radio {
+  top: 0 !important;
+  margin-top: 0 !important;
+}
+
+.terminal-radio-group .ant-radio-wrapper > span:last-child {
+  display: inline-flex !important;
+  align-items: center !important;
+}

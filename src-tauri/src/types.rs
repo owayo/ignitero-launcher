@@ -52,8 +52,8 @@ pub enum TerminalType {
     #[default]
     Terminal,
     Iterm2,
-    Warp,
     Ghostty,
+    Warp,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -229,14 +229,23 @@ mod tests {
         let terminals = vec![
             TerminalType::Terminal,
             TerminalType::Iterm2,
-            TerminalType::Warp,
             TerminalType::Ghostty,
+            TerminalType::Warp,
         ];
         for terminal in terminals {
             let json = serde_json::to_string(&terminal).unwrap();
             let deserialized: TerminalType = serde_json::from_str(&json).unwrap();
             assert_eq!(deserialized, terminal);
         }
+    }
+
+    #[test]
+    fn test_terminal_type_ghostty_serialization() {
+        let terminal = TerminalType::Ghostty;
+        let json = serde_json::to_string(&terminal).unwrap();
+        assert_eq!(json, "\"ghostty\"");
+        let deserialized: TerminalType = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized, TerminalType::Ghostty);
     }
 
     #[test]

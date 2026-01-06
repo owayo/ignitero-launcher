@@ -271,6 +271,7 @@ fn get_available_terminals() -> Vec<String> {
     // 各ターミナルのアプリケーションパスをチェック
     let terminals = vec![
         ("iterm2", "/Applications/iTerm.app"),
+        ("ghostty", "/Applications/Ghostty.app"),
         ("warp", "/Applications/Warp.app"),
     ];
 
@@ -347,8 +348,8 @@ fn get_terminal_icon_path(terminal: String) -> Result<Option<String>, String> {
     let app_path = match terminal.as_str() {
         "terminal" => std::path::PathBuf::from("/System/Applications/Utilities/Terminal.app"),
         "iterm2" => std::path::PathBuf::from("/Applications/iTerm.app"),
-        "warp" => std::path::PathBuf::from("/Applications/Warp.app"),
         "ghostty" => std::path::PathBuf::from("/Applications/Ghostty.app"),
+        "warp" => std::path::PathBuf::from("/Applications/Warp.app"),
         _ => return Ok(None),
     };
 
