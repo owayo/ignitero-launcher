@@ -348,6 +348,7 @@ fn get_terminal_icon_path(terminal: String) -> Result<Option<String>, String> {
         "terminal" => std::path::PathBuf::from("/System/Applications/Utilities/Terminal.app"),
         "iterm2" => std::path::PathBuf::from("/Applications/iTerm.app"),
         "warp" => std::path::PathBuf::from("/Applications/Warp.app"),
+        "ghostty" => std::path::PathBuf::from("/Applications/Ghostty.app"),
         _ => return Ok(None),
     };
 
