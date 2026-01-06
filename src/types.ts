@@ -41,7 +41,7 @@ export interface WindowState {
 }
 
 export type OpenMode = 'none' | 'finder' | 'editor'
-export type TerminalType = 'terminal' | 'iterm2' | 'warp'
+export type TerminalType = 'terminal' | 'iterm2' | 'warp' | 'ghostty'
 
 export interface RegisteredDirectory {
   path: string

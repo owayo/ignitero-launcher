@@ -84,6 +84,12 @@ impl Launcher {
                 app_name: "Warp".to_string(),
                 installed: Self::is_app_installed("Warp"),
             },
+            EditorInfo {
+                id: "ghostty".to_string(),
+                name: "Ghostty".to_string(),
+                app_name: "Ghostty".to_string(),
+                installed: Self::is_app_installed("Ghostty"),
+            },
         ];
 
         terminals.into_iter().filter(|t| t.installed).collect()
@@ -295,6 +301,46 @@ impl Launcher {
                     .spawn()
                     .map_err(|e| format!("Failed to execute command in Warp: {}", e))?;
             }
+            TerminalType::Ghostty => {
+                // GhosttyはAppleScriptに対応していないため、
+                // 一時的な.commandファイルを作成してGhosttyで開く
+                let temp_dir = std::env::temp_dir();
+                let script_path =
+                    temp_dir.join(format!("ignitero_cmd_{}.command", std::process::id()));
+
+                // コマンドの短い説明を作成（タブタイトル用）
+                let tab_title = if full_command.len() > 30 {
+                    format!("{}...", &full_command[..27])
+                } else {
+                    full_command.clone()
+                };
+                // タブタイトルに使えない文字をエスケープ
+                let tab_title = tab_title.replace('\n', " ").replace('\r', "");
+
+                // スクリプト内容を作成
+                // - OSC エスケープシーケンスでタブタイトルを上書き
+                // - 実行後もシェルを維持
+                let script_content = format!(
+                    "#!/bin/zsh\nprintf '\\033]0;%s\\007' \"{}\"\n{}\nexec $SHELL",
+                    tab_title.replace('"', "\\\""),
+                    full_command
+                );
+                fs::write(&script_path, &script_content)
+                    .map_err(|e| format!("Failed to write temp script: {}", e))?;
+
+                // 実行権限を付与
+                #[cfg(unix)]
+                fs::set_permissions(&script_path, fs::Permissions::from_mode(0o755))
+                    .map_err(|e| format!("Failed to set script permissions: {}", e))?;
+
+                // Ghosttyでスクリプトを開く
+                Command::new("open")
+                    .arg("-a")
+                    .arg("Ghostty")
+                    .arg(&script_path)
+                    .spawn()
+                    .map_err(|e| format!("Failed to execute command in Ghostty: {}", e))?;
+            }
         }
 
         Ok(())
@@ -342,6 +388,15 @@ impl Launcher {
                     .arg(&path_buf)
                     .spawn()
                     .map_err(|e| format!("Failed to open Warp: {}", e))?;
+            }
+            TerminalType::Ghostty => {
+                // Ghostty
+                Command::new("open")
+                    .arg("-a")
+                    .arg("Ghostty")
+                    .arg(&path_buf)
+                    .spawn()
+                    .map_err(|e| format!("Failed to open Ghostty: {}", e))?;
             }
         }
 

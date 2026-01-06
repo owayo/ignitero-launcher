@@ -53,6 +53,7 @@ pub enum TerminalType {
     Terminal,
     Iterm2,
     Warp,
+    Ghostty,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -229,6 +230,7 @@ mod tests {
             TerminalType::Terminal,
             TerminalType::Iterm2,
             TerminalType::Warp,
+            TerminalType::Ghostty,
         ];
         for terminal in terminals {
             let json = serde_json::to_string(&terminal).unwrap();

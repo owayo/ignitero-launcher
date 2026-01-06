@@ -521,7 +521,9 @@ const SettingsWindow: React.FC = () => {
                                 ? 'macOSデフォルトターミナル'
                                 : terminal === 'iterm2'
                                   ? 'iTerm2'
-                                  : 'Warp'
+                                  : terminal === 'warp'
+                                    ? 'Warp'
+                                    : 'Ghostty'
                             return (
                               <Radio
                                 key={terminal}
