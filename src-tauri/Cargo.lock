@@ -1748,7 +1748,7 @@ dependencies = [
 
 [[package]]
 name = "ignitero-launcher"
-version = "26.1.104"
+version = "26.1.105"
 dependencies = [
  "cocoa",
  "core-foundation",
