@@ -44,6 +44,12 @@ impl Launcher {
                 app_name: "Antigravity".to_string(),
                 installed: Self::is_app_installed("Antigravity"),
             },
+            EditorInfo {
+                id: "zed".to_string(),
+                name: "Zed".to_string(),
+                app_name: "Zed".to_string(),
+                installed: Self::is_app_installed("Zed"),
+            },
         ];
 
         // インストール済みのエディタのみを返す
@@ -178,6 +184,18 @@ impl Launcher {
                     .arg(target_path)
                     .spawn()
                     .map_err(|e| format!("Failed to open with Antigravity: {}", e))?;
+            }
+            Some("zed") => {
+                // ディレクトリ直下の.code-workspaceファイルを検索
+                let workspace_file = Self::find_workspace_file(&path_buf);
+                let target_path = workspace_file.as_ref().unwrap_or(&path_buf);
+                // Zedで開く
+                Command::new("open")
+                    .arg("-a")
+                    .arg("Zed")
+                    .arg(target_path)
+                    .spawn()
+                    .map_err(|e| format!("Failed to open with Zed: {}", e))?;
             }
             _ => {
                 // デフォルトはFinderで開く（常にディレクトリ本体を開く）

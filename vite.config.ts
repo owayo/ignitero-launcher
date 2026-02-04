@@ -19,6 +19,7 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         settings: resolve(__dirname, 'settings.html'),
         editorPicker: resolve(__dirname, 'editor-picker.html'),
+        terminalPicker: resolve(__dirname, 'terminal-picker.html'),
       },
     },
   },

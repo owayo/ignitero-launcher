@@ -2,117 +2,87 @@ import { CodeOutlined } from '@ant-design/icons';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
-import type { EditorInfo } from './types';
+import type { EditorInfo, TerminalType } from './types';
 import './index.css';
 
-export const EditorPickerWindow: React.FC = () => {
-  const [editors, setEditors] = useState<EditorInfo[]>([]);
+export const TerminalPickerWindow: React.FC = () => {
+  const [terminals, setTerminals] = useState<EditorInfo[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [editorIcons, setEditorIcons] = useState<Map<string, string>>(
+  const [terminalIcons, setTerminalIcons] = useState<Map<string, string>>(
     new Map(),
   );
   const [directoryPath, setDirectoryPath] = useState<string>('');
 
-  // URLのクエリパラメータからディレクトリパスと現在のエディタを取得
+  // URLのクエリパラメータからディレクトリパスを取得
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const path = params.get('path');
-    const editor = params.get('editor');
-    console.log('Getting parameters from URL:', { path, editor });
     if (path) {
       setDirectoryPath(decodeURIComponent(path));
-      console.log('Directory path set to:', decodeURIComponent(path));
-    }
-    if (editor) {
-      const decodedEditor = decodeURIComponent(editor);
-      console.log('Current editor from URL:', decodedEditor);
-      // エディタ一覧が読み込まれた後に初期選択を設定
-      setCurrentEditorId(decodedEditor);
     }
   }, []);
 
-  const [currentEditorId, setCurrentEditorId] = useState<string | null>(null);
-
-  // エディタ一覧が読み込まれたら、現在のエディタを選択
+  // ターミナル一覧を取得
   useEffect(() => {
-    if (editors.length > 0 && currentEditorId) {
-      const index = editors.findIndex((e) => e.id === currentEditorId);
-      if (index !== -1) {
-        console.log('Setting initial selection to:', editors[index].name);
-        setSelectedIndex(index);
-      }
-    }
-  }, [editors, currentEditorId]);
-
-  // エディタ一覧を取得
-  useEffect(() => {
-    const fetchEditors = async () => {
+    const fetchTerminals = async () => {
       try {
-        const editorList = await invoke<EditorInfo[]>('get_editor_list');
-        setEditors(editorList);
+        const terminalList = await invoke<EditorInfo[]>('get_terminal_list');
+        setTerminals(terminalList);
 
         // アイコンを取得
         const iconMap = new Map<string, string>();
         await Promise.all(
-          editorList.map(async (editor) => {
+          terminalList.map(async (terminal) => {
             try {
               const iconPath = await invoke<string | null>(
-                'get_editor_icon_path',
-                { editor: editor.id },
+                'get_terminal_icon_path',
+                { terminal: terminal.id },
               );
               if (iconPath) {
-                iconMap.set(editor.id, iconPath);
+                iconMap.set(terminal.id, iconPath);
               }
             } catch (error) {
-              console.error(`Failed to get icon for ${editor.id}:`, error);
+              console.error(`Failed to get icon for ${terminal.id}:`, error);
             }
           }),
         );
 
-        setEditorIcons(iconMap);
+        setTerminalIcons(iconMap);
       } catch (error) {
-        console.error('Failed to fetch editors:', error);
+        console.error('Failed to fetch terminals:', error);
       }
     };
 
-    fetchEditors();
+    fetchTerminals();
   }, []);
 
   // handleClose を useCallback でラップ
   const handleClose = useCallback(async () => {
     try {
-      await invoke('close_editor_picker_window');
+      await invoke('close_terminal_picker_window');
     } catch (error) {
       console.error('Failed to close picker window:', error);
     }
   }, []);
 
-  // handleSelectEditor を useCallback でラップ
-  const handleSelectEditor = useCallback(
-    async (editorId: string) => {
+  // handleSelectTerminal を useCallback でラップ
+  const handleSelectTerminal = useCallback(
+    async (terminalId: string) => {
       try {
-        console.log('handleSelectEditor called:', {
-          editorId,
-          directoryPath,
-        });
-
         if (!directoryPath) {
           console.error('No directory path set');
           return;
         }
 
-        await invoke('open_directory', {
+        await invoke('open_in_terminal', {
           path: directoryPath,
-          editor: editorId,
+          terminalType: terminalId as TerminalType,
         });
 
-        console.log('open_directory succeeded, hiding main window');
         await invoke('hide_window');
-
-        console.log('Closing editor picker window');
         await handleClose();
       } catch (error) {
-        console.error('Failed to open with editor:', error);
+        console.error('Failed to open with terminal:', error);
       }
     },
     [directoryPath, handleClose],
@@ -121,54 +91,31 @@ export const EditorPickerWindow: React.FC = () => {
   // キーボード操作
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 頭文字キーでエディタを直接選択
-      const key = e.key.toLowerCase();
-      const editorShortcuts: { [key: string]: string } = {
-        w: 'windsurf',
-        c: 'cursor',
-        v: 'code',
-        a: 'antigravity',
-        z: 'zed',
-      };
-
-      if (editorShortcuts[key]) {
-        e.preventDefault();
-        const editorId = editorShortcuts[key];
-        const editor = editors.find((e) => e.id === editorId);
-        if (editor && directoryPath) {
-          console.log(
-            `Shortcut key '${key}' pressed, opening with ${editor.name}`,
-          );
-          handleSelectEditor(editor.id);
-        }
-        return;
-      }
-
       if (e.key === 'ArrowUp') {
         e.preventDefault();
         setSelectedIndex((prev) =>
-          prev === 0 ? editors.length - 1 : prev - 1,
+          prev === 0 ? terminals.length - 1 : prev - 1,
         );
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
         setSelectedIndex((prev) =>
-          prev === editors.length - 1 ? 0 : prev + 1,
+          prev === terminals.length - 1 ? 0 : prev + 1,
         );
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         setSelectedIndex((prev) =>
-          prev === 0 ? editors.length - 1 : prev - 1,
+          prev === 0 ? terminals.length - 1 : prev - 1,
         );
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         setSelectedIndex((prev) =>
-          prev === editors.length - 1 ? 0 : prev + 1,
+          prev === terminals.length - 1 ? 0 : prev + 1,
         );
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        const selected = editors[selectedIndex];
+        const selected = terminals[selectedIndex];
         if (selected && directoryPath) {
-          handleSelectEditor(selected.id);
+          handleSelectTerminal(selected.id);
         }
       } else if (e.key === 'Escape') {
         e.preventDefault();
@@ -178,25 +125,33 @@ export const EditorPickerWindow: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editors, selectedIndex, directoryPath, handleClose, handleSelectEditor]);
+  }, [
+    terminals,
+    selectedIndex,
+    directoryPath,
+    handleClose,
+    handleSelectTerminal,
+  ]);
 
-  if (editors.length === 0) {
+  if (terminals.length === 0) {
     return null;
   }
 
   const radius = 120;
   const centerX = 200;
-  const centerY = 130; // SVG内での円の中心Y座標（上に移動）
+  const centerY = 130;
   const iconSize = 48;
-  const pathTop = 15; // パス表示の上端位置
-  const pathHeight = 36; // パス表示の高さ（padding込み）
-  const gapBetweenPathAndCircle = 10; // パスと円の間隔
-  const svgTop = pathTop + pathHeight + gapBetweenPathAndCircle; // SVGの開始位置（61px）
+  const pathTop = 15;
+  const pathHeight = 36;
+  const gapBetweenPathAndCircle = 10;
+  const svgTop = pathTop + pathHeight + gapBetweenPathAndCircle;
 
-  // 各エディタの角度を計算
-  const angleStep = (2 * Math.PI) / editors.length;
+  // 各ターミナルの角度を計算
+  const angleStep = (2 * Math.PI) / terminals.length;
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: overlay backdrop dismiss pattern
+    // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard handled via global keydown listener
     <div
       style={{
         width: '100%',
@@ -208,6 +163,8 @@ export const EditorPickerWindow: React.FC = () => {
       }}
       onClick={handleClose}
     >
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: container stops event propagation */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard handled via global keydown listener */}
       <div
         style={{
           position: 'relative',
@@ -243,13 +200,16 @@ export const EditorPickerWindow: React.FC = () => {
           width="400"
           height="400"
           style={{ position: 'absolute', top: svgTop, left: 0 }}
+          role="img"
+          aria-label="ターミナル選択"
         >
+          <title>ターミナル選択</title>
           <defs>
-            {/* 背景円のグラデーション */}
+            {/* 背景円のグラデーション - ターミナル用にブルー系 */}
             <radialGradient id="circleGradient" cx="50%" cy="50%" r="65%">
-              <stop offset="0%" stopColor="rgba(255, 250, 245, 0.92)" />
-              <stop offset="60%" stopColor="rgba(255, 250, 245, 0.92)" />
-              <stop offset="100%" stopColor="rgba(255, 180, 130, 0.55)" />
+              <stop offset="0%" stopColor="rgba(245, 250, 255, 0.92)" />
+              <stop offset="60%" stopColor="rgba(245, 250, 255, 0.92)" />
+              <stop offset="100%" stopColor="rgba(130, 180, 255, 0.55)" />
             </radialGradient>
 
             {/* 選択セクションのグラデーション */}
@@ -260,8 +220,8 @@ export const EditorPickerWindow: React.FC = () => {
               y1="0%"
               y2="0%"
             >
-              <stop offset="0%" stopColor="rgba(255, 120, 71, 0.35)" />
-              <stop offset="100%" stopColor="rgba(255, 179, 71, 0.28)" />
+              <stop offset="0%" stopColor="rgba(71, 120, 255, 0.35)" />
+              <stop offset="100%" stopColor="rgba(71, 179, 255, 0.28)" />
             </linearGradient>
           </defs>
 
@@ -271,18 +231,17 @@ export const EditorPickerWindow: React.FC = () => {
             cy={centerY}
             r={radius}
             fill="url(#circleGradient)"
-            stroke="rgba(255, 120, 71, 0.9)"
+            stroke="rgba(71, 120, 255, 0.9)"
             strokeWidth="3"
             opacity="0.98"
           />
 
-          {/* 各エディタのセクション */}
-          {editors.map((editor, index) => {
+          {/* 各ターミナルのセクション */}
+          {terminals.map((terminal, index) => {
             const startAngle = index * angleStep - Math.PI / 2;
             const endAngle = (index + 1) * angleStep - Math.PI / 2;
             const isSelected = index === selectedIndex;
 
-            // 扇形のパスを計算
             const x1 = centerX + radius * Math.cos(startAngle);
             const y1 = centerY + radius * Math.sin(startAngle);
             const x2 = centerX + radius * Math.cos(endAngle);
@@ -298,30 +257,28 @@ export const EditorPickerWindow: React.FC = () => {
             `;
 
             return (
-              <g key={editor.id}>
-                {/* セクション */}
+              <g key={terminal.id}>
+                {/* biome-ignore lint/a11y/noStaticElementInteractions: SVG path sector in circular picker */}
                 <path
                   d={pathData}
                   fill={isSelected ? 'url(#selectionGradient)' : 'transparent'}
                   fillOpacity={isSelected ? 1 : 0}
-                  stroke="rgba(255, 120, 71, 0.35)"
+                  stroke="rgba(71, 120, 255, 0.35)"
                   strokeWidth="1.25"
                   style={{
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                   }}
-                  onClick={() => handleSelectEditor(editor.id)}
+                  onClick={() => handleSelectTerminal(terminal.id)}
                   onMouseEnter={() => setSelectedIndex(index)}
                 />
-
-                {/* 境界線 */}
-                {index < editors.length && (
+                {index < terminals.length && (
                   <line
                     x1={centerX}
                     y1={centerY}
                     x2={x1}
                     y2={y1}
-                    stroke="rgba(255, 120, 71, 0.3)"
+                    stroke="rgba(71, 120, 255, 0.3)"
                     strokeWidth="1.5"
                   />
                 )}
@@ -335,7 +292,7 @@ export const EditorPickerWindow: React.FC = () => {
             cy={centerY}
             r={60}
             fill="rgba(255, 255, 255, 0.95)"
-            stroke="rgba(255, 120, 71, 0.9)"
+            stroke="rgba(71, 120, 255, 0.9)"
             strokeWidth="3"
           />
         </svg>
@@ -354,7 +311,6 @@ export const EditorPickerWindow: React.FC = () => {
             pointerEvents: 'none',
           }}
         >
-          {/* 空白 */}
           <div />
           {/* ↑ */}
           <div
@@ -373,7 +329,6 @@ export const EditorPickerWindow: React.FC = () => {
           >
             ↑
           </div>
-          {/* 空白 */}
           <div />
           {/* ← */}
           <div
@@ -426,22 +381,23 @@ export const EditorPickerWindow: React.FC = () => {
           >
             →
           </div>
-          {/* 空白 */}
           <div />
         </div>
 
-        {/* エディタアイコンとラベル */}
-        {editors.map((editor, index) => {
+        {/* ターミナルアイコンとラベル */}
+        {terminals.map((terminal, index) => {
           const angle = index * angleStep + angleStep / 2 - Math.PI / 2;
           const distance = radius * 0.7;
           const x = centerX + distance * Math.cos(angle);
           const y = centerY + distance * Math.sin(angle) + svgTop;
           const isSelected = index === selectedIndex;
-          const iconPath = editorIcons.get(editor.id);
+          const iconPath = terminalIcons.get(terminal.id);
 
           return (
+            // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard handled via global keydown listener
+            // biome-ignore lint/a11y/noStaticElementInteractions: absolutely positioned circular picker item
             <div
-              key={editor.id}
+              key={terminal.id}
               style={{
                 position: 'absolute',
                 left: x - iconSize / 2,
@@ -455,22 +411,22 @@ export const EditorPickerWindow: React.FC = () => {
                 transition: 'transform 0.2s',
                 transform: isSelected ? 'scale(1.3)' : 'scale(1)',
               }}
-              onClick={() => handleSelectEditor(editor.id)}
+              onClick={() => handleSelectTerminal(terminal.id)}
               onMouseEnter={() => setSelectedIndex(index)}
             >
               {iconPath ? (
                 <img
                   src={convertFileSrc(iconPath)}
-                  alt={editor.name}
+                  alt={terminal.name}
                   style={{
                     width: iconSize,
                     height: iconSize,
                     borderRadius: 8,
                     border: isSelected
-                      ? '3px solid rgba(255, 120, 71, 0.95)'
+                      ? '3px solid rgba(71, 120, 255, 0.95)'
                       : 'none',
                     boxShadow: isSelected
-                      ? '0 6px 14px rgba(255, 120, 71, 0.28)'
+                      ? '0 6px 14px rgba(71, 120, 255, 0.28)'
                       : '0 2px 8px rgba(0, 0, 0, 0.15)',
                   }}
                 />
@@ -481,7 +437,7 @@ export const EditorPickerWindow: React.FC = () => {
                     height: iconSize,
                     borderRadius: 8,
                     border: isSelected
-                      ? '3px solid rgba(255, 120, 71, 0.95)'
+                      ? '3px solid rgba(71, 120, 255, 0.95)'
                       : '1px solid #ccc',
                     background: 'white',
                     display: 'flex',
@@ -489,7 +445,7 @@ export const EditorPickerWindow: React.FC = () => {
                     justifyContent: 'center',
                     fontSize: 24,
                     boxShadow: isSelected
-                      ? '0 6px 14px rgba(255, 120, 71, 0.28)'
+                      ? '0 6px 14px rgba(71, 120, 255, 0.28)'
                       : '0 2px 8px rgba(0, 0, 0, 0.15)',
                   }}
                 >
@@ -501,18 +457,18 @@ export const EditorPickerWindow: React.FC = () => {
                   marginTop: 6,
                   fontSize: 12,
                   fontWeight: isSelected ? 'bold' : 'normal',
-                  color: isSelected ? '#c24410' : '#333',
+                  color: isSelected ? '#1044c2' : '#333',
                   textAlign: 'center',
                   background: 'white',
                   padding: '3px 8px',
                   borderRadius: 6,
                   boxShadow: isSelected
-                    ? '0 2px 8px rgba(24, 144, 255, 0.3)'
+                    ? '0 2px 8px rgba(71, 120, 255, 0.3)'
                     : '0 1px 4px rgba(0, 0, 0, 0.1)',
                   whiteSpace: 'nowrap',
                 }}
               >
-                {editor.name}
+                {terminal.name}
               </div>
             </div>
           );

@@ -9,10 +9,10 @@ import {
   PlusOutlined,
   ReloadOutlined,
   SettingOutlined,
-} from '@ant-design/icons'
-import { convertFileSrc, invoke } from '@tauri-apps/api/core'
-import { emit } from '@tauri-apps/api/event'
-import { open } from '@tauri-apps/plugin-dialog'
+} from '@ant-design/icons';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
+import { emit } from '@tauri-apps/api/event';
+import { open } from '@tauri-apps/plugin-dialog';
 import {
   Alert,
   Button,
@@ -29,210 +29,212 @@ import {
   Space,
   Tabs,
   Typography,
-} from 'antd'
-import type React from 'react'
-import { useEffect, useState } from 'react'
-import packageJson from '../package.json'
+} from 'antd';
+import type React from 'react';
+import { useEffect, useState } from 'react';
+import packageJson from '../package.json';
 import type {
   AppItem,
   CustomCommand,
   RegisteredDirectory,
   Settings,
-} from './types'
-import './Settings.css'
+} from './types';
+import './Settings.css';
 
-const { Title, Text } = Typography
-const { Option } = Select
+const { Title, Text } = Typography;
+const { Option } = Select;
 
 interface UpdateInfo {
-  has_update: boolean
-  current_version: string
-  latest_version: string | null
-  html_url: string | null
+  has_update: boolean;
+  current_version: string;
+  latest_version: string | null;
+  html_url: string | null;
 }
 
 const SettingsWindow: React.FC = () => {
-  const [form] = Form.useForm()
-  const [settings, setSettings] = useState<Settings | null>(null)
-  const [addDirModalVisible, setAddDirModalVisible] = useState(false)
-  const [addDirForm] = Form.useForm()
-  const [selectedPath, setSelectedPath] = useState<string>('')
-  const [availableEditors, setAvailableEditors] = useState<string[]>([])
-  const [availableTerminals, setAvailableTerminals] = useState<string[]>([])
+  const [form] = Form.useForm();
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [addDirModalVisible, setAddDirModalVisible] = useState(false);
+  const [addDirForm] = Form.useForm();
+  const [selectedPath, setSelectedPath] = useState<string>('');
+  const [availableEditors, setAvailableEditors] = useState<string[]>([]);
+  const [availableTerminals, setAvailableTerminals] = useState<string[]>([]);
   const [editingDirectory, setEditingDirectory] =
-    useState<RegisteredDirectory | null>(null)
-  const [addCmdModalVisible, setAddCmdModalVisible] = useState(false)
-  const [addCmdForm] = Form.useForm()
+    useState<RegisteredDirectory | null>(null);
+  const [addCmdModalVisible, setAddCmdModalVisible] = useState(false);
+  const [addCmdForm] = Form.useForm();
   const [editingCommand, setEditingCommand] = useState<CustomCommand | null>(
     null,
-  )
-  const [editorIcons, setEditorIcons] = useState<Map<string, string>>(new Map())
+  );
+  const [editorIcons, setEditorIcons] = useState<Map<string, string>>(
+    new Map(),
+  );
   const [terminalIcons, setTerminalIcons] = useState<Map<string, string>>(
     new Map(),
-  )
-  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
-  const [checkingUpdate, setCheckingUpdate] = useState(false)
-  const [updateError, setUpdateError] = useState<string | null>(null)
-  const [refreshingCache, setRefreshingCache] = useState(false)
-  const [allApps, setAllApps] = useState<AppItem[]>([])
-  const [appSearchQuery, setAppSearchQuery] = useState<string>('')
+  );
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [refreshingCache, setRefreshingCache] = useState(false);
+  const [allApps, setAllApps] = useState<AppItem[]>([]);
+  const [appSearchQuery, setAppSearchQuery] = useState<string>('');
 
   // インストール済みエディタを取得
   const loadAvailableEditors = async () => {
     try {
-      const editors = await invoke<string[]>('get_available_editors')
-      setAvailableEditors(editors)
+      const editors = await invoke<string[]>('get_available_editors');
+      setAvailableEditors(editors);
       // エディタアイコンを読み込み
-      await loadEditorIcons(editors)
+      await loadEditorIcons(editors);
     } catch (error) {
-      console.error('Failed to load available editors:', error)
+      console.error('Failed to load available editors:', error);
     }
-  }
+  };
 
   // エディタアイコンを読み込み
   const loadEditorIcons = async (editors: string[]) => {
-    const icons = new Map<string, string>()
+    const icons = new Map<string, string>();
     for (const editor of editors) {
       try {
         const iconPath = await invoke<string | null>('get_editor_icon_path', {
           editor,
-        })
+        });
         if (iconPath) {
-          icons.set(editor, convertFileSrc(iconPath))
+          icons.set(editor, convertFileSrc(iconPath));
         }
       } catch (error) {
-        console.error(`Failed to load icon for ${editor}:`, error)
+        console.error(`Failed to load icon for ${editor}:`, error);
       }
     }
-    setEditorIcons(icons)
-  }
+    setEditorIcons(icons);
+  };
 
   // インストール済みターミナルを取得
   const loadAvailableTerminals = async () => {
     try {
-      const terminals = await invoke<string[]>('get_available_terminals')
-      setAvailableTerminals(terminals)
+      const terminals = await invoke<string[]>('get_available_terminals');
+      setAvailableTerminals(terminals);
       // ターミナルアイコンを読み込み
-      await loadTerminalIcons(terminals)
+      await loadTerminalIcons(terminals);
     } catch (error) {
-      console.error('Failed to load available terminals:', error)
+      console.error('Failed to load available terminals:', error);
     }
-  }
+  };
 
   // ターミナルアイコンを読み込み
   const loadTerminalIcons = async (terminals: string[]) => {
-    const icons = new Map<string, string>()
+    const icons = new Map<string, string>();
     for (const terminal of terminals) {
       try {
         const iconPath = await invoke<string | null>('get_terminal_icon_path', {
           terminal,
-        })
+        });
         if (iconPath) {
-          icons.set(terminal, convertFileSrc(iconPath))
+          icons.set(terminal, convertFileSrc(iconPath));
         }
       } catch (error) {
-        console.error(`Failed to load icon for ${terminal}:`, error)
+        console.error(`Failed to load icon for ${terminal}:`, error);
       }
     }
-    setTerminalIcons(icons)
-  }
+    setTerminalIcons(icons);
+  };
 
   // 全アプリを読み込み
   const loadAllApps = async () => {
     try {
-      const apps = await invoke<AppItem[]>('get_all_apps')
+      const apps = await invoke<AppItem[]>('get_all_apps');
       // 名前でソート
-      apps.sort((a, b) => a.name.localeCompare(b.name))
-      setAllApps(apps)
+      apps.sort((a, b) => a.name.localeCompare(b.name));
+      setAllApps(apps);
     } catch (error) {
-      console.error('Failed to load all apps:', error)
+      console.error('Failed to load all apps:', error);
     }
-  }
+  };
 
   // アプリの除外状態を切り替え
   const handleToggleAppExclusion = async (
     appPath: string,
     excluded: boolean,
   ) => {
-    if (!settings) return
+    if (!settings) return;
 
     try {
       const newExcludedApps = excluded
         ? [...settings.excluded_apps, appPath]
-        : settings.excluded_apps.filter((path) => path !== appPath)
+        : settings.excluded_apps.filter((path) => path !== appPath);
 
       const updatedSettings: Settings = {
         ...settings,
         excluded_apps: newExcludedApps,
-      }
+      };
 
-      await invoke('save_settings', { settings: updatedSettings })
-      setSettings(updatedSettings)
-      await emit('settings-changed')
+      await invoke('save_settings', { settings: updatedSettings });
+      setSettings(updatedSettings);
+      await emit('settings-changed');
     } catch (error) {
-      console.error('Failed to toggle app exclusion:', error)
-      message.error('除外設定の保存に失敗しました')
+      console.error('Failed to toggle app exclusion:', error);
+      message.error('除外設定の保存に失敗しました');
     }
-  }
+  };
 
   // 設定を読み込み
   const loadSettings = async () => {
     try {
-      const loadedSettings = await invoke<Settings>('get_settings')
-      setSettings(loadedSettings)
+      const loadedSettings = await invoke<Settings>('get_settings');
+      setSettings(loadedSettings);
       form.setFieldsValue({
         update_on_startup: loadedSettings.cache_update.update_on_startup,
         auto_update_enabled: loadedSettings.cache_update.auto_update_enabled,
         auto_update_interval_hours:
           loadedSettings.cache_update.auto_update_interval_hours,
         default_terminal: loadedSettings.default_terminal,
-      })
+      });
     } catch (error) {
-      console.error('Failed to load settings:', error)
+      console.error('Failed to load settings:', error);
     }
-  }
+  };
 
   useEffect(() => {
-    loadSettings()
-    loadAvailableEditors()
-    loadAvailableTerminals()
-    loadAllApps()
-  }, [loadAllApps, loadAvailableEditors, loadAvailableTerminals, loadSettings])
+    loadSettings();
+    loadAvailableEditors();
+    loadAvailableTerminals();
+    loadAllApps();
+  }, [loadAllApps, loadAvailableEditors, loadAvailableTerminals, loadSettings]);
 
   // バージョンを手動チェック
   const handleCheckUpdates = async () => {
     try {
-      setCheckingUpdate(true)
-      setUpdateError(null)
+      setCheckingUpdate(true);
+      setUpdateError(null);
       const info = await invoke<UpdateInfo>('check_update', {
         force: true,
-      })
-      setUpdateInfo(info)
+      });
+      setUpdateInfo(info);
     } catch (error) {
-      console.error('Failed to check for updates:', error)
-      setUpdateError('更新の確認に失敗しました')
+      console.error('Failed to check for updates:', error);
+      setUpdateError('更新の確認に失敗しました');
     } finally {
-      setCheckingUpdate(false)
+      setCheckingUpdate(false);
     }
-  }
+  };
 
   // ディレクトリを追加（フォルダ選択）
   const handleAddDirectory = async () => {
     try {
-      console.log('Opening folder picker...')
+      console.log('Opening folder picker...');
       const selected = await open({
         directory: true,
         multiple: false,
         defaultPath: '/',
-      })
+      });
 
-      console.log('Selected:', selected)
+      console.log('Selected:', selected);
 
       if (selected && typeof selected === 'string') {
-        console.log('Setting selected path:', selected)
-        setSelectedPath(selected)
+        console.log('Setting selected path:', selected);
+        setSelectedPath(selected);
         // デフォルトのキーワードはディレクトリ名
-        const defaultKeyword = selected.split('/').pop() || ''
+        const defaultKeyword = selected.split('/').pop() || '';
         addDirForm.setFieldsValue({
           parent_open_mode: 'none',
           parent_editor: availableEditors[0] || '',
@@ -240,21 +242,21 @@ const SettingsWindow: React.FC = () => {
           subdirs_open_mode: 'none',
           subdirs_editor: availableEditors[0] || '',
           scan_for_apps: false,
-        })
-        setAddDirModalVisible(true)
+        });
+        setAddDirModalVisible(true);
       } else {
-        console.log('No folder selected or cancelled')
+        console.log('No folder selected or cancelled');
       }
     } catch (error) {
-      console.error('Failed to open folder picker:', error)
-      alert(`フォルダ選択に失敗しました: ${error}`)
+      console.error('Failed to open folder picker:', error);
+      alert(`フォルダ選択に失敗しました: ${error}`);
     }
-  }
+  };
 
   // ディレクトリ追加を確定
   const handleConfirmAddDirectory = async () => {
     try {
-      const values = addDirForm.getFieldsValue()
+      const values = addDirForm.getFieldsValue();
 
       const newDir: RegisteredDirectory = {
         path: editingDirectory ? editingDirectory.path : selectedPath,
@@ -273,23 +275,23 @@ const SettingsWindow: React.FC = () => {
             ? values.subdirs_editor
             : undefined,
         scan_for_apps: values.scan_for_apps,
-      }
+      };
 
       // add_directoryは既に存在する場合は更新するため、削除不要
-      await invoke('add_directory', { directory: newDir })
-      setAddDirModalVisible(false)
-      setEditingDirectory(null)
-      loadSettings()
+      await invoke('add_directory', { directory: newDir });
+      setAddDirModalVisible(false);
+      setEditingDirectory(null);
+      loadSettings();
     } catch (error) {
-      console.error('Failed to add directory:', error)
+      console.error('Failed to add directory:', error);
     }
-  }
+  };
 
   // ディレクトリを編集
   const handleEditDirectory = (dir: RegisteredDirectory) => {
-    setEditingDirectory(dir)
-    setSelectedPath(dir.path)
-    const defaultKeyword = dir.path.split('/').pop() || ''
+    setEditingDirectory(dir);
+    setSelectedPath(dir.path);
+    const defaultKeyword = dir.path.split('/').pop() || '';
     addDirForm.setFieldsValue({
       parent_open_mode: dir.parent_open_mode,
       parent_editor: dir.parent_editor || availableEditors[0] || '',
@@ -297,104 +299,104 @@ const SettingsWindow: React.FC = () => {
       subdirs_open_mode: dir.subdirs_open_mode,
       subdirs_editor: dir.subdirs_editor || availableEditors[0] || '',
       scan_for_apps: dir.scan_for_apps,
-    })
-    setAddDirModalVisible(true)
-  }
+    });
+    setAddDirModalVisible(true);
+  };
 
   // ディレクトリを削除
   const handleRemoveDirectory = async (path: string) => {
     try {
-      await invoke('remove_directory', { path })
-      loadSettings()
+      await invoke('remove_directory', { path });
+      loadSettings();
     } catch (error) {
-      console.error('Failed to remove directory:', error)
+      console.error('Failed to remove directory:', error);
     }
-  }
+  };
 
   // コマンドを追加
   const handleAddCommand = () => {
-    setEditingCommand(null)
-    addCmdForm.resetFields()
-    setAddCmdModalVisible(true)
-  }
+    setEditingCommand(null);
+    addCmdForm.resetFields();
+    setAddCmdModalVisible(true);
+  };
 
   // コマンド追加/編集を確定
   const handleConfirmAddCommand = async () => {
     try {
-      const values = await addCmdForm.validateFields()
+      const values = await addCmdForm.validateFields();
       const cmd: CustomCommand = {
         alias: values.alias,
         command: values.command,
         working_directory: values.working_directory || undefined,
-      }
-      await invoke('add_command', { command: cmd })
-      setAddCmdModalVisible(false)
-      setEditingCommand(null)
-      loadSettings()
+      };
+      await invoke('add_command', { command: cmd });
+      setAddCmdModalVisible(false);
+      setEditingCommand(null);
+      loadSettings();
     } catch (error) {
-      console.error('Failed to add command:', error)
+      console.error('Failed to add command:', error);
     }
-  }
+  };
 
   // コマンドを編集
   const handleEditCommand = (cmd: CustomCommand) => {
-    setEditingCommand(cmd)
+    setEditingCommand(cmd);
     addCmdForm.setFieldsValue({
       alias: cmd.alias,
       command: cmd.command,
       working_directory: cmd.working_directory || '',
-    })
-    setAddCmdModalVisible(true)
-  }
+    });
+    setAddCmdModalVisible(true);
+  };
 
   // コマンドを削除
   const handleRemoveCommand = async (alias: string) => {
     try {
-      await invoke('remove_command', { alias })
-      loadSettings()
+      await invoke('remove_command', { alias });
+      loadSettings();
     } catch (error) {
-      console.error('Failed to remove command:', error)
+      console.error('Failed to remove command:', error);
     }
-  }
+  };
 
   // キャッシュを手動更新
   const handleRefreshCache = async () => {
     try {
-      setRefreshingCache(true)
-      await invoke('refresh_cache')
-      message.success('キャッシュを更新しました')
+      setRefreshingCache(true);
+      await invoke('refresh_cache');
+      message.success('キャッシュを更新しました');
     } catch (error) {
-      console.error('Failed to refresh cache:', error)
-      message.error('キャッシュの更新に失敗しました')
+      console.error('Failed to refresh cache:', error);
+      message.error('キャッシュの更新に失敗しました');
     } finally {
-      setRefreshingCache(false)
+      setRefreshingCache(false);
     }
-  }
+  };
 
   // アイコンキャッシュを更新（クリア後に再生成）
   const handleRefreshIconCache = async () => {
     try {
-      setRefreshingCache(true)
+      setRefreshingCache(true);
       // キャッシュをクリア
-      await invoke<number>('clear_icon_cache')
+      await invoke<number>('clear_icon_cache');
       // 再スキャンしてアイコンを再生成
-      await invoke('refresh_cache')
-      message.success('アイコンキャッシュを更新しました')
+      await invoke('refresh_cache');
+      message.success('アイコンキャッシュを更新しました');
     } catch (error) {
-      console.error('Failed to refresh icon cache:', error)
-      message.error('アイコンキャッシュの更新に失敗しました')
+      console.error('Failed to refresh icon cache:', error);
+      message.error('アイコンキャッシュの更新に失敗しました');
     } finally {
-      setRefreshingCache(false)
+      setRefreshingCache(false);
     }
-  }
+  };
 
   if (!settings) {
-    return <div>読み込み中...</div>
+    return <div>読み込み中...</div>;
   }
 
   const installedTerminals = availableTerminals.filter(
     (terminal) => terminal === 'terminal' || terminalIcons.has(terminal),
-  )
+  );
 
   return (
     <div className="settings-container">
@@ -414,13 +416,13 @@ const SettingsWindow: React.FC = () => {
                     allValues.auto_update_interval_hours,
                 },
                 default_terminal: allValues.default_terminal,
-              }
-              await invoke('save_settings', { settings: updatedSettings })
-              setSettings(updatedSettings)
+              };
+              await invoke('save_settings', { settings: updatedSettings });
+              setSettings(updatedSettings);
               // 設定変更イベントを発行
-              await emit('settings-changed')
+              await emit('settings-changed');
             } catch (error) {
-              console.error('Failed to save settings:', error)
+              console.error('Failed to save settings:', error);
             }
           }}
         >
@@ -526,7 +528,7 @@ const SettingsWindow: React.FC = () => {
                                   ? 'iTerm2'
                                   : terminal === 'warp'
                                     ? 'Warp'
-                                    : 'Ghostty'
+                                    : 'Ghostty';
                             return (
                               <Radio
                                 key={terminal}
@@ -549,7 +551,7 @@ const SettingsWindow: React.FC = () => {
                                   {label}
                                 </span>
                               </Radio>
-                            )
+                            );
                           })}
                           {installedTerminals.length === 0 && (
                             <Text type="secondary">
@@ -592,7 +594,7 @@ const SettingsWindow: React.FC = () => {
                           {() => {
                             const autoUpdateEnabled = form.getFieldValue(
                               'auto_update_enabled',
-                            )
+                            );
                             return (
                               autoUpdateEnabled && (
                                 <Form.Item
@@ -607,7 +609,7 @@ const SettingsWindow: React.FC = () => {
                                   />
                                 </Form.Item>
                               )
-                            )
+                            );
                           }}
                         </Form.Item>
 
@@ -869,7 +871,8 @@ const SettingsWindow: React.FC = () => {
                         locale={{ emptyText: 'アプリが見つかりません' }}
                         renderItem={(app) => {
                           const isExcluded =
-                            settings?.excluded_apps?.includes(app.path) ?? false
+                            settings?.excluded_apps?.includes(app.path) ??
+                            false;
                           return (
                             <List.Item
                               style={{
@@ -886,11 +889,11 @@ const SettingsWindow: React.FC = () => {
                               <Checkbox
                                 checked={isExcluded}
                                 onChange={(e) => {
-                                  e.stopPropagation()
+                                  e.stopPropagation();
                                   handleToggleAppExclusion(
                                     app.path,
                                     e.target.checked,
-                                  )
+                                  );
                                 }}
                                 onClick={(e) => e.stopPropagation()}
                                 style={{ marginRight: 12 }}
@@ -948,7 +951,7 @@ const SettingsWindow: React.FC = () => {
                                 </div>
                               </div>
                             </List.Item>
-                          )
+                          );
                         }}
                       />
                     </div>
@@ -972,8 +975,8 @@ const SettingsWindow: React.FC = () => {
         title={editingDirectory ? 'ディレクトリを編集' : 'ディレクトリを追加'}
         open={addDirModalVisible}
         onCancel={() => {
-          setAddDirModalVisible(false)
-          setEditingDirectory(null)
+          setAddDirModalVisible(false);
+          setEditingDirectory(null);
         }}
         onOk={handleConfirmAddDirectory}
         okText={editingDirectory ? '更新' : '追加'}
@@ -1000,7 +1003,7 @@ const SettingsWindow: React.FC = () => {
           <Form.Item noStyle shouldUpdate>
             {() => {
               const parentOpenMode =
-                addDirForm.getFieldValue('parent_open_mode')
+                addDirForm.getFieldValue('parent_open_mode');
               return (
                 <>
                   {parentOpenMode !== 'none' && (
@@ -1100,7 +1103,7 @@ const SettingsWindow: React.FC = () => {
                     </Form.Item>
                   )}
                 </>
-              )
+              );
             }}
           </Form.Item>
 
@@ -1120,7 +1123,7 @@ const SettingsWindow: React.FC = () => {
           <Form.Item noStyle shouldUpdate>
             {() => {
               const subdirsOpenMode =
-                addDirForm.getFieldValue('subdirs_open_mode')
+                addDirForm.getFieldValue('subdirs_open_mode');
               return (
                 subdirsOpenMode === 'editor' && (
                   <Form.Item
@@ -1206,7 +1209,7 @@ const SettingsWindow: React.FC = () => {
                     </Select>
                   </Form.Item>
                 )
-              )
+              );
             }}
           </Form.Item>
 
@@ -1225,8 +1228,8 @@ const SettingsWindow: React.FC = () => {
         title={editingCommand ? 'コマンドを編集' : 'コマンドを追加'}
         open={addCmdModalVisible}
         onCancel={() => {
-          setAddCmdModalVisible(false)
-          setEditingCommand(null)
+          setAddCmdModalVisible(false);
+          setEditingCommand(null);
         }}
         onOk={handleConfirmAddCommand}
         okText={editingCommand ? '更新' : '追加'}
@@ -1274,12 +1277,12 @@ const SettingsWindow: React.FC = () => {
                       multiple: false,
                       defaultPath:
                         addCmdForm.getFieldValue('working_directory') || '/',
-                    })
+                    });
                     if (selected && typeof selected === 'string') {
-                      addCmdForm.setFieldValue('working_directory', selected)
+                      addCmdForm.setFieldValue('working_directory', selected);
                     }
                   } catch (error) {
-                    console.error('Failed to open folder picker:', error)
+                    console.error('Failed to open folder picker:', error);
                   }
                 }}
               >
@@ -1295,7 +1298,7 @@ const SettingsWindow: React.FC = () => {
         </Form>
       </Modal>
     </div>
-  )
-}
+  );
+};
 
-export default SettingsWindow
+export default SettingsWindow;

@@ -1,75 +1,75 @@
 export interface AppItem {
-  name: string
-  path: string
-  icon_path?: string
+  name: string;
+  path: string;
+  icon_path?: string;
 }
 
 export interface DirectoryItem {
-  name: string
-  path: string
-  editor?: string
+  name: string;
+  path: string;
+  editor?: string;
 }
 
 export interface CustomCommand {
-  alias: string
-  command: string
-  working_directory?: string
+  alias: string;
+  command: string;
+  working_directory?: string;
 }
 
 export interface CommandItem {
-  alias: string
-  command: string
-  working_directory?: string
+  alias: string;
+  command: string;
+  working_directory?: string;
 }
 
 export interface WindowPosition {
-  x: number
-  y: number
+  x: number;
+  y: number;
 }
 
 export interface EditorInfo {
-  id: string
-  name: string
-  app_name: string
-  installed: boolean
+  id: string;
+  name: string;
+  app_name: string;
+  installed: boolean;
 }
 
 export interface WindowState {
-  label: string
-  visible: boolean
-  focused: boolean
+  label: string;
+  visible: boolean;
+  focused: boolean;
 }
 
-export type OpenMode = 'none' | 'finder' | 'editor'
-export type TerminalType = 'terminal' | 'iterm2' | 'ghostty' | 'warp'
+export type OpenMode = 'none' | 'finder' | 'editor';
+export type TerminalType = 'terminal' | 'iterm2' | 'ghostty' | 'warp';
 
 export interface RegisteredDirectory {
-  path: string
+  path: string;
 
   // 親ディレクトリ自身の開き方
-  parent_open_mode: OpenMode
-  parent_editor?: string
-  parent_search_keyword?: string // 検索キーワード（未指定時はディレクトリ名）
+  parent_open_mode: OpenMode;
+  parent_editor?: string;
+  parent_search_keyword?: string; // 検索キーワード（未指定時はディレクトリ名）
 
   // サブディレクトリの開き方
-  subdirs_open_mode: OpenMode
-  subdirs_editor?: string
+  subdirs_open_mode: OpenMode;
+  subdirs_editor?: string;
 
   // .appファイルのスキャン
-  scan_for_apps: boolean
+  scan_for_apps: boolean;
 }
 
 export interface CacheUpdateSettings {
-  update_on_startup: boolean
-  auto_update_enabled: boolean
-  auto_update_interval_hours: number
+  update_on_startup: boolean;
+  auto_update_enabled: boolean;
+  auto_update_interval_hours: number;
 }
 
 export interface Settings {
-  registered_directories: RegisteredDirectory[]
-  custom_commands: CustomCommand[]
-  cache_update: CacheUpdateSettings
-  default_terminal: TerminalType
-  main_window_position?: WindowPosition | null
-  excluded_apps: string[]
+  registered_directories: RegisteredDirectory[];
+  custom_commands: CustomCommand[];
+  cache_update: CacheUpdateSettings;
+  default_terminal: TerminalType;
+  main_window_position?: WindowPosition | null;
+  excluded_apps: string[];
 }

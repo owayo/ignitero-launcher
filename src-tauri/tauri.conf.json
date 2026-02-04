@@ -55,6 +55,21 @@
         "skipTaskbar": true,
         "focus": true,
         "transparent": true
+      },
+      {
+        "title": "ターミナル選択",
+        "width": 400,
+        "height": 450,
+        "label": "terminal-picker",
+        "url": "terminal-picker.html",
+        "visible": false,
+        "center": true,
+        "alwaysOnTop": true,
+        "decorations": false,
+        "resizable": false,
+        "skipTaskbar": true,
+        "focus": true,
+        "transparent": true
       }
     ],
     "security": {
@@ -109,6 +124,20 @@
           "identifier": "editor-picker-window",
           "description": "Editor picker window capability",
           "windows": ["editor-picker"],
+          "permissions": [
+            "core:default",
+            "core:app:default",
+            "core:event:default",
+            "core:window:default",
+            "core:window:allow-close",
+            "core:window:allow-hide",
+            "shell:default"
+          ]
+        },
+        {
+          "identifier": "terminal-picker-window",
+          "description": "Terminal picker window capability",
+          "windows": ["terminal-picker"],
           "permissions": [
             "core:default",
             "core:app:default",

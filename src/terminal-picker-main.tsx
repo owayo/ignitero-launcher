@@ -1,10 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import SettingsWindow from './SettingsWindow';
-import './index.css';
+import { TerminalPickerWindow } from './TerminalPickerWindow';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <SettingsWindow />
+    <TerminalPickerWindow />
   </React.StrictMode>,
 );
