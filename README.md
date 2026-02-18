@@ -325,10 +325,10 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 ## 技術スタック
 
 ### フロントエンド
-- React 18
-- TypeScript
-- Vite
-- Ant Design
+- React 19
+- TypeScript ~5.9
+- Vite 7
+- Ant Design 6
 
 ### バックエンド
 - Rust
@@ -336,6 +336,10 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 - SQLite (rusqlite)
 - fuzzy-matcher（ファジー検索）
 - window-vibrancy（macOSぼかし効果）
+
+### テスト
+- Vitest 4
+- Testing Library (React, jest-dom, user-event)
 
 ### 主要な依存関係
 - `tauri-plugin-global-shortcut`: グローバルホットキー
@@ -391,6 +395,15 @@ pnpm fmt
 
 # Rustコードをフォーマット
 pnpm tauri:fmt
+
+# フロントエンドテスト
+pnpm test
+
+# Rustテスト
+pnpm test:rust
+
+# 全テスト実行
+pnpm test:all
 
 # プロダクションビルド
 pnpm tauri:build

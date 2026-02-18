@@ -23,7 +23,7 @@ fuzzy-matcher = "0.3.7"
 walkdir = "2.5.0"
 plist = "1.8.0"
 rusqlite = { version = "0.38.0", features = ["bundled"] }
-reqwest = { version = "0.13.1", features = ["json", "rustls"], default-features = false }
+reqwest = { version = "0.13.2", features = ["json", "rustls"], default-features = false }
 tokio = { version = "1.49.0", features = ["rt-multi-thread"] }
 urlencoding = "2.1.3"
 
@@ -36,7 +36,7 @@ objc = "0.2.7"
 [dev-dependencies]
 rstest = "0.26.1"
 mockall = "0.14.0"
-tempfile = "3.24.0"
+tempfile = "3.25.0"
 
 [lints.rust]
 # objc 0.2 の msg_send! マクロ内で古い cfg(feature = "cargo-clippy") が使用されているため
