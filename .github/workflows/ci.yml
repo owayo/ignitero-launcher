@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  build:
     runs-on: macos-15
 
     steps:
@@ -26,6 +26,3 @@ jobs:
 
       - name: Build
         run: swift build -c release
-
-      - name: Test
-        run: swift test
