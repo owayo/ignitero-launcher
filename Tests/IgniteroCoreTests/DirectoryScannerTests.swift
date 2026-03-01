@@ -1,0 +1,761 @@
+import Foundation
+import Testing
+
+@testable import IgniteroCore
+
+// MARK: - Mock FileSystem Provider
+
+struct MockFileSystemProvider: FileSystemProvider {
+  var directoryContents: [String: [String]] = [:]
+  var directoryFlags: Set<String> = []
+  var existingPaths: Set<String> = []
+
+  func contentsOfDirectory(atPath path: String) throws -> [String] {
+    guard let contents = directoryContents[path] else {
+      throw FileSystemError.directoryNotFound(path)
+    }
+    return contents
+  }
+
+  func isDirectory(atPath path: String) -> Bool {
+    directoryFlags.contains(path)
+  }
+
+  func fileExists(atPath path: String) -> Bool {
+    existingPaths.contains(path)
+  }
+}
+
+// MARK: - ScanResult Tests
+
+@Suite("ScanResult")
+struct ScanResultTests {
+
+  @Test func emptyScanResult() {
+    let result = ScanResult(directories: [], apps: [])
+    #expect(result.directories.isEmpty)
+    #expect(result.apps.isEmpty)
+  }
+
+  @Test func scanResultEquality() {
+    let dirs = [DirectoryItem(name: "project", path: "/dev/project", editor: "cursor")]
+    let apps = [AppItem(name: "MyApp", path: "/dev/MyApp.app")]
+    let result1 = ScanResult(directories: dirs, apps: apps)
+    let result2 = ScanResult(directories: dirs, apps: apps)
+    #expect(result1 == result2)
+  }
+}
+
+// MARK: - DirectoryScanner Protocol Tests
+
+@Suite("DirectoryScannerProtocol")
+struct DirectoryScannerProtocolTests {
+
+  @Test func conformsToProtocol() {
+    let fs = MockFileSystemProvider()
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    #expect(scanner is any DirectoryScannerProtocol)
+  }
+
+  @Test func isSendable() {
+    let fs = MockFileSystemProvider()
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let _: any Sendable = scanner
+    _ = scanner
+  }
+}
+
+// MARK: - Empty Input Tests
+
+@Suite("DirectoryScanner Empty Input")
+struct DirectoryScannerEmptyInputTests {
+
+  @Test func scanWithNoRegisteredDirectories() throws {
+    let fs = MockFileSystemProvider()
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [])
+    #expect(result.directories.isEmpty)
+    #expect(result.apps.isEmpty)
+  }
+}
+
+// MARK: - Subdirectory Scanning Tests
+
+@Suite("DirectoryScanner Subdirectory Scanning")
+struct DirectoryScannerSubdirectoryScanningTests {
+
+  @Test func scanFindsImmediateSubdirectories() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/projects"
+    fs.directoryContents[basePath] = ["project-a", "project-b", "readme.txt"]
+    fs.directoryFlags = [
+      basePath,
+      "\(basePath)/project-a",
+      "\(basePath)/project-b",
+    ]
+    fs.existingPaths = [
+      basePath,
+      "\(basePath)/project-a",
+      "\(basePath)/project-b",
+      "\(basePath)/readme.txt",
+    ]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .editor,
+      parentEditor: "cursor",
+      subdirsOpenMode: .editor,
+      subdirsEditor: "vscode",
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    // Subdirectories should be included
+    let subdirs = result.directories.filter { $0.path != basePath }
+    #expect(subdirs.count == 2)
+    #expect(subdirs.contains { $0.name == "project-a" && $0.path == "\(basePath)/project-a" })
+    #expect(subdirs.contains { $0.name == "project-b" && $0.path == "\(basePath)/project-b" })
+  }
+
+  @Test func scanExcludesRegularFiles() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/projects"
+    fs.directoryContents[basePath] = ["project-a", "readme.txt", ".gitignore"]
+    fs.directoryFlags = [
+      basePath,
+      "\(basePath)/project-a",
+    ]
+    fs.existingPaths = [
+      basePath,
+      "\(basePath)/project-a",
+      "\(basePath)/readme.txt",
+      "\(basePath)/.gitignore",
+    ]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .finder,
+      subdirsOpenMode: .editor,
+      subdirsEditor: "cursor",
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    // Only project-a is a directory; readme.txt and .gitignore are files
+    let subdirs = result.directories.filter { $0.path != basePath }
+    #expect(subdirs.count == 1)
+    #expect(subdirs[0].name == "project-a")
+  }
+
+  @Test func scanExcludesHiddenDirectories() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/projects"
+    fs.directoryContents[basePath] = ["visible-project", ".hidden-dir"]
+    fs.directoryFlags = [
+      basePath,
+      "\(basePath)/visible-project",
+      "\(basePath)/.hidden-dir",
+    ]
+    fs.existingPaths = [
+      basePath,
+      "\(basePath)/visible-project",
+      "\(basePath)/.hidden-dir",
+    ]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .finder,
+      subdirsOpenMode: .editor,
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    let subdirs = result.directories.filter { $0.path != basePath }
+    #expect(subdirs.count == 1)
+    #expect(subdirs[0].name == "visible-project")
+  }
+}
+
+// MARK: - Editor Assignment Tests
+
+@Suite("DirectoryScanner Editor Assignment")
+struct DirectoryScannerEditorAssignmentTests {
+
+  @Test func parentDirectoryUsesParentEditor() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/projects"
+    fs.directoryContents[basePath] = []
+    fs.directoryFlags = [basePath]
+    fs.existingPaths = [basePath]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .editor,
+      parentEditor: "cursor",
+      subdirsOpenMode: .editor,
+      subdirsEditor: "vscode",
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    let parent = result.directories.first { $0.path == basePath }
+    #expect(parent != nil)
+    #expect(parent?.editor == "cursor")
+  }
+
+  @Test func subdirectoriesUseSubdirsEditor() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/projects"
+    fs.directoryContents[basePath] = ["sub-a"]
+    fs.directoryFlags = [basePath, "\(basePath)/sub-a"]
+    fs.existingPaths = [basePath, "\(basePath)/sub-a"]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .editor,
+      parentEditor: "cursor",
+      subdirsOpenMode: .editor,
+      subdirsEditor: "vscode",
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    let subdir = result.directories.first { $0.path == "\(basePath)/sub-a" }
+    #expect(subdir != nil)
+    #expect(subdir?.editor == "vscode")
+  }
+
+  @Test func noneOpenModeExcludesFromResults() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/projects"
+    fs.directoryContents[basePath] = ["sub-a"]
+    fs.directoryFlags = [basePath, "\(basePath)/sub-a"]
+    fs.existingPaths = [basePath, "\(basePath)/sub-a"]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .none,
+      subdirsOpenMode: .none,
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    // Both parent and subdirectories should be excluded when mode is .none
+    #expect(result.directories.isEmpty)
+  }
+
+  @Test func noneSubdirsExcludesOnlySubdirectories() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/projects"
+    fs.directoryContents[basePath] = ["sub-a", "sub-b"]
+    fs.directoryFlags = [basePath, "\(basePath)/sub-a", "\(basePath)/sub-b"]
+    fs.existingPaths = [basePath, "\(basePath)/sub-a", "\(basePath)/sub-b"]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .finder,
+      subdirsOpenMode: .none,
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    // Parent should be included, subdirectories should be excluded
+    #expect(result.directories.count == 1)
+    #expect(result.directories[0].path == basePath)
+  }
+
+  @Test func noneParentExcludesOnlyParent() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/projects"
+    fs.directoryContents[basePath] = ["sub-a"]
+    fs.directoryFlags = [basePath, "\(basePath)/sub-a"]
+    fs.existingPaths = [basePath, "\(basePath)/sub-a"]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .none,
+      subdirsOpenMode: .editor,
+      subdirsEditor: "vscode",
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    // Parent should be excluded, subdirectory should be included
+    #expect(result.directories.count == 1)
+    #expect(result.directories[0].path == "\(basePath)/sub-a")
+    #expect(result.directories[0].editor == "vscode")
+  }
+
+  @Test func noEditorWhenOpenModeIsFinder() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/projects"
+    fs.directoryContents[basePath] = ["sub-a"]
+    fs.directoryFlags = [basePath, "\(basePath)/sub-a"]
+    fs.existingPaths = [basePath, "\(basePath)/sub-a"]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .finder,
+      subdirsOpenMode: .finder,
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    for dir in result.directories {
+      #expect(dir.editor == nil)
+    }
+  }
+}
+
+// MARK: - App Scanning Tests
+
+@Suite("DirectoryScanner App Scanning")
+struct DirectoryScannerAppScanningTests {
+
+  @Test func scanForAppsDetectsAppBundles() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/apps"
+    fs.directoryContents[basePath] = ["MyApp.app", "Another.app", "not-an-app"]
+    fs.directoryFlags = [
+      basePath,
+      "\(basePath)/MyApp.app",
+      "\(basePath)/Another.app",
+      "\(basePath)/not-an-app",
+    ]
+    fs.existingPaths = [
+      basePath,
+      "\(basePath)/MyApp.app",
+      "\(basePath)/Another.app",
+      "\(basePath)/not-an-app",
+    ]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .finder,
+      subdirsOpenMode: .finder,
+      scanForApps: true
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    #expect(result.apps.count == 2)
+    #expect(result.apps.contains { $0.name == "MyApp" && $0.path == "\(basePath)/MyApp.app" })
+    #expect(
+      result.apps.contains { $0.name == "Another" && $0.path == "\(basePath)/Another.app" })
+  }
+
+  @Test func noAppsScanningWhenDisabled() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/apps"
+    fs.directoryContents[basePath] = ["MyApp.app"]
+    fs.directoryFlags = [basePath, "\(basePath)/MyApp.app"]
+    fs.existingPaths = [basePath, "\(basePath)/MyApp.app"]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .finder,
+      subdirsOpenMode: .finder,
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    #expect(result.apps.isEmpty)
+  }
+
+  @Test func appBundlesExcludedFromDirectoryItems() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/mixed"
+    fs.directoryContents[basePath] = ["project-a", "MyApp.app"]
+    fs.directoryFlags = [
+      basePath,
+      "\(basePath)/project-a",
+      "\(basePath)/MyApp.app",
+    ]
+    fs.existingPaths = [
+      basePath,
+      "\(basePath)/project-a",
+      "\(basePath)/MyApp.app",
+    ]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .editor,
+      parentEditor: "cursor",
+      subdirsOpenMode: .editor,
+      subdirsEditor: "vscode",
+      scanForApps: true
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    // .app bundles should NOT appear in directories
+    let subdirs = result.directories.filter { $0.path != basePath }
+    #expect(subdirs.count == 1)
+    #expect(subdirs[0].name == "project-a")
+
+    // .app bundles should appear in apps
+    #expect(result.apps.count == 1)
+    #expect(result.apps[0].name == "MyApp")
+  }
+}
+
+// MARK: - Multiple Registered Directories Tests
+
+@Suite("DirectoryScanner Multiple Directories")
+struct DirectoryScannerMultipleDirectoriesTests {
+
+  @Test func scanMultipleRegisteredDirectories() throws {
+    var fs = MockFileSystemProvider()
+
+    let path1 = "/Users/dev/work"
+    let path2 = "/Users/dev/personal"
+
+    fs.directoryContents[path1] = ["work-project"]
+    fs.directoryContents[path2] = ["hobby-project"]
+
+    fs.directoryFlags = [
+      path1, "\(path1)/work-project",
+      path2, "\(path2)/hobby-project",
+    ]
+    fs.existingPaths = [
+      path1, "\(path1)/work-project",
+      path2, "\(path2)/hobby-project",
+    ]
+
+    let dirs = [
+      RegisteredDirectory(
+        path: path1,
+        parentOpenMode: .editor,
+        parentEditor: "cursor",
+        subdirsOpenMode: .editor,
+        subdirsEditor: "cursor",
+        scanForApps: false
+      ),
+      RegisteredDirectory(
+        path: path2,
+        parentOpenMode: .editor,
+        parentEditor: "vscode",
+        subdirsOpenMode: .editor,
+        subdirsEditor: "vscode",
+        scanForApps: false
+      ),
+    ]
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: dirs)
+
+    // 2 parents + 2 subdirectories = 4 total
+    #expect(result.directories.count == 4)
+    #expect(result.directories.contains { $0.path == path1 && $0.editor == "cursor" })
+    #expect(
+      result.directories.contains {
+        $0.path == "\(path1)/work-project" && $0.editor == "cursor"
+      })
+    #expect(result.directories.contains { $0.path == path2 && $0.editor == "vscode" })
+    #expect(
+      result.directories.contains {
+        $0.path == "\(path2)/hobby-project" && $0.editor == "vscode"
+      })
+  }
+}
+
+// MARK: - Error Handling Tests
+
+@Suite("DirectoryScanner Error Handling")
+struct DirectoryScannerErrorHandlingTests {
+
+  @Test func scanSkipsNonExistentDirectories() throws {
+    var fs = MockFileSystemProvider()
+    // Directory does not exist in directoryContents
+    let basePath = "/Users/dev/nonexistent"
+    fs.existingPaths = []
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .finder,
+      subdirsOpenMode: .finder,
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    // Non-existent directory is skipped gracefully
+    #expect(result.directories.isEmpty)
+    #expect(result.apps.isEmpty)
+  }
+
+  @Test func scanContinuesAfterOneDirectoryFails() throws {
+    var fs = MockFileSystemProvider()
+
+    let path1 = "/Users/dev/broken"
+    // path1 not in directoryContents -> will throw
+    let path2 = "/Users/dev/working"
+    fs.directoryContents[path2] = ["project"]
+    fs.directoryFlags = [path2, "\(path2)/project"]
+    fs.existingPaths = [path2, "\(path2)/project"]
+
+    let dirs = [
+      RegisteredDirectory(
+        path: path1,
+        parentOpenMode: .finder,
+        subdirsOpenMode: .finder,
+        scanForApps: false
+      ),
+      RegisteredDirectory(
+        path: path2,
+        parentOpenMode: .editor,
+        parentEditor: "cursor",
+        subdirsOpenMode: .editor,
+        subdirsEditor: "cursor",
+        scanForApps: false
+      ),
+    ]
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: dirs)
+
+    // path2 should still be scanned successfully
+    #expect(result.directories.contains { $0.path == path2 })
+    #expect(result.directories.contains { $0.path == "\(path2)/project" })
+  }
+}
+
+// MARK: - Parent Directory Name Tests
+
+@Suite("DirectoryScanner Parent Directory Name")
+struct DirectoryScannerParentNameTests {
+
+  @Test func parentDirectoryUsesLastPathComponent() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/my-projects"
+    fs.directoryContents[basePath] = []
+    fs.directoryFlags = [basePath]
+    fs.existingPaths = [basePath]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .editor,
+      parentEditor: "cursor",
+      subdirsOpenMode: .editor,
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    let parent = result.directories.first { $0.path == basePath }
+    #expect(parent?.name == "my-projects")
+  }
+
+  @Test func parentDirectoryHandlesTrailingSlash() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/my-projects"
+    // RegisteredDirectory path with trailing slash
+    let pathWithSlash = basePath + "/"
+    fs.directoryContents[basePath] = []
+    fs.directoryFlags = [basePath]
+    fs.existingPaths = [basePath]
+
+    let registered = RegisteredDirectory(
+      path: pathWithSlash,
+      parentOpenMode: .editor,
+      parentEditor: "cursor",
+      subdirsOpenMode: .editor,
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    let parent = result.directories.first
+    #expect(parent?.name == "my-projects")
+  }
+}
+
+// MARK: - Cache Database Integration Tests
+
+@Suite("DirectoryScanner Cache Integration")
+struct DirectoryScannerCacheIntegrationTests {
+
+  @Test func scanResultCanBeSavedToCache() async throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/projects"
+    fs.directoryContents[basePath] = ["project-a", "MyApp.app"]
+    fs.directoryFlags = [
+      basePath,
+      "\(basePath)/project-a",
+      "\(basePath)/MyApp.app",
+    ]
+    fs.existingPaths = [
+      basePath,
+      "\(basePath)/project-a",
+      "\(basePath)/MyApp.app",
+    ]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .editor,
+      parentEditor: "cursor",
+      subdirsOpenMode: .editor,
+      subdirsEditor: "vscode",
+      scanForApps: true
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    // Save to cache database
+    let db = try CacheDatabase(inMemory: true)
+    try await db.saveDirectories(result.directories)
+    try await db.saveApps(result.apps)
+
+    // Load and verify
+    let loadedDirs = try await db.loadDirectories()
+    let loadedApps = try await db.loadApps()
+
+    #expect(loadedDirs.count == result.directories.count)
+    #expect(loadedApps.count == result.apps.count)
+
+    for dir in result.directories {
+      #expect(loadedDirs.contains { $0.path == dir.path && $0.editor == dir.editor })
+    }
+    for app in result.apps {
+      #expect(loadedApps.contains { $0.path == app.path && $0.name == app.name })
+    }
+  }
+}
+
+// MARK: - FileSystemProvider Default Tests
+
+@Suite("DefaultFileSystemProvider")
+struct DefaultFileSystemProviderTests {
+
+  @Test func conformsToProtocol() {
+    let provider = DefaultFileSystemProvider()
+    #expect(provider is any FileSystemProvider)
+  }
+
+  @Test func isSendable() {
+    let provider = DefaultFileSystemProvider()
+    let _: any Sendable = provider
+    _ = provider
+  }
+
+  @Test func detectsExistingDirectory() {
+    let provider = DefaultFileSystemProvider()
+    // /tmp always exists on macOS
+    #expect(provider.fileExists(atPath: "/tmp"))
+    #expect(provider.isDirectory(atPath: "/tmp"))
+  }
+
+  @Test func detectsNonExistentPath() {
+    let provider = DefaultFileSystemProvider()
+    #expect(!provider.fileExists(atPath: "/nonexistent_path_xyz_123"))
+    #expect(!provider.isDirectory(atPath: "/nonexistent_path_xyz_123"))
+  }
+}
+
+// MARK: - Real FileSystem Integration Tests
+
+@Suite("DirectoryScanner Real FileSystem Integration")
+struct DirectoryScannerRealFileSystemTests {
+
+  @Test func scanWithRealTempDirectory() throws {
+    let fm = FileManager.default
+    let tempBase = fm.temporaryDirectory.appendingPathComponent(
+      "ignitero-scanner-test-\(UUID().uuidString)")
+    try fm.createDirectory(at: tempBase, withIntermediateDirectories: true)
+    defer { try? fm.removeItem(at: tempBase) }
+
+    // Create subdirectories
+    let subA = tempBase.appendingPathComponent("project-a")
+    let subB = tempBase.appendingPathComponent("project-b")
+    try fm.createDirectory(at: subA, withIntermediateDirectories: true)
+    try fm.createDirectory(at: subB, withIntermediateDirectories: true)
+
+    // Create a regular file (should be excluded)
+    let file = tempBase.appendingPathComponent("readme.txt")
+    try "test".write(to: file, atomically: true, encoding: .utf8)
+
+    let registered = RegisteredDirectory(
+      path: tempBase.path,
+      parentOpenMode: .editor,
+      parentEditor: "cursor",
+      subdirsOpenMode: .editor,
+      subdirsEditor: "vscode",
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner()
+    let result = try scanner.scan(directories: [registered])
+
+    // Parent + 2 subdirectories
+    #expect(result.directories.count == 3)
+    #expect(result.directories.contains { $0.path == tempBase.path && $0.editor == "cursor" })
+    #expect(
+      result.directories.contains { $0.path == subA.path && $0.editor == "vscode" })
+    #expect(
+      result.directories.contains { $0.path == subB.path && $0.editor == "vscode" })
+    #expect(result.apps.isEmpty)
+  }
+
+  @Test func scanWithRealAppBundle() throws {
+    let fm = FileManager.default
+    let tempBase = fm.temporaryDirectory.appendingPathComponent(
+      "ignitero-scanner-test-\(UUID().uuidString)")
+    try fm.createDirectory(at: tempBase, withIntermediateDirectories: true)
+    defer { try? fm.removeItem(at: tempBase) }
+
+    // Create a fake .app bundle directory
+    let appBundle = tempBase.appendingPathComponent("TestApp.app")
+    try fm.createDirectory(at: appBundle, withIntermediateDirectories: true)
+
+    // Create a regular subdirectory
+    let subDir = tempBase.appendingPathComponent("project")
+    try fm.createDirectory(at: subDir, withIntermediateDirectories: true)
+
+    let registered = RegisteredDirectory(
+      path: tempBase.path,
+      parentOpenMode: .finder,
+      subdirsOpenMode: .editor,
+      subdirsEditor: "cursor",
+      scanForApps: true
+    )
+
+    let scanner = DirectoryScanner()
+    let result = try scanner.scan(directories: [registered])
+
+    // Parent + project subdirectory (app bundle excluded from directories)
+    let subdirs = result.directories.filter { $0.path != tempBase.path }
+    #expect(subdirs.count == 1)
+    #expect(subdirs[0].name == "project")
+
+    // App bundle detected
+    #expect(result.apps.count == 1)
+    #expect(result.apps[0].name == "TestApp")
+    #expect(result.apps[0].path == appBundle.path)
+  }
+}

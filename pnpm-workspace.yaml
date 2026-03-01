@@ -1,5 +1,0 @@
-packages: []
-
-minimumReleaseAge: 14400
-minimumReleaseAgeExclude:
-  - react

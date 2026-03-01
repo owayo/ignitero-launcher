@@ -21,11 +21,11 @@
 
 **`Option` + `Space`で即座に呼び出せるメニューバー常駐ランチャー。** Antigravity・Cursor・VS Code・Windsurfをプロジェクトごとに切り替えられ、検索して`Enter`を押すだけで指定エディタが瞬時に立ち上がるから、複数エディタ併用派でも迷子にならない。
 
-`→`キーひとつでターミナルを開き、macOSターミナル/iTerm2/Warp/GhosttyからClaude Code・Codex・Gemini CLIなどをすぐ呼び出せるので、相談しながらコードを書く流れが止まらない。プロジェクト切り替えもキーボード操作だけで完結し、現代のマルチツール開発ワークフローを高速化する「手が覚える」ランチャーです。
+`→`キーひとつでターミナルを開き、macOSターミナル/iTerm2/Warp/Ghostty/cmuxからClaude Code・Codex・Gemini CLIなどをすぐ呼び出せるので、相談しながらコードを書く流れが止まらない。プロジェクト切り替えもキーボード操作だけで完結し、現代のマルチツール開発ワークフローを高速化する「手が覚える」ランチャーです。
 
 ---
 
-macOS向けの高速アプリケーション・ディレクトリランチャー。Tauri v2で構築されたメニューバー常駐型のランチャーです。
+macOS向けの高速アプリケーション・ディレクトリランチャー。Swift 6.2 + SwiftUI + AppKitで構築されたメニューバー常駐型のランチャーです。
 
 ![](./docs/images/launcher.png)
 
@@ -60,8 +60,20 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - よく使うコマンドをエイリアス（短縮名）で登録
 - 検索欄にエイリアスを入力して`Enter`でコマンドを実行
 - 実行ディレクトリを指定可能（オプション）
-- デフォルトターミナル（macOSターミナル / iTerm2 / Warp / Ghostty）で実行
+- 実行ディレクトリはシェルエスケープして処理（スペースや`'`を含むパスに対応）
+- AppleScript実行失敗時はエラーを検出し、失敗を握りつぶさない
+- デフォルトターミナル（macOSターミナル / iTerm2 / Warp / Ghostty / cmux）で実行
+- Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
+
+#### ターミナル自動化方式（2026-03-01確認）
+
+- macOSターミナル: AppleScript（`do script`）
+- iTerm2: AppleScript（`create window` + `write text`）
+- Warp: AppleScript辞書なし（`sdef`不可）のため `.command` ファイル方式
+- Ghostty: AppleScript辞書なし（`sdef`不可）のため `.command` ファイル方式
+- cmux: ディレクトリはNSServices（`New cmux Workspace Here`）、コマンド実行はCLI（`cmux new-workspace --command ...`）方式
+  - **注意**: cmux の Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
 
 ### アプリケーション検索・起動
 - `/Applications`、`/System/Applications`、`~/Applications`配下のアプリケーションを自動スキャン
@@ -80,16 +92,16 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
   - ディレクトリごとに異なるエディタを設定可能
   - カスタム検索キーワードで見つけやすく
 - **エディタ自動検出**: インストール済みエディタを自動検出
-  - 対応エディタ: Antigravity、Cursor、VS Code、Windsurf
+  - 対応エディタ: Antigravity、Cursor、VS Code、Windsurf、Zed
   - `/Applications`と`~/Applications`の両方をチェック
   - インストール済みのエディタのみが選択肢に表示される
 - **エディタ選択ランチャー**: ディレクトリ選択時に`←`キーでエディタを選択
   - インストール済みエディタから選んで開く
   - 設定されたデフォルトエディタを上書きできる
-  - **頭文字キーで即座に起動**: `W`(Windsurf)、`C`(Cursor)、`V`(VS Code)、`A`(Antigravity)
-  - 対応エディタ: Antigravity、Cursor、VS Code、Windsurf
+  - **頭文字キーで即座に起動**: `W`(Windsurf)、`C`(Cursor)、`V`(VS Code)、`A`(Antigravity)、`Z`(Zed)
+  - 対応エディタ: Antigravity、Cursor、VS Code、Windsurf、Zed
 - **ターミナル統合**: ディレクトリ選択時に`→`キーでターミナルを開く
-  - 対応ターミナル: macOSターミナル（常に利用可能）、iTerm2、Warp、Ghostty
+  - 対応ターミナル: macOSターミナル（常に利用可能）、iTerm2、Warp、Ghostty、cmux
   - インストール済みのターミナルのみが選択肢に表示される
 
 ### キャッシュ管理
@@ -135,16 +147,16 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - `C`: Cursor で開く
 - `V`: VS Code で開く
 - `A`: Antigravity で開く
+- `Z`: Zed で開く
 - `↑` `↓` `←` `→`: エディタを選択
 - `Enter`: 選択したエディタで開く
 - `Escape`: キャンセル
 
 ## 必要要件
 
-- macOS 10.15以降
-- Node.js 18以降
-- Rust 1.70以降
-- pnpm
+- macOS 26以降
+- Swift 6.2以降
+- Xcode 26以降
 
 ## インストール
 
@@ -155,30 +167,25 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 git clone https://github.com/owayo/ignitero-launcher.git
 cd ignitero-launcher
 
-# 依存関係をインストール
-pnpm install
-
-# 開発モードで実行
-pnpm tauri dev
+# デバッグビルド＆直接実行
+make dev
 ```
 
 ### プロダクションビルド
 
 ```bash
-# ビルドを実行
-pnpm tauri:build
+# リリースビルド
+make build
 
-# ビルドされたアプリは以下に生成されます
-# src-tauri/target/release/bundle/macos/Ignitero Launcher.app
+# .appバンドル作成
+make bundle
 ```
 
 ### アプリケーションのインストール
 
-ビルド後、生成されたアプリを `/Applications` フォルダにコピーしてください。
-
 ```bash
-# アプリをApplicationsフォルダにコピー
-cp -r "src-tauri/target/release/bundle/macos/Ignitero Launcher.app" /Applications/
+# /Applications にインストール＆起動
+make install
 ```
 
 #### macOSのセキュリティ設定について
@@ -250,7 +257,7 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 4. ディレクトリの場合:
    - `Enter`で設定されたエディタまたはFinderで開く
    - `→`キーでターミナルで開く
-   - `←`キーでエディタを選択して開く（`W` `C` `V` `A`で即座に起動）
+   - `←`キーでエディタを選択して開く（`W` `C` `V` `A` `Z`で即座に起動）
 5. アプリケーションの場合:
    - `Enter`で起動
 6. コマンドの場合:
@@ -276,11 +283,11 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 3. フォルダを選択
 4. **このディレクトリ自身**の設定:
    - 検索に表示しない / Finderで開く / エディタで開く を選択
-   - エディタで開く場合、インストール済みエディタから選択（Antigravity/Cursor/VS Code/Windsurf）
+   - エディタで開く場合、インストール済みエディタから選択（Antigravity/Cursor/VS Code/Windsurf/Zed）
    - カスタム検索キーワードを設定可能（例: `~/GitHub` → "git"で検索）
 5. **配下のディレクトリ**の設定:
    - 検索に表示しない / Finderで開く / エディタで開く を選択
-   - エディタで開く場合、インストール済みエディタから選択（Antigravity/Cursor/VS Code/Windsurf）
+   - エディタで開く場合、インストール済みエディタから選択（Antigravity/Cursor/VS Code/Windsurf/Zed）
 6. 「アプリスキャン」を有効にすると、そのディレクトリ配下の`.app`ファイルも検索対象に
 
 > **エディタ自動検出**: `/Applications`と`~/Applications`の両方をチェックし、インストール済みのエディタのみが選択肢に表示されます。エディタをインストール後は設定画面を開き直すことで自動的に選択肢に追加されます。
@@ -304,6 +311,9 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 - iTerm2（インストール済みの場合）
 - Warp（インストール済みの場合）
 - Ghostty（インストール済みの場合）
+- cmux（インストール済みの場合）
+
+> **cmux を使用する場合**: cmux の Settings → Automation → Socket Control Mode を「Automation mode」に設定してください。この設定がないとコマンド実行機能が動作しません。
 
 #### キャッシュ更新設定
 
@@ -324,25 +334,14 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 
 ## 技術スタック
 
-### フロントエンド
-- React 18
-- TypeScript
-- Vite
-- Ant Design
-
-### バックエンド
-- Rust
-- Tauri v2
-- SQLite (rusqlite)
-- fuzzy-matcher（ファジー検索）
-- window-vibrancy（macOSぼかし効果）
-
-### 主要な依存関係
-- `tauri-plugin-global-shortcut`: グローバルホットキー
-- `tauri-plugin-shell`: シェルコマンド実行
-- `walkdir`: ディレクトリスキャン
-- `plist`: macOSアプリ情報解析
-- `core-foundation`: macOSアイコン処理、IME制御
+- **言語**: Swift 6.2 (Strict Concurrency)
+- **UI**: SwiftUI + AppKit (NSPanel)
+- **データ**: GRDB.swift (SQLite), JSON 永続化
+- **検索**: Fuse-Swift（ファジー検索）
+- **ショートカット**: KeyboardShortcuts (`Option` + `Space`)
+- **テスト**: Swift Testing (640テスト)
+- **パッケージ**: Swift Package Manager
+- **最小OS**: macOS 26
 
 ## 設定ファイル
 
@@ -378,22 +377,35 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
   - Cursor.app
   - Visual Studio Code.app
   - Windsurf.app
+  - Zed.app
 - アプリケーションが `/Applications` に存在するか確認
 
 ## 開発
 
 ```bash
-# 開発モードで実行
-pnpm tauri dev
+# デバッグビルド＆直接実行
+make dev
 
-# フロントエンドのみをフォーマット
-pnpm fmt
+# デバッグビルド
+make build-debug
 
-# Rustコードをフォーマット
-pnpm tauri:fmt
+# リリースビルド
+make build
 
-# プロダクションビルド
-pnpm tauri:build
+# テスト実行
+make test
+
+# .appバンドル作成
+make bundle
+
+# /Applicationsにインストール＆起動
+make install
+
+# ログストリーム
+make log
+
+# ビルドキャッシュ削除
+make clean
 ```
 
 ## ライセンス
