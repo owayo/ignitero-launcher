@@ -655,7 +655,7 @@ struct DefaultFileSystemProviderTests {
 
   @Test func conformsToProtocol() {
     let provider = DefaultFileSystemProvider()
-    #expect(provider is any FileSystemProvider)
+    let _: any FileSystemProvider = provider
   }
 
   @Test func isSendable() {

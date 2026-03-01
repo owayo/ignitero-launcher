@@ -58,7 +58,7 @@ struct GlobalShortcutManagerInitTests {
       imeController: imeController,
       debounceInterval: .zero
     )
-    #expect(manager is GlobalShortcutManager)
+    #expect(type(of: manager) == GlobalShortcutManager.self)
   }
 
   @MainActor

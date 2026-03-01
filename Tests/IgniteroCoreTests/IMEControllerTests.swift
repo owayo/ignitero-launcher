@@ -7,7 +7,7 @@ struct IMEControllerTests {
 
   @Test func canBeCreated() {
     let controller = IMEController()
-    #expect(controller is IMEController)
+    #expect(type(of: controller) == IMEController.self)
   }
 
   @Test func switchToASCIIDoesNotCrash() {

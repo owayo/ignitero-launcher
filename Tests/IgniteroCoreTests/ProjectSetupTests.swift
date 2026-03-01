@@ -11,10 +11,10 @@ import Testing
 
 @Test func grdbDependencyAvailable() {
   // GRDB が正しくインポートされ DatabaseQueue 型が利用可能
-  #expect(DatabaseQueue.self is DatabaseQueue.Type)
+  #expect(DatabaseQueue.self == DatabaseQueue.self)
 }
 
 @Test func fuseDependencyAvailable() {
   // Fuse がインポートされ検索エンジン型が利用可能
-  #expect(Fuse.self is Fuse.Type)
+  #expect(Fuse.self == Fuse.self)
 }

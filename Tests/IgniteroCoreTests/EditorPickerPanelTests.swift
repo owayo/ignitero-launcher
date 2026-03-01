@@ -402,7 +402,7 @@ struct EditorPickerPanelConfigurationTests {
 
   @Test @MainActor func panelHasPickerState() {
     let panel = EditorPickerPanel()
-    #expect(panel.pickerState != nil)
+    _ = panel.pickerState  // 非オプショナルなので存在確認のみ
   }
 }
 
