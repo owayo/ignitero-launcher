@@ -404,6 +404,43 @@ struct DirectoryEditForm: View {
   }
 }
 
+// MARK: - CommandFields
+
+/// コマンド入力フォームの共通コンポーネント。
+/// 追加フォームと編集フォームで共用する。
+private struct CommandFields: View {
+  @Binding var alias: String
+  @Binding var command: String
+  @Binding var workingDirectory: String
+
+  var body: some View {
+    Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 8) {
+      GridRow {
+        fieldLabel("エイリアス")
+        TextField("例: gs", text: $alias)
+      }
+      GridRow {
+        fieldLabel("コマンド")
+        TextField("例: git status", text: $command)
+          .font(.system(.body, design: .monospaced))
+      }
+      GridRow {
+        fieldLabel("作業ディレクトリ")
+        TextField("任意（例: ~/Projects）", text: $workingDirectory)
+          .font(.system(.body, design: .monospaced))
+      }
+    }
+    .textFieldStyle(.roundedBorder)
+  }
+
+  private func fieldLabel(_ text: String) -> some View {
+    Text(text)
+      .font(.caption)
+      .foregroundStyle(.secondary)
+      .frame(width: 98, alignment: .trailing)
+  }
+}
+
 // MARK: - CommandsSettingsTab
 
 /// コマンドタブ: カスタムコマンドの追加・編集・削除。
@@ -426,36 +463,38 @@ struct CommandsSettingsTab: View {
             .padding(.vertical, 20)
         }
 
-        ForEach(
-          Array(viewModel.settings.customCommands.enumerated()),
-          id: \.offset
-        ) { index, command in
-          CommandRow(
-            command: command,
-            onUpdate: { updated in
-              do {
-                try viewModel.updateCommand(at: index, updated)
-                errorMessage = nil
-              } catch {
-                errorMessage = "コマンドの更新に失敗しました"
+        ForEach(viewModel.settings.customCommands) { command in
+          if let index = viewModel.settings.customCommands.firstIndex(where: { $0.id == command.id }
+          ) {
+            CommandRow(
+              command: command,
+              onUpdate: { updated in
+                do {
+                  try viewModel.updateCommand(at: index, updated)
+                  errorMessage = nil
+                } catch {
+                  errorMessage = "コマンドの更新に失敗しました"
+                }
+              },
+              onDelete: {
+                do {
+                  try viewModel.removeCommand(at: index)
+                  errorMessage = nil
+                } catch {
+                  errorMessage = "コマンドの削除に失敗しました"
+                }
               }
-            },
-            onDelete: {
-              do {
-                try viewModel.removeCommand(at: index)
-                errorMessage = nil
-              } catch {
-                errorMessage = "コマンドの削除に失敗しました"
-              }
-            }
-          )
+            )
+          }
         }
 
         if isAddingCommand {
           VStack(alignment: .leading, spacing: 8) {
-            TextField("エイリアス", text: $newAlias)
-            TextField("コマンド", text: $newCommand)
-            TextField("作業ディレクトリ（任意）", text: $newWorkingDirectory)
+            CommandFields(
+              alias: $newAlias,
+              command: $newCommand,
+              workingDirectory: $newWorkingDirectory
+            )
 
             HStack {
               Spacer()
@@ -578,9 +617,11 @@ struct CommandRow: View {
 
       if isEditing {
         VStack(alignment: .leading, spacing: 8) {
-          TextField("エイリアス", text: $editedAlias)
-          TextField("コマンド", text: $editedCommand)
-          TextField("作業ディレクトリ（任意）", text: $editedWorkingDirectory)
+          CommandFields(
+            alias: $editedAlias,
+            command: $editedCommand,
+            workingDirectory: $editedWorkingDirectory
+          )
 
           HStack {
             Spacer()
@@ -594,6 +635,7 @@ struct CommandRow: View {
 
             Button("保存") {
               let updated = CustomCommand(
+                id: command.id,
                 alias: editedAlias,
                 command: editedCommand,
                 workingDirectory: editedWorkingDirectory.isEmpty ? nil : editedWorkingDirectory

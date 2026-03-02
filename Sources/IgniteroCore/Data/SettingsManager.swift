@@ -56,21 +56,32 @@ public struct RegisteredDirectory: Codable, Sendable, Equatable {
   }
 }
 
-public struct CustomCommand: Codable, Sendable, Equatable {
+public struct CustomCommand: Codable, Sendable, Equatable, Identifiable {
+  public let id: UUID
   public var alias: String
   public var command: String
   public var workingDirectory: String?
 
-  public init(alias: String, command: String, workingDirectory: String? = nil) {
+  public init(id: UUID = UUID(), alias: String, command: String, workingDirectory: String? = nil) {
+    self.id = id
     self.alias = alias
     self.command = command
     self.workingDirectory = workingDirectory
   }
 
   enum CodingKeys: String, CodingKey {
+    case id
     case alias
     case command
     case workingDirectory = "working_directory"
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+    self.alias = try container.decode(String.self, forKey: .alias)
+    self.command = try container.decode(String.self, forKey: .command)
+    self.workingDirectory = try container.decodeIfPresent(String.self, forKey: .workingDirectory)
   }
 }
 
