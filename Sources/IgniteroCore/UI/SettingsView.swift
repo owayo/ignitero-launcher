@@ -448,9 +448,29 @@ private struct CommandFields: View {
     panel.allowsMultipleSelection = false
     panel.prompt = "選択"
     panel.message = "作業ディレクトリを選択してください"
+    if !workingDirectory.isEmpty {
+      let expanded = NSString(string: workingDirectory).expandingTildeInPath
+      let url = URL(fileURLWithPath: expanded)
+      if FileManager.default.fileExists(atPath: expanded) {
+        panel.directoryURL = url
+      } else if let parent = parentDirectory(of: url) {
+        panel.directoryURL = parent
+      }
+    }
     if panel.runModal() == .OK, let url = panel.url {
       workingDirectory = url.path
     }
+  }
+
+  private func parentDirectory(of url: URL) -> URL? {
+    var current = url.deletingLastPathComponent()
+    while current.path != "/" {
+      if FileManager.default.fileExists(atPath: current.path) {
+        return current
+      }
+      current = current.deletingLastPathComponent()
+    }
+    return FileManager.default.fileExists(atPath: "/") ? URL(fileURLWithPath: "/") : nil
   }
 
   private func fieldLabel(_ text: String) -> some View {
