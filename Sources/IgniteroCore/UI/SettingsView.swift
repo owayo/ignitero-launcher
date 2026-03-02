@@ -426,11 +426,31 @@ private struct CommandFields: View {
       }
       GridRow {
         fieldLabel("作業ディレクトリ")
-        TextField("任意（例: ~/Projects）", text: $workingDirectory)
-          .font(.system(.body, design: .monospaced))
+        HStack(spacing: 4) {
+          TextField("任意（例: ~/Projects）", text: $workingDirectory)
+            .font(.system(.body, design: .monospaced))
+          Button {
+            chooseDirectory()
+          } label: {
+            Image(systemName: "folder")
+          }
+          .buttonStyle(.borderless)
+        }
       }
     }
     .textFieldStyle(.roundedBorder)
+  }
+
+  private func chooseDirectory() {
+    let panel = NSOpenPanel()
+    panel.canChooseFiles = false
+    panel.canChooseDirectories = true
+    panel.allowsMultipleSelection = false
+    panel.prompt = "選択"
+    panel.message = "作業ディレクトリを選択してください"
+    if panel.runModal() == .OK, let url = panel.url {
+      workingDirectory = url.path
+    }
   }
 
   private func fieldLabel(_ text: String) -> some View {
