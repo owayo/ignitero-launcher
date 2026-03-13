@@ -366,6 +366,79 @@ struct WindowManagerPositionTests {
   }
 }
 
+// MARK: - WindowManager Resize Edge Cases
+
+@Suite("WindowManager Resize Edge Cases")
+struct WindowManagerResizeEdgeCaseTests {
+
+  @MainActor
+  @Test func resizeForVeryLargeCountClampsToMax() {
+    let manager = WindowManager(userDefaults: .makeTempDefaults())
+    let height = manager.heightForResults(count: 10000)
+    #expect(height == WindowManager.maxHeight)
+  }
+
+  @MainActor
+  @Test func resizeForZeroUpdatesCurrentHeight() {
+    let manager = WindowManager(userDefaults: .makeTempDefaults())
+    manager.resizeForResults(count: 5)
+    #expect(manager.currentHeight > WindowManager.minHeight)
+    manager.resizeForResults(count: 0)
+    #expect(manager.currentHeight == WindowManager.minHeight)
+  }
+}
+
+// MARK: - WindowManager Position Edge Cases
+
+@Suite("WindowManager Position Edge Cases")
+struct WindowManagerPositionEdgeCaseTests {
+
+  @MainActor
+  @Test func saveAndRestoreNegativeCoordinates() {
+    let defaults = UserDefaults.makeTempDefaults()
+    let manager = WindowManager(userDefaults: defaults)
+    manager.savePosition(x: -500, y: -200)
+    let position = manager.restorePosition()
+    #expect(position?.x == -500)
+    #expect(position?.y == -200)
+  }
+
+  @MainActor
+  @Test func saveAndRestoreZeroCoordinates() {
+    let defaults = UserDefaults.makeTempDefaults()
+    let manager = WindowManager(userDefaults: defaults)
+    manager.savePosition(x: 0, y: 0)
+    let position = manager.restorePosition()
+    #expect(position?.x == 0)
+    #expect(position?.y == 0)
+  }
+}
+
+// MARK: - WindowManager Callbacks
+
+@Suite("WindowManager Callbacks")
+struct WindowManagerCallbackTests {
+
+  @MainActor
+  @Test func onShowLauncherCalledWhenShowing() {
+    let manager = WindowManager(userDefaults: .makeTempDefaults())
+    var called = false
+    manager.onShowLauncher = { called = true }
+    manager.showLauncher()
+    #expect(called)
+  }
+
+  @MainActor
+  @Test func onAutoDismissNotCalledWhenHidden() {
+    let manager = WindowManager(userDefaults: .makeTempDefaults())
+    var called = false
+    manager.onAutoDismiss = { called = true }
+    // ランチャーが非表示状態では autoDismiss は呼ばれない
+    manager.hideLauncher()
+    #expect(!called)
+  }
+}
+
 // MARK: - UserDefaults Test Helper
 
 extension UserDefaults {

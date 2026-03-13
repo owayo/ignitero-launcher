@@ -247,13 +247,13 @@ public final class SettingsManager: @unchecked Sendable {
       let data = try Data(contentsOf: filePath)
       settings = try JSONDecoder().decode(Settings.self, from: data)
     } catch is DecodingError {
-      // Corrupted JSON: create backup and restore defaults
+      // JSON が破損: バックアップを作成しデフォルト値に復元
       let backupPath = configDirectory.appendingPathComponent("\(fileName).backup")
       try? fm.removeItem(at: backupPath)
       try? fm.copyItem(at: filePath, to: backupPath)
       settings = .default
     } catch {
-      // I/O errors should be surfaced to caller.
+      // I/O エラーは呼び出し側へ伝播する
       throw error
     }
   }

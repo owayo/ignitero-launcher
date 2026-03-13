@@ -1,4 +1,6 @@
 import Carbon.HIToolbox
+import Dispatch
+import Foundation
 import os
 
 public protocol IMEControlling: Sendable {
@@ -11,13 +13,24 @@ public struct IMEController: IMEControlling, Sendable {
   public init() {}
 
   public func switchToASCII() {
+    // TIS/TSM API はメインスレッドで直列実行しないと abort することがある。
+    if Thread.isMainThread {
+      Self.selectASCIIInputSource()
+    } else {
+      DispatchQueue.main.sync {
+        Self.selectASCIIInputSource()
+      }
+    }
+  }
+
+  private static func selectASCIIInputSource() {
     guard let source = TISCopyCurrentASCIICapableKeyboardInputSource()?.takeRetainedValue() else {
-      Self.logger.error("Failed to get ASCII input source")
+      logger.error("Failed to get ASCII input source")
       return
     }
     let status = TISSelectInputSource(source)
     if status != noErr {
-      Self.logger.error("Failed to select input source: \(status)")
+      logger.error("Failed to select input source: \(status)")
     }
   }
 }

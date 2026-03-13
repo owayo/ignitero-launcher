@@ -123,7 +123,7 @@ public final class AppCoordinator {
         self.cacheDatabase = try CacheDatabase(path: dbPath)
       } catch {
         Self.logger.error("Failed to open cache database: \(error.localizedDescription)")
-        // Fallback to in-memory database
+        // インメモリデータベースにフォールバック
         do {
           self.cacheDatabase = try CacheDatabase(inMemory: true)
         } catch {

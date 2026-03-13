@@ -578,3 +578,107 @@ struct LauncherViewModelCopyCalculatorTests {
     vm.copyCalculatorResult()
   }
 }
+
+// MARK: - LauncherViewModel Special Actions
+
+@Suite("LauncherViewModel Special Actions")
+struct LauncherViewModelSpecialActionsTests {
+
+  @MainActor
+  @Test func googleSearchInsertedForGPrefix() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "g swift concurrency"
+    vm.updateSearch()
+    #expect(!vm.searchResults.isEmpty)
+    #expect(vm.searchResults[0].kind == .webSearch)
+    #expect(vm.searchResults[0].name.contains("Google"))
+    #expect(vm.searchResults[0].path.contains("google.com/search"))
+  }
+
+  @MainActor
+  @Test func xSearchInsertedForXPrefix() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "x swift"
+    vm.updateSearch()
+    #expect(!vm.searchResults.isEmpty)
+    #expect(vm.searchResults[0].kind == .webSearch)
+    #expect(vm.searchResults[0].name.contains("X"))
+    #expect(vm.searchResults[0].path.contains("x.com/search"))
+  }
+
+  @MainActor
+  @Test func googleSearchNotInsertedForGOnly() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "g "
+    vm.updateSearch()
+    // "g " の後ろが空なので挿入されない
+    let webResults = vm.searchResults.filter { $0.kind == .webSearch }
+    #expect(webResults.isEmpty)
+  }
+
+  @MainActor
+  @Test func colorPickerInsertedForColorKeyword() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "color"
+    vm.updateSearch()
+    #expect(!vm.searchResults.isEmpty)
+    #expect(vm.searchResults[0].kind == .colorPicker)
+  }
+
+  @MainActor
+  @Test func colorPickerInsertedForKatakanaKeyword() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "カラー"
+    vm.updateSearch()
+    #expect(!vm.searchResults.isEmpty)
+    #expect(vm.searchResults[0].kind == .colorPicker)
+  }
+
+  @MainActor
+  @Test func emojiPickerInsertedForEmojiKeyword() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "emoji"
+    vm.updateSearch()
+    #expect(!vm.searchResults.isEmpty)
+    #expect(vm.searchResults[0].kind == .emoji)
+  }
+
+  @MainActor
+  @Test func emojiPickerInsertedForEmojiWithSpace() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "emoji smile"
+    vm.updateSearch()
+    #expect(!vm.searchResults.isEmpty)
+    #expect(vm.searchResults[0].kind == .emoji)
+  }
+}
+
+// MARK: - LauncherViewModel Confirm Selection Edge Cases
+
+@Suite("LauncherViewModel Confirm Selection Edge Cases")
+struct LauncherViewModelConfirmEdgeCaseTests {
+
+  @MainActor
+  @Test func confirmSelectionWithOutOfBoundsIndexReturnsNil() {
+    let vm = LauncherViewModel()
+    vm.apps = [AppItem(name: "Safari", path: "/Applications/Safari.app")]
+    vm.searchQuery = "safari"
+    vm.updateSearch()
+    // 強制的にインデックスを範囲外に設定
+    vm.selectedIndex = 100
+    let result = vm.confirmSelection()
+    #expect(result == nil)
+  }
+
+  @MainActor
+  @Test func searchResultsMaxLimit() {
+    let vm = LauncherViewModel()
+    // 25個のアプリを生成（検索結果上限20件のテスト）
+    vm.apps = (0..<25).map { i in
+      AppItem(name: "TestApp\(i)", path: "/Applications/TestApp\(i).app")
+    }
+    vm.searchQuery = "testapp"
+    vm.updateSearch()
+    #expect(vm.searchResults.count <= 20)
+  }
+}

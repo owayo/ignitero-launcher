@@ -8,7 +8,7 @@ let package = Package(
     .package(url: "https://github.com/groue/GRDB.swift", from: "7.10.0"),
     .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.4.0"),
     .package(url: "https://github.com/krisk/fuse-swift", from: "1.4.0"),
-    .package(url: "https://github.com/danielsaidi/EmojiKit", from: "2.3.4"),
+    .package(url: "https://github.com/danielsaidi/EmojiKit", from: "2.3.5"),
   ],
   targets: [
     .target(

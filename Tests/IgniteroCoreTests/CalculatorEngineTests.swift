@@ -194,3 +194,85 @@ struct CalculatorEngineFormatTests {
     #expect(result == "3.14")
   }
 }
+
+// MARK: - 浮動小数点の境界値
+
+@Suite("CalculatorEngine - Floating Point Edge Cases")
+struct CalculatorEngineFloatingPointTests {
+  let engine = CalculatorEngine()
+
+  @Test func veryLargeNumberReturnsNil() {
+    // 1e308 * 10 = Infinity → isFinite チェックで nil
+    #expect(
+      engine.evaluate(
+        "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999*9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+      ) == nil)
+  }
+
+  @Test func negativeModulo() {
+    let result = engine.evaluate("-10%3")
+    #expect(result != nil)
+    #expect(abs(result! - (-1.0)) < 1e-10)
+  }
+
+  @Test func zeroTimesAnything() {
+    #expect(engine.evaluate("0*99999") == 0.0)
+  }
+
+  @Test func zeroResult() {
+    #expect(engine.evaluate("0/1") == 0.0)
+  }
+}
+
+// MARK: - 深いネスト括弧
+
+@Suite("CalculatorEngine - Deep Nesting")
+struct CalculatorEngineDeepNestingTests {
+  let engine = CalculatorEngine()
+
+  @Test func tenLevelNesting() {
+    // ((((((((((1+1))))))))))
+    #expect(engine.evaluate("((((((((((1+1))))))))))") == 2.0)
+  }
+
+  @Test func emptyParentheses() {
+    // () は数値でも式でもないため nil
+    #expect(engine.evaluate("()") == nil)
+  }
+
+  @Test func nestedSubtraction() {
+    #expect(engine.evaluate("(10-(3-(2-1)))") == 8.0)
+  }
+}
+
+// MARK: - 連続演算子と特殊パターン
+
+@Suite("CalculatorEngine - Special Patterns")
+struct CalculatorEngineSpecialPatternTests {
+  let engine = CalculatorEngine()
+
+  @Test func leadingZeros() {
+    // "01" は Double("01") = 1.0 として解釈される
+    #expect(engine.evaluate("01+02") == 3.0)
+  }
+
+  @Test func multipleOperationsWithParens() {
+    #expect(engine.evaluate("(2+3)*(4-1)/(5%3)") == 7.5)
+  }
+
+  @Test func subtractNegative() {
+    // 5 - (-3) = 8
+    #expect(engine.evaluate("5-(-3)") == 8.0)
+  }
+
+  @Test func tripleNegative() {
+    // ---5 = -(-((-5))) = -5
+    #expect(engine.evaluate("---5") == -5.0)
+  }
+
+  @Test func decimalOnlyOperands() {
+    #expect(engine.evaluate("0.1+0.2") != nil)
+    let result = engine.evaluate("0.1+0.2")!
+    #expect(abs(result - 0.3) < 1e-10)
+  }
+}

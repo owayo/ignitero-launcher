@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 import os
 
-// MARK: - Launching Protocol
+// MARK: - Launching プロトコル
 
 public protocol Launching: Sendable {
   func launchApp(at path: String) async throws
@@ -15,7 +15,7 @@ public protocol Launching: Sendable {
   func availableTerminals() -> [TerminalInfo]
 }
 
-// MARK: - LaunchService
+// MARK: - LaunchService 本体
 
 public struct LaunchService: Launching, Sendable {
   private static let logger = Logger(subsystem: "com.ignitero.launcher", category: "Launch")
@@ -28,7 +28,7 @@ public struct LaunchService: Launching, Sendable {
 
   public init() {}
 
-  // MARK: - Editor App Name Mapping
+  // MARK: - エディタアプリ名マッピング
 
   public static func appName(for editor: EditorType) -> String {
     switch editor {
@@ -50,7 +50,7 @@ public struct LaunchService: Launching, Sendable {
     }
   }
 
-  // MARK: - Terminal App Name Mapping
+  // MARK: - ターミナルアプリ名マッピング
 
   public static func appName(for terminal: TerminalType) -> String {
     switch terminal {
@@ -72,7 +72,7 @@ public struct LaunchService: Launching, Sendable {
     }
   }
 
-  // MARK: - Application Paths
+  // MARK: - アプリケーションパス
 
   public static func applicationPath(for editor: EditorType) -> String {
     "/Applications/\(appName(for: editor))"
@@ -93,7 +93,7 @@ public struct LaunchService: Launching, Sendable {
     }
   }
 
-  // MARK: - Workspace Detection
+  // MARK: - ワークスペース検出
 
   public static func workspaceGlobPattern(for directoryPath: String) -> String {
     let normalized =
@@ -116,7 +116,7 @@ public struct LaunchService: Launching, Sendable {
       .map { "\(normalized)/\($0)" }
   }
 
-  // MARK: - AppleScript Generation
+  // MARK: - AppleScript 生成
 
   public static func appleScript(
     for terminal: TerminalType,
@@ -149,12 +149,22 @@ public struct LaunchService: Launching, Sendable {
           activate
         end tell
         """
+    case .ghostty:
+      // Ghostty 1.3.0 以降の公式 AppleScript API を使用
+      return """
+        tell application "Ghostty"
+          activate
+          set w to make new window
+          set term to focused terminal of selected tab of w
+          input text "\(scriptCommand)\\n" to term
+        end tell
+        """
     default:
       return ""
     }
   }
 
-  // MARK: - .command Script Generation
+  // MARK: - .command スクリプト生成
 
   public static func commandScript(
     command: String,
@@ -233,7 +243,7 @@ public struct LaunchService: Launching, Sendable {
     return removedCount
   }
 
-  // MARK: - Launching Protocol
+  // MARK: - 実行処理
 
   public func launchApp(at path: String) async throws {
     let url = URL(fileURLWithPath: path)
@@ -252,7 +262,7 @@ public struct LaunchService: Launching, Sendable {
         throw LaunchError.editorNotFound(editor)
       }
 
-      // Check for .code-workspace file
+      // .code-workspace ファイルがあればそちらを開く
       let targetURL: URL
       if let workspacePath = findWorkspaceFile(in: path) {
         targetURL = URL(fileURLWithPath: workspacePath)
@@ -304,33 +314,28 @@ public struct LaunchService: Launching, Sendable {
     terminal: TerminalType
   ) async throws {
     switch terminal {
-    case .terminal, .iterm2:
+    case .terminal, .iterm2, .ghostty:
       let script = Self.appleScript(
         for: terminal,
         command: command,
         workingDirectory: workingDirectory
       )
-      let process = Process()
-      let stderrPipe = Pipe()
-      process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-      process.arguments = ["-e", script]
-      process.standardError = stderrPipe
-      try process.run()
-      let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-      process.waitUntilExit()
-      guard process.terminationStatus == 0 else {
-        let stderrText = String(data: stderrData, encoding: .utf8)?
-          .trimmingCharacters(in: .whitespacesAndNewlines)
-        let message =
-          if let stderrText, !stderrText.isEmpty {
-            stderrText
-          } else {
-            "osascript exited with status \(process.terminationStatus)"
-          }
-        Self.logger.error(
-          "AppleScript execution failed (\(terminal.rawValue), status: \(process.terminationStatus)): \(message, privacy: .public)"
-        )
-        throw LaunchError.scriptExecutionFailed(message)
+      do {
+        try Self.executeAppleScript(script, terminal: terminal)
+      } catch {
+        // Ghostty はバージョンや設定によって AppleScript が無効な場合があるため従来方式にフォールバックする。
+        if terminal == .ghostty {
+          Self.logger.debug(
+            "Ghostty AppleScript failed. Falling back to command script: \(error.localizedDescription, privacy: .public)"
+          )
+          try await Self.executeCommandViaCommandScript(
+            command,
+            workingDirectory: workingDirectory,
+            terminal: terminal
+          )
+        } else {
+          throw error
+        }
       }
 
     case .cmux:
@@ -344,40 +349,77 @@ public struct LaunchService: Launching, Sendable {
       }
       try Self.createAndFocusCmuxWorkspace(command: fullCommand)
 
-    case .ghostty, .warp:
-      _ = Self.cleanupStaleCommandScripts()
-      let scriptContent = Self.commandScript(
-        command: command,
-        workingDirectory: workingDirectory
-      )
-      let tempDir = FileManager.default.temporaryDirectory
-      let scriptPath = tempDir.appendingPathComponent(
-        "\(Self.commandScriptPrefix)\(UUID().uuidString).\(Self.commandScriptExtension)"
-      )
-      try scriptContent.write(to: scriptPath, atomically: true, encoding: .utf8)
-      try FileManager.default.setAttributes(
-        [.posixPermissions: 0o755],
-        ofItemAtPath: scriptPath.path
-      )
-
-      let terminalPath = Self.applicationPath(for: terminal)
-      guard FileManager.default.fileExists(atPath: terminalPath) else {
-        throw LaunchError.terminalNotFound(terminal)
-      }
-      let terminalURL = URL(fileURLWithPath: terminalPath)
-      let config = NSWorkspace.OpenConfiguration()
-      try await NSWorkspace.shared.open(
-        [scriptPath],
-        withApplicationAt: terminalURL,
-        configuration: config
+    case .warp:
+      try await Self.executeCommandViaCommandScript(
+        command,
+        workingDirectory: workingDirectory,
+        terminal: terminal
       )
     }
+  }
+
+  private static func executeAppleScript(_ script: String, terminal: TerminalType) throws {
+    let process = Process()
+    let stderrPipe = Pipe()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+    process.arguments = ["-e", script]
+    process.standardError = stderrPipe
+    try process.run()
+    let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+    process.waitUntilExit()
+    guard process.terminationStatus == 0 else {
+      let stderrText = String(data: stderrData, encoding: .utf8)?
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+      let message =
+        if let stderrText, !stderrText.isEmpty {
+          stderrText
+        } else {
+          "osascript exited with status \(process.terminationStatus)"
+        }
+      Self.logger.error(
+        "AppleScript execution failed (\(terminal.rawValue), status: \(process.terminationStatus)): \(message, privacy: .public)"
+      )
+      throw LaunchError.scriptExecutionFailed(message)
+    }
+  }
+
+  private static func executeCommandViaCommandScript(
+    _ command: String,
+    workingDirectory: String?,
+    terminal: TerminalType
+  ) async throws {
+    _ = Self.cleanupStaleCommandScripts()
+    let scriptContent = Self.commandScript(
+      command: command,
+      workingDirectory: workingDirectory
+    )
+    let tempDir = FileManager.default.temporaryDirectory
+    let scriptPath = tempDir.appendingPathComponent(
+      "\(Self.commandScriptPrefix)\(UUID().uuidString).\(Self.commandScriptExtension)"
+    )
+    try scriptContent.write(to: scriptPath, atomically: true, encoding: .utf8)
+    try FileManager.default.setAttributes(
+      [.posixPermissions: 0o755],
+      ofItemAtPath: scriptPath.path
+    )
+
+    let terminalPath = Self.applicationPath(for: terminal)
+    guard FileManager.default.fileExists(atPath: terminalPath) else {
+      throw LaunchError.terminalNotFound(terminal)
+    }
+    let terminalURL = URL(fileURLWithPath: terminalPath)
+    let config = NSWorkspace.OpenConfiguration()
+    try await NSWorkspace.shared.open(
+      [scriptPath],
+      withApplicationAt: terminalURL,
+      configuration: config
+    )
   }
 
   private static let cmuxBundleID = "com.cmuxterm.app"
   private static let cmuxSocketPath = "/tmp/cmux.sock"
   private static let cmuxSocketTimeout: TimeInterval = 10
-  private static let cmuxSocketPollInterval: useconds_t = 200_000  // 200ms
+  private static let cmuxSocketPollInterval: useconds_t = 200_000  // 200ミリ秒
 
   /// cmux が起動していなければ起動し、ソケットが利用可能になるまで待機する。
   private static func ensureCmuxRunning() async throws {
@@ -527,7 +569,7 @@ public struct LaunchService: Launching, Sendable {
   }
 }
 
-// MARK: - LaunchError
+// MARK: - LaunchError 定義
 
 public enum LaunchError: Error, Sendable {
   case editorNotFound(EditorType)

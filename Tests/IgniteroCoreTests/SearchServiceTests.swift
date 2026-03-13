@@ -276,6 +276,46 @@ struct SearchServiceMixedTests {
     #expect(results[0].score < 0.0)
   }
 
+  @Test func prefixMatchHistoryBoost() async {
+    let apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app"),
+      AppItem(name: "Safeguard", path: "/Applications/Safeguard.app"),
+    ]
+    // "safari" の完全一致ではなく "saf" → "safari" の前方一致履歴
+    let history = [
+      SelectionHistoryEntry(
+        keyword: "safari", selectedPath: "/Applications/Safeguard.app", count: 5)
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "saf", apps: apps, directories: [], commands: [], history: history)
+    #expect(!results.isEmpty)
+    // 前方一致ブーストにより Safeguard が優先される
+    #expect(results[0].path == "/Applications/Safeguard.app")
+  }
+
+  @Test func noHistoryBoostForDifferentPath() async {
+    let apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app"),
+      AppItem(name: "Slack", path: "/Applications/Slack.app"),
+    ]
+    // 異なるパスの履歴はブーストに影響しない
+    let history = [
+      SelectionHistoryEntry(
+        keyword: "sa", selectedPath: "/Applications/NonExistent.app", count: 100)
+    ]
+    let service = SearchService()
+    let resultsWithHistory = service.search(
+      query: "sa", apps: apps, directories: [], commands: [], history: history)
+    let resultsWithout = service.search(
+      query: "sa", apps: apps, directories: [], commands: [], history: [])
+    // 存在しないパスの履歴はマッチしないため、スコアに影響しない
+    #expect(resultsWithHistory.count == resultsWithout.count)
+    if !resultsWithHistory.isEmpty && !resultsWithout.isEmpty {
+      #expect(resultsWithHistory[0].score == resultsWithout[0].score)
+    }
+  }
+
   @Test func mixedResultsSortedByScore() async {
     let apps = [
       AppItem(name: "Terminal", path: "/Applications/Utilities/Terminal.app")

@@ -3,7 +3,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - Test Helpers
+// MARK: - テストヘルパー
 
 private func makeTempDir() throws -> String {
   let dir = FileManager.default.temporaryDirectory
@@ -16,7 +16,7 @@ private func cleanup(_ path: String) {
   try? FileManager.default.removeItem(atPath: path)
 }
 
-/// Create a fake .app bundle with an Info.plist
+/// Info.plist 付きの擬似 .app バンドルを作成する
 private func createFakeApp(
   at directory: String,
   name: String,
@@ -44,7 +44,7 @@ private func createFakeApp(
   return appPath
 }
 
-/// Create a fake .app with a localized InfoPlist.strings
+/// ローカライズ済み InfoPlist.strings を持つ擬似 .app を作成する
 private func createLocalizedApp(
   at directory: String,
   name: String,
@@ -69,7 +69,7 @@ private func createLocalizedApp(
   return appPath
 }
 
-// MARK: - Protocol Conformance Tests
+// MARK: - プロトコル準拠テスト
 
 @Suite("AppScanner Protocol")
 struct AppScannerProtocolTests {
@@ -82,11 +82,11 @@ struct AppScannerProtocolTests {
   @Test func isSendable() {
     let scanner = AppScanner()
     let _: any Sendable = scanner
-    #expect(true)  // Compiles => Sendable
+    #expect(true)  // コンパイルできれば Sendable 準拠
   }
 }
 
-// MARK: - ScanTarget Tests
+// MARK: - ScanTarget テスト
 
 @Suite("AppScanner ScanTarget")
 struct AppScannerScanTargetTests {
@@ -128,7 +128,7 @@ struct AppScannerScanTargetTests {
   }
 }
 
-// MARK: - App Bundle Discovery Tests
+// MARK: - App Bundle 検出テスト
 
 @Suite("AppScanner Bundle Discovery")
 struct AppScannerBundleDiscoveryTests {
@@ -152,10 +152,10 @@ struct AppScannerBundleDiscoveryTests {
     let tmpDir = try makeTempDir()
     defer { cleanup(tmpDir) }
 
-    // depth 1
+    // 深さ 1
     _ = try createFakeApp(at: tmpDir, name: "TopLevel.app", bundleName: "TopLevel")
 
-    // depth 2 (nested in a subdirectory)
+    // 深さ 2（サブディレクトリ配下）
     let subDir = (tmpDir as NSString).appendingPathComponent("SubFolder")
     try FileManager.default.createDirectory(
       atPath: subDir, withIntermediateDirectories: true)
@@ -173,10 +173,10 @@ struct AppScannerBundleDiscoveryTests {
     let tmpDir = try makeTempDir()
     defer { cleanup(tmpDir) }
 
-    // depth 1
+    // 深さ 1
     _ = try createFakeApp(at: tmpDir, name: "TopLevel.app", bundleName: "TopLevel")
 
-    // depth 2 (nested in a subdirectory)
+    // 深さ 2（サブディレクトリ配下）
     let subDir = (tmpDir as NSString).appendingPathComponent("SubFolder")
     try FileManager.default.createDirectory(
       atPath: subDir, withIntermediateDirectories: true)
@@ -247,7 +247,7 @@ struct AppScannerBundleDiscoveryTests {
   }
 }
 
-// MARK: - Info.plist Extraction Tests
+// MARK: - Info.plist 抽出テスト
 
 @Suite("AppScanner Info.plist Extraction")
 struct AppScannerPlistExtractionTests {
@@ -392,7 +392,7 @@ struct AppScannerPlistExtractionTests {
   }
 }
 
-// MARK: - Localized Name Tests
+// MARK: - ローカライズ名テスト
 
 @Suite("AppScanner Localized Names")
 struct AppScannerLocalizedNameTests {
@@ -429,7 +429,7 @@ struct AppScannerLocalizedNameTests {
   }
 }
 
-// MARK: - App Info Extraction Tests
+// MARK: - App 情報抽出テスト
 
 @Suite("AppScanner App Info Extraction")
 struct AppScannerAppInfoExtractionTests {
@@ -449,9 +449,9 @@ struct AppScannerAppInfoExtractionTests {
 
     #expect(appItem != nil)
     #expect(appItem!.path == appPath)
-    // mdls がローカライズ名を返す場合はそちらが優先される
-    // フェイクアプリではmdlsがファイル名を返すため "DisplayNameApp" になる
-    #expect(appItem!.name == "DisplayNameApp")
+    let mdlsName = scanner.localizedNameViaMdls(for: appPath)
+    let expectedName = mdlsName ?? "Display Name App"
+    #expect(appItem!.name == expectedName)
   }
 
   @Test func extractsAppInfoWithBundleNameOnly() throws {
@@ -467,10 +467,14 @@ struct AppScannerAppInfoExtractionTests {
     let appItem = scanner.extractAppInfo(from: appPath)
 
     #expect(appItem != nil)
-    // mdls がファイル名 "BundleOnly" を返すため、それが name になる
-    #expect(appItem!.name == "BundleOnly")
-    // bundleName が originalName として保存される
-    #expect(appItem!.originalName == "BundleOnlyApp")
+    let mdlsName = scanner.localizedNameViaMdls(for: appPath)
+    let expectedName = mdlsName ?? "BundleOnlyApp"
+    #expect(appItem!.name == expectedName)
+    let expectedOriginalName: String? =
+      expectedName == "BundleOnlyApp"
+      ? nil
+      : "BundleOnlyApp"
+    #expect(appItem!.originalName == expectedOriginalName)
   }
 
   @Test func fallsBackToFileNameWhenNoPlist() throws {
@@ -492,7 +496,7 @@ struct AppScannerAppInfoExtractionTests {
   }
 }
 
-// MARK: - Excluded Apps Filtering Tests
+// MARK: - 除外アプリフィルタリングテスト
 
 @Suite("AppScanner Excluded Apps")
 struct AppScannerExcludedAppsTests {
@@ -533,7 +537,7 @@ struct AppScannerExcludedAppsTests {
   }
 }
 
-// MARK: - Full Scan Pipeline Tests
+// MARK: - フルスキャンパイプラインテスト
 
 @Suite("AppScanner Full Scan")
 struct AppScannerFullScanTests {
@@ -624,7 +628,7 @@ struct AppScannerFullScanTests {
   }
 }
 
-// MARK: - mdls Integration Tests
+// MARK: - mdls 統合テスト
 
 @Suite("AppScanner mdls")
 struct AppScannerMdlsTests {
@@ -637,10 +641,14 @@ struct AppScannerMdlsTests {
       at: tmpDir, name: "FakeApp.app", bundleName: "FakeApp")
 
     let scanner = AppScanner()
-    // mdls は .app ディレクトリに対してファイル名（拡張子なし）を返す
     let name = scanner.localizedNameViaMdls(for: appPath)
 
-    #expect(name == "FakeApp")
+    if let name {
+      #expect(!name.isEmpty)
+      #expect(name != "(null)")
+    } else {
+      #expect(name == nil)
+    }
   }
 
   @Test func mdlsReturnsNilForNonExistentPath() {

@@ -186,4 +186,74 @@ struct SelectionHistoryTests {
     #expect(jsonString.contains("T"))
     #expect(jsonString.contains("Z") || jsonString.contains("+"))
   }
+
+  // MARK: - 並行アクセス
+
+  @Test("複数スレッドからの同時記録でクラッシュしない")
+  func concurrentRecordDoesNotCrash() async throws {
+    let path = makeTempFilePath()
+    defer { cleanup(path) }
+
+    let history = SelectionHistory(filePath: path)
+
+    await withTaskGroup(of: Void.self) { group in
+      for i in 0..<100 {
+        group.addTask {
+          history.record(keyword: "key\(i % 10)", path: "/path/\(i)")
+        }
+      }
+    }
+
+    // クラッシュせずに完了し、エントリ数が上限以内であること
+    #expect(history.allEntries.count <= 50)
+    #expect(history.allEntries.count > 0)
+  }
+
+  // MARK: - 既存エントリの再記録で lastUsed が古いエントリより新しくなる
+
+  @Test("再記録したエントリは上限超過時に削除されない")
+  func rerecordedEntryIsNotEvicted() throws {
+    let path = makeTempFilePath()
+    defer { cleanup(path) }
+
+    let history = SelectionHistory(filePath: path)
+
+    // 最初のエントリを記録
+    history.record(keyword: "first", path: "/path/first")
+
+    // 49件の他のエントリを追加
+    for i in 1..<50 {
+      history.record(keyword: "key\(i)", path: "/path/\(i)")
+    }
+
+    // 最初のエントリを再記録して lastUsed を更新
+    history.record(keyword: "first", path: "/path/first")
+    #expect(history.allEntries.count == 50)
+
+    // 51件目を追加 → first ではなく他の古いエントリが削除される
+    history.record(keyword: "new", path: "/path/new")
+    #expect(history.allEntries.count == 50)
+
+    // first は残っている（lastUsed が更新されたため）
+    let firstEntries = history.entries(for: "first")
+    #expect(firstEntries.count == 1)
+    #expect(firstEntries[0].count == 2)
+  }
+
+  // MARK: - 破損した JSON の読み込み
+
+  @Test("破損した JSON ファイルの読み込みはエラーを投げる")
+  func loadCorruptedJsonThrows() throws {
+    let path = makeTempFilePath()
+    defer { cleanup(path) }
+
+    // 不正な JSON を書き込む
+    try "{ invalid json }".write(
+      to: URL(fileURLWithPath: path), atomically: true, encoding: .utf8)
+
+    let history = SelectionHistory(filePath: path)
+    #expect(throws: (any Error).self) {
+      try history.load()
+    }
+  }
 }

@@ -15,6 +15,17 @@ struct IMEControllerTests {
     controller.switchToASCII()
   }
 
+  @Test func switchToASCIIFromConcurrentTasksDoesNotCrash() async {
+    let controller = IMEController()
+    await withTaskGroup(of: Void.self) { group in
+      for _ in 0..<20 {
+        group.addTask {
+          controller.switchToASCII()
+        }
+      }
+    }
+  }
+
   @Test func conformsToIMEControlling() {
     let controller: any IMEControlling = IMEController()
     controller.switchToASCII()

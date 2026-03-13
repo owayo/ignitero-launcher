@@ -3,7 +3,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - EditorType Tests
+// MARK: - EditorType テスト
 
 @Suite("EditorType")
 struct EditorTypeTests {
@@ -38,7 +38,7 @@ struct EditorTypeTests {
   }
 }
 
-// MARK: - TerminalType Tests
+// MARK: - TerminalType テスト
 
 @Suite("TerminalType")
 struct TerminalTypeAllCasesTests {
@@ -57,7 +57,7 @@ struct TerminalTypeAllCasesTests {
   }
 }
 
-// MARK: - EditorInfo Tests
+// MARK: - EditorInfo テスト
 
 @Suite("EditorInfo")
 struct EditorInfoTests {
@@ -88,7 +88,7 @@ struct EditorInfoTests {
   }
 }
 
-// MARK: - TerminalInfo Tests
+// MARK: - TerminalInfo テスト
 
 @Suite("TerminalInfo")
 struct TerminalInfoTests {
@@ -119,7 +119,7 @@ struct TerminalInfoTests {
   }
 }
 
-// MARK: - LaunchService App Name Mapping Tests
+// MARK: - LaunchService アプリ名マッピングテスト
 
 @Suite("LaunchService App Name Mapping")
 struct LaunchServiceAppNameTests {
@@ -157,7 +157,7 @@ struct LaunchServiceAppNameTests {
   }
 }
 
-// MARK: - Workspace Detection Tests
+// MARK: - ワークスペース検出テスト
 
 @Suite("LaunchService Workspace Detection")
 struct LaunchServiceWorkspaceTests {
@@ -173,7 +173,7 @@ struct LaunchServiceWorkspaceTests {
   }
 }
 
-// MARK: - AppleScript Command Generation Tests
+// MARK: - AppleScript コマンド生成テスト
 
 @Suite("LaunchService AppleScript Generation")
 struct LaunchServiceAppleScriptTests {
@@ -218,6 +218,17 @@ struct LaunchServiceAppleScriptTests {
     #expect(script.contains("cd '/Users/test/project' && make build"))
   }
 
+  @Test func ghosttyAppleScriptWithWorkingDirectory() {
+    let script = LaunchService.appleScript(
+      for: .ghostty,
+      command: "npm run dev",
+      workingDirectory: "/Users/test/app"
+    )
+    #expect(script.contains("tell application \"Ghostty\""))
+    #expect(script.contains("input text \"cd '/Users/test/app' && npm run dev\\n\""))
+    #expect(script.contains("focused terminal of selected tab of w"))
+  }
+
   @Test func appleScriptEscapesDoubleQuotesInCommand() {
     let script = LaunchService.appleScript(
       for: .terminal,
@@ -246,19 +257,19 @@ struct LaunchServiceAppleScriptTests {
   }
 }
 
-// MARK: - AppleScript Escaping Combined Patterns
+// MARK: - AppleScript エスケープ複合パターン
 
 @Suite("LaunchService AppleScript Escaping Edge Cases")
 struct LaunchServiceAppleScriptEscapingEdgeCaseTests {
 
   @Test func appleScriptEscapesBackslashQuoteCombination() {
-    // Input: echo \"hello\" — backslash + double-quote combination
+    // 入力: echo \"hello\"（バックスラッシュ + ダブルクォート）
     let script = LaunchService.appleScript(
       for: .terminal,
       command: "echo \\\"hello\\\"",
       workingDirectory: nil
     )
-    // Backslash escaped first (\ → \\), then quotes escaped (" → \")
+    // バックスラッシュ（\ → \\）を先に、その後でダブルクォート（" → \"）をエスケープする
     #expect(script.contains("do script \"echo \\\\\\\"hello\\\\\\\"\""))
   }
 
@@ -297,13 +308,15 @@ struct LaunchServiceAppleScriptEscapingEdgeCaseTests {
     #expect(script.contains("cd ''"))
   }
 
-  @Test func appleScriptDefaultTerminalReturnsEmpty() {
+  @Test func ghosttyAppleScript() {
     let script = LaunchService.appleScript(
       for: .ghostty,
       command: "echo test",
       workingDirectory: nil
     )
-    #expect(script.isEmpty)
+    #expect(script.contains("tell application \"Ghostty\""))
+    #expect(script.contains("input text \"echo test\\n\""))
+    #expect(script.contains("focused terminal of selected tab of w"))
   }
 
   @Test func appleScriptWarpReturnsEmpty() {
@@ -325,7 +338,7 @@ struct LaunchServiceAppleScriptEscapingEdgeCaseTests {
   }
 }
 
-// MARK: - .command Script Generation Tests
+// MARK: - .command スクリプト生成テスト
 
 @Suite("LaunchService Command Script Generation")
 struct LaunchServiceCommandScriptTests {
@@ -374,7 +387,7 @@ struct LaunchServiceCommandScriptTests {
   }
 }
 
-// MARK: - Temporary Script Cleanup Tests
+// MARK: - 一時スクリプトクリーンアップテスト
 
 @Suite("LaunchService Temporary Script Cleanup")
 struct LaunchServiceTempScriptCleanupTests {
@@ -428,7 +441,7 @@ struct LaunchServiceTempScriptCleanupTests {
   }
 }
 
-// MARK: - Editor Path Tests
+// MARK: - エディタパステスト
 
 @Suite("LaunchService Editor Path")
 struct LaunchServiceEditorPathTests {
@@ -441,7 +454,7 @@ struct LaunchServiceEditorPathTests {
   }
 }
 
-// MARK: - Terminal Path Tests
+// MARK: - ターミナルパステスト
 
 @Suite("LaunchService Terminal Path")
 struct LaunchServiceTerminalPathTests {
@@ -461,7 +474,7 @@ struct LaunchServiceTerminalPathTests {
   }
 }
 
-// MARK: - Protocol Conformance Tests
+// MARK: - プロトコル準拠テスト
 
 @Suite("LaunchService Protocol")
 struct LaunchServiceProtocolTests {
@@ -469,5 +482,63 @@ struct LaunchServiceProtocolTests {
   @Test func conformsToLaunching() {
     let service: any Launching = LaunchService()
     #expect(type(of: service) == LaunchService.self)
+  }
+}
+
+// MARK: - コマンドスクリプト境界値テスト
+
+@Suite("LaunchService Command Script Edge Cases")
+struct LaunchServiceCommandScriptEdgeCaseTests {
+
+  @Test func commandScriptWithoutWorkingDirectory() {
+    let script = LaunchService.commandScript(command: "ls -la", workingDirectory: nil)
+    #expect(script == "#!/bin/bash\nls -la\nexit\n")
+    #expect(!script.contains("cd "))
+  }
+
+  @Test func commandScriptLineOrder() {
+    let script = LaunchService.commandScript(
+      command: "echo hello",
+      workingDirectory: "/tmp"
+    )
+    let lines = script.split(separator: "\n", omittingEmptySubsequences: false)
+    #expect(lines[0] == "#!/bin/bash")
+    #expect(lines[1].hasPrefix("cd "))
+    #expect(lines[2] == "echo hello")
+    #expect(lines[3] == "exit")
+  }
+
+  @Test func commandScriptWithUnicodeWorkingDirectory() {
+    let script = LaunchService.commandScript(
+      command: "pwd",
+      workingDirectory: "/Users/test/日本語ディレクトリ"
+    )
+    #expect(script.contains("'/Users/test/日本語ディレクトリ'"))
+  }
+}
+
+// MARK: - AppleScript Unicode テスト
+
+@Suite("LaunchService AppleScript Unicode")
+struct LaunchServiceAppleScriptUnicodeTests {
+
+  @Test func appleScriptWithJapaneseWorkingDirectory() {
+    let script = LaunchService.appleScript(
+      for: .terminal,
+      command: "ls",
+      workingDirectory: "/Users/test/プロジェクト"
+    )
+    #expect(script.contains("cd '/Users/test/プロジェクト'"))
+  }
+
+  @Test func appleScriptWithLongCommand() {
+    let longCommand = String(repeating: "echo test && ", count: 100) + "echo done"
+    let script = LaunchService.appleScript(
+      for: .terminal,
+      command: longCommand,
+      workingDirectory: nil
+    )
+    #expect(!script.isEmpty)
+    #expect(script.contains("echo done"))
   }
 }

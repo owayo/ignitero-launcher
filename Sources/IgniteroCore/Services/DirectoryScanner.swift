@@ -72,7 +72,7 @@ public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
     for registered in directories {
       let normalizedPath = normalizePath(registered.path)
 
-      // Attempt to list directory contents; skip on failure
+      // ディレクトリ内容の取得を試行。失敗時はスキップ
       let contents: [String]
       do {
         contents = try fileSystemProvider.contentsOfDirectory(atPath: normalizedPath)
@@ -82,7 +82,7 @@ public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
         continue
       }
 
-      // Add parent directory as a DirectoryItem (skip if mode is .none)
+      // 親ディレクトリを DirectoryItem として追加（mode が .none ならスキップ）
       if registered.parentOpenMode != .none {
         let parentName = lastPathComponent(of: normalizedPath)
         let parentEditor = editorForOpenMode(
@@ -91,24 +91,24 @@ public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
           DirectoryItem(name: parentName, path: normalizedPath, editor: parentEditor))
       }
 
-      // Process immediate children
+      // 直下の子エントリを処理
       for entry in contents {
-        // Skip hidden entries
+        // 隠しエントリをスキップ
         guard !entry.hasPrefix(".") else { continue }
 
         let childPath = normalizedPath + "/" + entry
 
-        // Check if it's a .app bundle
+        // .app バンドルかどうかを判定
         if entry.hasSuffix(".app") {
           if registered.scanForApps {
-            let appName = String(entry.dropLast(4))  // Remove ".app" suffix
+            let appName = String(entry.dropLast(4))  // ".app" サフィックスを除去
             allApps.append(AppItem(name: appName, path: childPath))
           }
-          // .app bundles are not included as directory items regardless of scanForApps
+          // .app バンドルは scanForApps の設定に関わらずディレクトリ項目には含めない
           continue
         }
 
-        // Only include directories (not regular files), skip if subdirs mode is .none
+        // ディレクトリのみ対象（通常ファイルは除外）。subdirs mode が .none ならスキップ
         guard registered.subdirsOpenMode != .none,
           fileSystemProvider.isDirectory(atPath: childPath)
         else { continue }

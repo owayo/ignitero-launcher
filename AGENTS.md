@@ -24,12 +24,12 @@ Sources/
     App/                    # AppCoordinator, AppDelegate, GlobalShortcutManager, MenuBarActions, CacheBootstrap, PerformanceMonitor
     Data/                   # CacheDatabase (GRDB), SettingsManager, SelectionHistory（設定JSON破損時はバックアップ復旧、I/Oエラーは呼び出し側へ伝播）
     Models/                 # AppItem, DirectoryItem, EditorType, TerminalType, EditorInfo, TerminalInfo
-    Services/               # SearchService, LaunchService（実行ディレクトリはシェルエスケープし、Terminal/iTerm2はAppleScript、Warp/Ghosttyは.command、cmuxはCLI。Terminal.appは/Systemパス優先）, AppScanner, DirectoryScanner, UpdateChecker, IMEController, CalculatorEngine, IconCacheManager
+    Services/               # SearchService, LaunchService（実行ディレクトリはシェルエスケープし、Terminal/iTerm2/GhosttyはAppleScript。Ghostty 1.3.0公式API使用（make new window + input text + \\n）。GhosttyでAppleScript失敗時は.commandへフォールバック。Warpは.command、cmuxはCLI。Terminal.appは/Systemパス優先）, AppScanner, DirectoryScanner, UpdateChecker, IMEController（TIS APIはメインスレッド実行）, CalculatorEngine, IconCacheManager, EmojiKeywordSearch
     UI/                     # LauncherPanel, LauncherView, LauncherViewModel, WindowManager, SettingsView, SettingsViewModel, EditorPickerPanel, TerminalPickerPanel, RadialPickerView
   IgniteroLauncher/         # 実行可能ターゲット (@main エントリ)
     IgniteroApp.swift
 Tests/
-  IgniteroCoreTests/        # 640テスト (Swift Testing)
+  IgniteroCoreTests/        # 691テスト (Swift Testing)
 .backup/                    # Tauri v2 旧実装 (参照用)
 ```
 
@@ -64,4 +64,4 @@ make clean        # ビルドキャッシュ削除
 - **Sendable**: Swift 6.2 Strict Concurrency 準拠
 
 # currentDate
-Today's date is 2026-02-26.
+Today's date is 2026-03-13.

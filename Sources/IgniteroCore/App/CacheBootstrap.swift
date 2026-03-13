@@ -78,7 +78,7 @@ public final class CacheBootstrap {
         do {
           try await Task.sleep(nanoseconds: intervalNanoseconds)
         } catch {
-          // Task was cancelled during sleep
+          // スリープ中にタスクがキャンセルされた
           break
         }
 
