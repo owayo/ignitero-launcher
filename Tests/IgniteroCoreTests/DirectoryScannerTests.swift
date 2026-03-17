@@ -3,7 +3,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - Mock FileSystem Provider
+// MARK: - モックファイルシステムプロバイダー
 
 struct MockFileSystemProvider: FileSystemProvider {
   var directoryContents: [String: [String]] = [:]
@@ -26,7 +26,7 @@ struct MockFileSystemProvider: FileSystemProvider {
   }
 }
 
-// MARK: - ScanResult Tests
+// MARK: - ScanResult テスト
 
 @Suite("ScanResult")
 struct ScanResultTests {
@@ -46,7 +46,7 @@ struct ScanResultTests {
   }
 }
 
-// MARK: - DirectoryScanner Protocol Tests
+// MARK: - DirectoryScanner プロトコルテスト
 
 @Suite("DirectoryScannerProtocol")
 struct DirectoryScannerProtocolTests {
@@ -54,7 +54,7 @@ struct DirectoryScannerProtocolTests {
   @Test func conformsToProtocol() {
     let fs = MockFileSystemProvider()
     let scanner = DirectoryScanner(fileSystemProvider: fs)
-    #expect(scanner is any DirectoryScannerProtocol)
+    let _: any DirectoryScannerProtocol = scanner
   }
 
   @Test func isSendable() {
@@ -65,7 +65,7 @@ struct DirectoryScannerProtocolTests {
   }
 }
 
-// MARK: - Empty Input Tests
+// MARK: - 空入力テスト
 
 @Suite("DirectoryScanner Empty Input")
 struct DirectoryScannerEmptyInputTests {
@@ -79,7 +79,7 @@ struct DirectoryScannerEmptyInputTests {
   }
 }
 
-// MARK: - Subdirectory Scanning Tests
+// MARK: - サブディレクトリスキャンテスト
 
 @Suite("DirectoryScanner Subdirectory Scanning")
 struct DirectoryScannerSubdirectoryScanningTests {
@@ -112,7 +112,7 @@ struct DirectoryScannerSubdirectoryScanningTests {
     let scanner = DirectoryScanner(fileSystemProvider: fs)
     let result = try scanner.scan(directories: [registered])
 
-    // Subdirectories should be included
+    // サブディレクトリが結果に含まれることを確認する
     let subdirs = result.directories.filter { $0.path != basePath }
     #expect(subdirs.count == 2)
     #expect(subdirs.contains { $0.name == "project-a" && $0.path == "\(basePath)/project-a" })
@@ -145,7 +145,7 @@ struct DirectoryScannerSubdirectoryScanningTests {
     let scanner = DirectoryScanner(fileSystemProvider: fs)
     let result = try scanner.scan(directories: [registered])
 
-    // Only project-a is a directory; readme.txt and .gitignore are files
+    // project-a のみディレクトリで、readme.txt と .gitignore は除外される
     let subdirs = result.directories.filter { $0.path != basePath }
     #expect(subdirs.count == 1)
     #expect(subdirs[0].name == "project-a")
@@ -182,7 +182,7 @@ struct DirectoryScannerSubdirectoryScanningTests {
   }
 }
 
-// MARK: - Editor Assignment Tests
+// MARK: - エディタ割り当てテスト
 
 @Suite("DirectoryScanner Editor Assignment")
 struct DirectoryScannerEditorAssignmentTests {
@@ -252,7 +252,7 @@ struct DirectoryScannerEditorAssignmentTests {
     let scanner = DirectoryScanner(fileSystemProvider: fs)
     let result = try scanner.scan(directories: [registered])
 
-    // Both parent and subdirectories should be excluded when mode is .none
+    // mode が .none の場合、親と子ディレクトリの両方を除外する
     #expect(result.directories.isEmpty)
   }
 
@@ -273,7 +273,7 @@ struct DirectoryScannerEditorAssignmentTests {
     let scanner = DirectoryScanner(fileSystemProvider: fs)
     let result = try scanner.scan(directories: [registered])
 
-    // Parent should be included, subdirectories should be excluded
+    // 親は含め、子ディレクトリは除外する
     #expect(result.directories.count == 1)
     #expect(result.directories[0].path == basePath)
   }
@@ -296,7 +296,7 @@ struct DirectoryScannerEditorAssignmentTests {
     let scanner = DirectoryScanner(fileSystemProvider: fs)
     let result = try scanner.scan(directories: [registered])
 
-    // Parent should be excluded, subdirectory should be included
+    // 親は除外し、子ディレクトリは含める
     #expect(result.directories.count == 1)
     #expect(result.directories[0].path == "\(basePath)/sub-a")
     #expect(result.directories[0].editor == "vscode")
@@ -325,7 +325,7 @@ struct DirectoryScannerEditorAssignmentTests {
   }
 }
 
-// MARK: - App Scanning Tests
+// MARK: - アプリスキャンテスト
 
 @Suite("DirectoryScanner App Scanning")
 struct DirectoryScannerAppScanningTests {
@@ -410,18 +410,18 @@ struct DirectoryScannerAppScanningTests {
     let scanner = DirectoryScanner(fileSystemProvider: fs)
     let result = try scanner.scan(directories: [registered])
 
-    // .app bundles should NOT appear in directories
+    // .app バンドルはディレクトリ結果に含めない
     let subdirs = result.directories.filter { $0.path != basePath }
     #expect(subdirs.count == 1)
     #expect(subdirs[0].name == "project-a")
 
-    // .app bundles should appear in apps
+    // .app バンドルはアプリ結果に含める
     #expect(result.apps.count == 1)
     #expect(result.apps[0].name == "MyApp")
   }
 }
 
-// MARK: - Multiple Registered Directories Tests
+// MARK: - 複数登録ディレクトリテスト
 
 @Suite("DirectoryScanner Multiple Directories")
 struct DirectoryScannerMultipleDirectoriesTests {
@@ -466,7 +466,7 @@ struct DirectoryScannerMultipleDirectoriesTests {
     let scanner = DirectoryScanner(fileSystemProvider: fs)
     let result = try scanner.scan(directories: dirs)
 
-    // 2 parents + 2 subdirectories = 4 total
+    // 親 2 件 + 子ディレクトリ 2 件で合計 4 件
     #expect(result.directories.count == 4)
     #expect(result.directories.contains { $0.path == path1 && $0.editor == "cursor" })
     #expect(
@@ -481,14 +481,14 @@ struct DirectoryScannerMultipleDirectoriesTests {
   }
 }
 
-// MARK: - Error Handling Tests
+// MARK: - エラーハンドリングテスト
 
 @Suite("DirectoryScanner Error Handling")
 struct DirectoryScannerErrorHandlingTests {
 
   @Test func scanSkipsNonExistentDirectories() throws {
     var fs = MockFileSystemProvider()
-    // Directory does not exist in directoryContents
+    // directoryContents に存在しないため読み取りエラーになる
     let basePath = "/Users/dev/nonexistent"
     fs.existingPaths = []
 
@@ -502,7 +502,7 @@ struct DirectoryScannerErrorHandlingTests {
     let scanner = DirectoryScanner(fileSystemProvider: fs)
     let result = try scanner.scan(directories: [registered])
 
-    // Non-existent directory is skipped gracefully
+    // 存在しないディレクトリは安全にスキップされる
     #expect(result.directories.isEmpty)
     #expect(result.apps.isEmpty)
   }
@@ -511,7 +511,7 @@ struct DirectoryScannerErrorHandlingTests {
     var fs = MockFileSystemProvider()
 
     let path1 = "/Users/dev/broken"
-    // path1 not in directoryContents -> will throw
+    // path1 は directoryContents にないため読み取り時に失敗する
     let path2 = "/Users/dev/working"
     fs.directoryContents[path2] = ["project"]
     fs.directoryFlags = [path2, "\(path2)/project"]
@@ -537,13 +537,13 @@ struct DirectoryScannerErrorHandlingTests {
     let scanner = DirectoryScanner(fileSystemProvider: fs)
     let result = try scanner.scan(directories: dirs)
 
-    // path2 should still be scanned successfully
+    // path2 側のスキャンは継続される
     #expect(result.directories.contains { $0.path == path2 })
     #expect(result.directories.contains { $0.path == "\(path2)/project" })
   }
 }
 
-// MARK: - Parent Directory Name Tests
+// MARK: - 親ディレクトリ名テスト
 
 @Suite("DirectoryScanner Parent Directory Name")
 struct DirectoryScannerParentNameTests {
@@ -573,7 +573,7 @@ struct DirectoryScannerParentNameTests {
   @Test func parentDirectoryHandlesTrailingSlash() throws {
     var fs = MockFileSystemProvider()
     let basePath = "/Users/dev/my-projects"
-    // RegisteredDirectory path with trailing slash
+    // RegisteredDirectory の path が末尾スラッシュ付きでも扱えることを確認する
     let pathWithSlash = basePath + "/"
     fs.directoryContents[basePath] = []
     fs.directoryFlags = [basePath]
@@ -593,9 +593,32 @@ struct DirectoryScannerParentNameTests {
     let parent = result.directories.first
     #expect(parent?.name == "my-projects")
   }
+
+  @Test func rootDirectoryPreservesPathAndChildPaths() throws {
+    var fs = MockFileSystemProvider()
+    fs.directoryContents["/"] = ["Applications"]
+    fs.directoryFlags = ["/", "/Applications"]
+    fs.existingPaths = ["/", "/Applications"]
+
+    let registered = RegisteredDirectory(
+      path: "/",
+      parentOpenMode: .editor,
+      parentEditor: "cursor",
+      subdirsOpenMode: .editor,
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    let parent = result.directories.first { $0.path == "/" }
+    let child = result.directories.first { $0.path == "/Applications" }
+    #expect(parent?.name == "/")
+    #expect(child?.name == "Applications")
+  }
 }
 
-// MARK: - Cache Database Integration Tests
+// MARK: - キャッシュデータベース連携テスト
 
 @Suite("DirectoryScanner Cache Integration")
 struct DirectoryScannerCacheIntegrationTests {
@@ -627,12 +650,12 @@ struct DirectoryScannerCacheIntegrationTests {
     let scanner = DirectoryScanner(fileSystemProvider: fs)
     let result = try scanner.scan(directories: [registered])
 
-    // Save to cache database
+    // キャッシュデータベースへ保存する
     let db = try CacheDatabase(inMemory: true)
-    try await db.saveDirectories(result.directories)
-    try await db.saveApps(result.apps)
+    try db.saveDirectories(result.directories)
+    try db.saveApps(result.apps)
 
-    // Load and verify
+    // 読み戻して内容を確認する
     let loadedDirs = try await db.loadDirectories()
     let loadedApps = try await db.loadApps()
 
@@ -648,7 +671,7 @@ struct DirectoryScannerCacheIntegrationTests {
   }
 }
 
-// MARK: - FileSystemProvider Default Tests
+// MARK: - デフォルト FileSystemProvider テスト
 
 @Suite("DefaultFileSystemProvider")
 struct DefaultFileSystemProviderTests {
@@ -666,7 +689,7 @@ struct DefaultFileSystemProviderTests {
 
   @Test func detectsExistingDirectory() {
     let provider = DefaultFileSystemProvider()
-    // /tmp always exists on macOS
+    // macOS では /tmp が常に存在する
     #expect(provider.fileExists(atPath: "/tmp"))
     #expect(provider.isDirectory(atPath: "/tmp"))
   }
@@ -678,7 +701,7 @@ struct DefaultFileSystemProviderTests {
   }
 }
 
-// MARK: - Real FileSystem Integration Tests
+// MARK: - 実ファイルシステム連携テスト
 
 @Suite("DirectoryScanner Real FileSystem Integration")
 struct DirectoryScannerRealFileSystemTests {
@@ -690,13 +713,13 @@ struct DirectoryScannerRealFileSystemTests {
     try fm.createDirectory(at: tempBase, withIntermediateDirectories: true)
     defer { try? fm.removeItem(at: tempBase) }
 
-    // Create subdirectories
+    // サブディレクトリを作成する
     let subA = tempBase.appendingPathComponent("project-a")
     let subB = tempBase.appendingPathComponent("project-b")
     try fm.createDirectory(at: subA, withIntermediateDirectories: true)
     try fm.createDirectory(at: subB, withIntermediateDirectories: true)
 
-    // Create a regular file (should be excluded)
+    // 通常ファイルを作成し、結果から除外されることを確認する
     let file = tempBase.appendingPathComponent("readme.txt")
     try "test".write(to: file, atomically: true, encoding: .utf8)
 
@@ -712,7 +735,7 @@ struct DirectoryScannerRealFileSystemTests {
     let scanner = DirectoryScanner()
     let result = try scanner.scan(directories: [registered])
 
-    // Parent + 2 subdirectories
+    // 親 1 件 + 子ディレクトリ 2 件
     #expect(result.directories.count == 3)
     #expect(result.directories.contains { $0.path == tempBase.path && $0.editor == "cursor" })
     #expect(
@@ -729,11 +752,11 @@ struct DirectoryScannerRealFileSystemTests {
     try fm.createDirectory(at: tempBase, withIntermediateDirectories: true)
     defer { try? fm.removeItem(at: tempBase) }
 
-    // Create a fake .app bundle directory
+    // 擬似的な .app バンドルディレクトリを作成する
     let appBundle = tempBase.appendingPathComponent("TestApp.app")
     try fm.createDirectory(at: appBundle, withIntermediateDirectories: true)
 
-    // Create a regular subdirectory
+    // 通常のサブディレクトリを作成する
     let subDir = tempBase.appendingPathComponent("project")
     try fm.createDirectory(at: subDir, withIntermediateDirectories: true)
 
@@ -748,12 +771,12 @@ struct DirectoryScannerRealFileSystemTests {
     let scanner = DirectoryScanner()
     let result = try scanner.scan(directories: [registered])
 
-    // Parent + project subdirectory (app bundle excluded from directories)
+    // 親 1 件 + project サブディレクトリ 1 件（.app はディレクトリ結果から除外）
     let subdirs = result.directories.filter { $0.path != tempBase.path }
     #expect(subdirs.count == 1)
     #expect(subdirs[0].name == "project")
 
-    // App bundle detected
+    // .app バンドルはアプリとして検出される
     #expect(result.apps.count == 1)
     #expect(result.apps[0].name == "TestApp")
     #expect(result.apps[0].path == appBundle.path)

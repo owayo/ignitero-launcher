@@ -24,7 +24,17 @@ public struct LaunchService: Launching, Sendable {
   private static let staleCommandScriptTTL: TimeInterval = 5 * 60
   private static let terminalSystemPath = "/System/Applications/Utilities/Terminal.app"
   private static let terminalLegacyPath = "/Applications/Utilities/Terminal.app"
-  private static let cmuxCLIPath = "/Applications/cmux.app/Contents/Resources/bin/cmux"
+  private static let cmuxCLIPath: String = {
+    // Homebrew (Apple Silicon → Intel フォールバック) → アプリバンドル内 CLI の順に探索
+    let candidates = [
+      "/opt/homebrew/bin/cmux",
+      "/usr/local/bin/cmux",
+      "/Applications/cmux.app/Contents/Resources/bin/cmux",
+    ]
+    let fm = FileManager.default
+    return candidates.first { fm.fileExists(atPath: $0) }
+      ?? "/Applications/cmux.app/Contents/Resources/bin/cmux"
+  }()
 
   public init() {}
 
@@ -96,24 +106,18 @@ public struct LaunchService: Launching, Sendable {
   // MARK: - ワークスペース検出
 
   public static func workspaceGlobPattern(for directoryPath: String) -> String {
-    let normalized =
-      directoryPath.hasSuffix("/")
-      ? String(directoryPath.dropLast())
-      : directoryPath
-    return "\(normalized)/*.code-workspace"
+    let normalized = normalizedDirectoryPath(directoryPath)
+    return (normalized as NSString).appendingPathComponent("*.code-workspace")
   }
 
   private func findWorkspaceFile(in directoryPath: String) -> String? {
     let fm = FileManager.default
-    let normalized =
-      directoryPath.hasSuffix("/")
-      ? String(directoryPath.dropLast())
-      : directoryPath
+    let normalized = Self.normalizedDirectoryPath(directoryPath)
     guard let contents = try? fm.contentsOfDirectory(atPath: normalized) else {
       return nil
     }
     return contents.first { $0.hasSuffix(".code-workspace") }
-      .map { "\(normalized)/\($0)" }
+      .map { (normalized as NSString).appendingPathComponent($0) }
   }
 
   // MARK: - AppleScript 生成
@@ -183,6 +187,13 @@ public struct LaunchService: Launching, Sendable {
     // POSIX シェル向けに単一引用符でラップし、内部の単一引用符を安全にエスケープする。
     let escaped = value.replacingOccurrences(of: "'", with: "'\"'\"'")
     return "'\(escaped)'"
+  }
+
+  private static func normalizedDirectoryPath(_ path: String) -> String {
+    if path != "/", path.hasSuffix("/") {
+      return String(path.dropLast())
+    }
+    return path
   }
 
   private static func appleScriptEscaped(_ value: String) -> String {
@@ -291,11 +302,9 @@ public struct LaunchService: Launching, Sendable {
 
     switch terminal {
     case .cmux:
-      // cmux を起動（未起動時）→ ソケット経由でワークスペース作成 → 選択 → 最前面化
+      // cmux を起動（未起動時）→ --cwd でワークスペース作成 → 選択 → 最前面化
       try await Self.ensureCmuxRunning()
-      let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
-      let cmd = "cd \(Self.shellEscaped(path)) && exec \(shell)"
-      try Self.createAndFocusCmuxWorkspace(command: cmd)
+      try Self.createCmuxWorkspaceWithCwd(path: path)
     default:
       let terminalURL = URL(fileURLWithPath: terminalPath)
       let dirURL = URL(fileURLWithPath: path)
@@ -417,11 +426,11 @@ public struct LaunchService: Launching, Sendable {
   }
 
   private static let cmuxBundleID = "com.cmuxterm.app"
-  private static let cmuxSocketPath = "/tmp/cmux.sock"
   private static let cmuxSocketTimeout: TimeInterval = 10
   private static let cmuxSocketPollInterval: useconds_t = 200_000  // 200ミリ秒
 
-  /// cmux が起動していなければ起動し、ソケットが利用可能になるまで待機する。
+  /// cmux が起動していなければ起動し、CLI の ping で疎通確認する。
+  /// ソケットパスは cmux CLI が自動検出するため、パスのハードコードは不要。
   private static func ensureCmuxRunning() async throws {
     let isRunning = !NSRunningApplication.runningApplications(
       withBundleIdentifier: cmuxBundleID
@@ -439,21 +448,18 @@ public struct LaunchService: Launching, Sendable {
       )
     }
 
-    // ソケットが利用可能になるまでポーリング
+    // cmux CLI の ping で疎通確認（CLI がソケットパスを自動検出する）
     let deadline = Date().addingTimeInterval(cmuxSocketTimeout)
     while Date() < deadline {
-      if FileManager.default.fileExists(atPath: cmuxSocketPath) {
-        // ping で疎通確認
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: cmuxCLIPath)
-        process.arguments = ["ping"]
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-        try? process.run()
-        process.waitUntilExit()
-        if process.terminationStatus == 0 {
-          return
-        }
+      let process = Process()
+      process.executableURL = URL(fileURLWithPath: cmuxCLIPath)
+      process.arguments = ["ping"]
+      process.standardOutput = FileHandle.nullDevice
+      process.standardError = FileHandle.nullDevice
+      try? process.run()
+      process.waitUntilExit()
+      if process.terminationStatus == 0 {
+        return
       }
       usleep(cmuxSocketPollInterval)
     }
@@ -502,6 +508,23 @@ public struct LaunchService: Launching, Sendable {
     let parts = output.split(separator: " ", maxSplits: 1)
     guard parts.count == 2, parts[0] == "OK" else { return nil }
     return String(parts[1])
+  }
+
+  /// cmux で指定ディレクトリをカレントディレクトリとしてワークスペースを作成し、最前面にする。
+  private static func createCmuxWorkspaceWithCwd(path: String) throws {
+    let output = try executeCmuxCLI(["new-workspace", "--cwd", path])
+    // 作成したワークスペースを選択
+    if let wsID = parseWorkspaceID(from: output) {
+      _ = try? executeCmuxCLI(["select-workspace", "--workspace", wsID])
+    }
+    // AppleScript でアプリを最前面化（最小化解除含む）
+    let activateProcess = Process()
+    activateProcess.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+    activateProcess.arguments = ["-e", "tell application \"cmux\" to activate"]
+    activateProcess.standardOutput = FileHandle.nullDevice
+    activateProcess.standardError = FileHandle.nullDevice
+    try? activateProcess.run()
+    activateProcess.waitUntilExit()
   }
 
   /// cmux でワークスペースを作成し、選択して最前面にする。

@@ -66,7 +66,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-03-13確認）
+#### ターミナル自動化方式（2026-03-17確認）
 
 - macOSターミナル: AppleScript（`do script`）
 - iTerm2: AppleScript（`create window` + `write text`）
@@ -74,6 +74,10 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - Ghostty: AppleScript（Ghostty 1.3.0 公式 API: `make new window` + `input text "...\n"`）。AppleScriptが無効な環境では `.command` ファイル方式へフォールバック
 - cmux: AppleScript辞書なし（`sdef`不可、`do script` 構文未定義）。ディレクトリはNSServices（`New cmux Workspace Here`）、コマンド実行はCLI（`cmux new-workspace --command ...`）方式
   - **注意**: cmux の Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
+
+### アップデート通知
+- GitHub Releases（`owayo/ignitero-launcher`）を確認し、新バージョンがあれば起動後に通知
+- 結果は12時間キャッシュし、非表示にしたバージョンは再通知しない
 
 ### アプリケーション検索・起動
 - `/Applications`、`/System/Applications`、`~/Applications`配下のアプリケーションを自動スキャン
@@ -91,6 +95,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
   - 配下のディレクトリの開き方を選択（表示しない / Finder / エディタ）
   - ディレクトリごとに異なるエディタを設定可能
   - カスタム検索キーワードで見つけやすく
+  - 末尾スラッシュ付きパスやルートディレクトリ`/`も正規化して扱う
 - **エディタ自動検出**: インストール済みエディタを自動検出
   - 対応エディタ: Antigravity、Cursor、VS Code、Windsurf、Zed
   - `/Applications`と`~/Applications`の両方をチェック

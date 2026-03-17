@@ -1,18 +1,18 @@
 import Foundation
 import os
 
-// MARK: - URLSessionProtocol
+// MARK: - URLSession プロトコル
 
 /// テスト用に URLSession を差し替え可能にするプロトコル。
 public protocol URLSessionProtocol: Sendable {
   func data(for request: URLRequest) async throws -> (Data, URLResponse)
 }
 
-// MARK: - URLSession Conformance
+// MARK: - URLSession 準拠
 
 extension URLSession: URLSessionProtocol {}
 
-// MARK: - GitHubRelease
+// MARK: - GitHub リリースモデル
 
 /// GitHub Releases API から返されるリリース情報。
 public struct GitHubRelease: Codable, Sendable {
@@ -27,7 +27,7 @@ public struct GitHubRelease: Codable, Sendable {
   }
 }
 
-// MARK: - UpdateCheckResult
+// MARK: - アップデート確認結果
 
 /// アップデートチェックの結果。
 public struct UpdateCheckResult: Sendable, Equatable {
@@ -42,7 +42,7 @@ public struct UpdateCheckResult: Sendable, Equatable {
   }
 }
 
-// MARK: - VersionComparator
+// MARK: - バージョン比較
 
 /// セマンティックバージョニングの比較ユーティリティ。
 public enum VersionComparator {
@@ -81,7 +81,7 @@ public enum VersionComparator {
   }
 }
 
-// MARK: - UpdateChecker
+// MARK: - アップデート確認
 
 /// GitHub Releases API を使用してアップデートを確認するチェッカー。
 ///
@@ -101,14 +101,14 @@ public struct UpdateChecker: Sendable {
   /// API リクエストのタイムアウト（10秒）
   private static let requestTimeout: TimeInterval = 10
 
-  // MARK: - Dependencies
+  // MARK: - 依存関係
 
   private let session: any URLSessionProtocol
   private let settingsManager: SettingsManager
   private let owner: String
   private let repo: String
 
-  // MARK: - Initialization
+  // MARK: - 初期化
 
   /// UpdateChecker を初期化する。
   ///
@@ -120,7 +120,7 @@ public struct UpdateChecker: Sendable {
   public init(
     session: any URLSessionProtocol = URLSession.shared,
     settingsManager: SettingsManager,
-    owner: String = "nicekid1",
+    owner: String = "owayo",
     repo: String = "ignitero-launcher"
   ) {
     self.session = session
@@ -129,7 +129,7 @@ public struct UpdateChecker: Sendable {
     self.repo = repo
   }
 
-  // MARK: - Public API
+  // MARK: - 公開 API
 
   /// アップデートを確認する。
   ///
@@ -172,7 +172,7 @@ public struct UpdateChecker: Sendable {
         updateCache(latestVersion: currentVersion)
       }
 
-      // dismissed バージョンチェック
+      // 非表示済みバージョンのチェック
       if let result, let dismissedVersion, result.latestVersion == dismissedVersion {
         return nil
       }
@@ -190,7 +190,7 @@ public struct UpdateChecker: Sendable {
     }
   }
 
-  // MARK: - Private Methods
+  // MARK: - 非公開メソッド
 
   /// GitHub Releases API から最新の安定リリースを取得する。
   private func fetchLatestRelease(currentVersion: String) async throws -> UpdateCheckResult? {
@@ -239,7 +239,7 @@ public struct UpdateChecker: Sendable {
   ) -> UpdateCheckResult? {
     guard let cachedVersion else { return nil }
 
-    // dismissed バージョンチェック
+    // 非表示済みバージョンのチェック
     if let dismissedVersion, cachedVersion == dismissedVersion {
       return nil
     }

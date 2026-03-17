@@ -171,6 +171,11 @@ struct LaunchServiceWorkspaceTests {
     let pattern = LaunchService.workspaceGlobPattern(for: "/Users/test/project/")
     #expect(pattern == "/Users/test/project/*.code-workspace")
   }
+
+  @Test func workspaceGlobPatternRootDirectory() {
+    let pattern = LaunchService.workspaceGlobPattern(for: "/")
+    #expect(pattern == "/*.code-workspace")
+  }
 }
 
 // MARK: - AppleScript コマンド生成テスト

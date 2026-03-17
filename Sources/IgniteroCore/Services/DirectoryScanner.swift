@@ -1,13 +1,13 @@
 import Foundation
 import os
 
-// MARK: - FileSystem Error
+// MARK: - ファイルシステムエラー
 
 public enum FileSystemError: Error, Sendable {
   case directoryNotFound(String)
 }
 
-// MARK: - FileSystem Provider Protocol
+// MARK: - ファイルシステムプロバイダープロトコル
 
 public protocol FileSystemProvider: Sendable {
   func contentsOfDirectory(atPath path: String) throws -> [String]
@@ -15,7 +15,7 @@ public protocol FileSystemProvider: Sendable {
   func fileExists(atPath path: String) -> Bool
 }
 
-// MARK: - Default FileSystem Provider
+// MARK: - デフォルトファイルシステムプロバイダー
 
 public struct DefaultFileSystemProvider: FileSystemProvider, Sendable {
   public init() {}
@@ -35,7 +35,7 @@ public struct DefaultFileSystemProvider: FileSystemProvider, Sendable {
   }
 }
 
-// MARK: - Scan Result
+// MARK: - スキャン結果
 
 public struct ScanResult: Sendable, Equatable {
   public let directories: [DirectoryItem]
@@ -47,13 +47,13 @@ public struct ScanResult: Sendable, Equatable {
   }
 }
 
-// MARK: - DirectoryScanner Protocol
+// MARK: - DirectoryScanner プロトコル
 
 public protocol DirectoryScannerProtocol: Sendable {
   func scan(directories: [RegisteredDirectory]) throws -> ScanResult
 }
 
-// MARK: - DirectoryScanner
+// MARK: - DirectoryScanner 本体
 
 public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
   private static let logger = Logger(
@@ -96,7 +96,7 @@ public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
         // 隠しエントリをスキップ
         guard !entry.hasPrefix(".") else { continue }
 
-        let childPath = normalizedPath + "/" + entry
+        let childPath = (normalizedPath as NSString).appendingPathComponent(entry)
 
         // .app バンドルかどうかを判定
         if entry.hasSuffix(".app") {
@@ -123,10 +123,10 @@ public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
     return ScanResult(directories: allDirectories, apps: allApps)
   }
 
-  // MARK: - Private Helpers
+  // MARK: - 非公開ヘルパー
 
   private func normalizePath(_ path: String) -> String {
-    if path.hasSuffix("/") {
+    if path != "/", path.hasSuffix("/") {
       return String(path.dropLast())
     }
     return path

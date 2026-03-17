@@ -3,7 +3,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - Mock URLSession
+// MARK: - URLSession モック
 
 private final class MockURLSession: URLSessionProtocol, @unchecked Sendable {
   var dataToReturn: Data?
@@ -32,7 +32,7 @@ private final class MockURLSession: URLSessionProtocol, @unchecked Sendable {
   }
 }
 
-// MARK: - Helper Functions
+// MARK: - ヘルパー関数
 
 private func makeReleasesJSON(_ releases: [[String: Any]]) -> Data {
   try! JSONSerialization.data(withJSONObject: releases)
@@ -53,7 +53,7 @@ private func makeTempConfigDir() -> URL {
     .appendingPathComponent("ignitero-update-test-\(UUID().uuidString)")
 }
 
-// MARK: - GitHubRelease Model Tests
+// MARK: - GitHubRelease モデルテスト
 
 @Suite("GitHubRelease Model")
 struct GitHubReleaseModelTests {
@@ -90,7 +90,7 @@ struct GitHubReleaseModelTests {
   }
 }
 
-// MARK: - UpdateCheckResult Tests
+// MARK: - UpdateCheckResult テスト
 
 @Suite("UpdateCheckResult Model")
 struct UpdateCheckResultModelTests {
@@ -105,7 +105,7 @@ struct UpdateCheckResultModelTests {
   }
 }
 
-// MARK: - Version Comparison Tests
+// MARK: - バージョン比較テスト
 
 @Suite("Version Comparison")
 struct VersionComparisonTests {
@@ -147,7 +147,7 @@ struct VersionComparisonTests {
   }
 }
 
-// MARK: - UpdateChecker New Version Tests
+// MARK: - UpdateChecker 新バージョン検出テスト
 
 @Suite("UpdateChecker New Version Detection")
 struct UpdateCheckerNewVersionTests {
@@ -213,7 +213,7 @@ struct UpdateCheckerNewVersionTests {
   }
 }
 
-// MARK: - UpdateChecker Prerelease Filtering Tests
+// MARK: - UpdateChecker プレリリース除外テスト
 
 @Suite("UpdateChecker Prerelease Filtering")
 struct UpdateCheckerPrereleaseTests {
@@ -258,7 +258,7 @@ struct UpdateCheckerPrereleaseTests {
   }
 }
 
-// MARK: - UpdateChecker Cache Tests
+// MARK: - UpdateChecker キャッシュテスト
 
 @Suite("UpdateChecker Cache")
 struct UpdateCheckerCacheTests {
@@ -274,7 +274,7 @@ struct UpdateCheckerCacheTests {
     // キャッシュを設定（6時間前にチェック済み）
     settingsManager.settings.updateCache = UpdateCache(
       latestVersion: "2.0.0",
-      checkedAt: Date().addingTimeInterval(-6 * 3600)  // 6 hours ago
+      checkedAt: Date().addingTimeInterval(-6 * 3600)  // 6時間前
     )
 
     let checker = UpdateChecker(
@@ -306,7 +306,7 @@ struct UpdateCheckerCacheTests {
     // キャッシュを設定（13時間前にチェック済み）
     settingsManager.settings.updateCache = UpdateCache(
       latestVersion: "2.0.0",
-      checkedAt: Date().addingTimeInterval(-13 * 3600)  // 13 hours ago
+      checkedAt: Date().addingTimeInterval(-13 * 3600)  // 13時間前
     )
 
     let checker = UpdateChecker(
@@ -332,7 +332,7 @@ struct UpdateCheckerCacheTests {
     // キャッシュにあるバージョンが現在のバージョンより古い
     settingsManager.settings.updateCache = UpdateCache(
       latestVersion: "0.9.0",
-      checkedAt: Date().addingTimeInterval(-1 * 3600)  // 1 hour ago
+      checkedAt: Date().addingTimeInterval(-1 * 3600)  // 1時間前
     )
 
     let checker = UpdateChecker(
@@ -367,7 +367,7 @@ struct UpdateCheckerCacheTests {
   }
 }
 
-// MARK: - UpdateChecker Dismissed Version Tests
+// MARK: - UpdateChecker 非表示バージョンテスト
 
 @Suite("UpdateChecker Dismissed Version")
 struct UpdateCheckerDismissedVersionTests {
@@ -423,7 +423,7 @@ struct UpdateCheckerDismissedVersionTests {
   }
 }
 
-// MARK: - UpdateChecker Error Handling Tests
+// MARK: - UpdateChecker エラーハンドリングテスト
 
 @Suite("UpdateChecker Error Handling")
 struct UpdateCheckerErrorHandlingTests {
@@ -500,7 +500,7 @@ struct UpdateCheckerErrorHandlingTests {
     // 期限切れのキャッシュがあるが、ネットワークエラー時はキャッシュを使用
     settingsManager.settings.updateCache = UpdateCache(
       latestVersion: "2.0.0",
-      checkedAt: Date().addingTimeInterval(-24 * 3600)  // 24 hours ago (expired)
+      checkedAt: Date().addingTimeInterval(-24 * 3600)  // 24時間前（期限切れ）
     )
 
     let checker = UpdateChecker(
@@ -517,7 +517,7 @@ struct UpdateCheckerErrorHandlingTests {
   }
 }
 
-// MARK: - UpdateChecker API URL Tests
+// MARK: - UpdateChecker API URL テスト
 
 @Suite("UpdateChecker API URL")
 struct UpdateCheckerAPIURLTests {
@@ -540,9 +540,26 @@ struct UpdateCheckerAPIURLTests {
       mockSession.requestedURL?.absoluteString
         == "https://api.github.com/repos/myorg/myrepo/releases")
   }
+
+  @Test func usesProductionRepositoryDefaults() async {
+    let mockSession = MockURLSession()
+    mockSession.dataToReturn = makeReleasesJSON([])
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager
+    )
+
+    _ = await checker.checkForUpdate(currentVersion: "1.0.0")
+
+    #expect(
+      mockSession.requestedURL?.absoluteString
+        == "https://api.github.com/repos/owayo/ignitero-launcher/releases")
+  }
 }
 
-// MARK: - UpdateChecker Cache Update Tests
+// MARK: - UpdateChecker キャッシュ更新テスト
 
 @Suite("UpdateChecker Cache Update")
 struct UpdateCheckerCacheUpdateTests {
