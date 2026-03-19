@@ -105,6 +105,47 @@ struct UpdateCheckResultModelTests {
   }
 }
 
+// MARK: - UpdateCache モデルテスト
+
+@Suite("UpdateCache Model")
+struct UpdateCacheModelTests {
+
+  @Test func downloadURLFieldStoredCorrectly() {
+    let cache = UpdateCache(
+      latestVersion: "2.0.0",
+      checkedAt: Date(),
+      downloadURL: "https://github.com/test/releases/tag/v2.0.0"
+    )
+    #expect(cache.downloadURL == "https://github.com/test/releases/tag/v2.0.0")
+  }
+
+  @Test func downloadURLDefaultsToNil() {
+    let cache = UpdateCache(latestVersion: "1.0.0")
+    #expect(cache.downloadURL == nil)
+  }
+
+  @Test func downloadURLEncodesAndDecodes() throws {
+    let original = UpdateCache(
+      latestVersion: "3.0.0",
+      checkedAt: Date(timeIntervalSince1970: 1_700_000_000),
+      dismissedVersion: nil,
+      downloadURL: "https://github.com/test/releases/tag/v3.0.0"
+    )
+    let data = try JSONEncoder().encode(original)
+    let decoded = try JSONDecoder().decode(UpdateCache.self, from: data)
+    #expect(decoded.latestVersion == original.latestVersion)
+    #expect(decoded.downloadURL == original.downloadURL)
+  }
+
+  @Test func equalityIncludesDownloadURL() {
+    let a = UpdateCache(latestVersion: "1.0.0", downloadURL: "https://example.com/a")
+    let b = UpdateCache(latestVersion: "1.0.0", downloadURL: "https://example.com/b")
+    let c = UpdateCache(latestVersion: "1.0.0", downloadURL: "https://example.com/a")
+    #expect(a != b)
+    #expect(a == c)
+  }
+}
+
 // MARK: - バージョン比較テスト
 
 @Suite("Version Comparison")
@@ -583,5 +624,62 @@ struct UpdateCheckerCacheUpdateTests {
     // キャッシュが更新されている
     #expect(settingsManager.settings.updateCache?.latestVersion == "5.0.0")
     #expect(settingsManager.settings.updateCache?.checkedAt != nil)
+  }
+
+  @Test func cacheIncludesDownloadURL() async {
+    let mockSession = MockURLSession()
+    mockSession.dataToReturn = makeReleasesJSON([
+      makeRelease(
+        tagName: "v5.0.0",
+        htmlURL: "https://github.com/test/releases/tag/v5.0.0"
+      )
+    ])
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    _ = await checker.checkForUpdate(currentVersion: "1.0.0")
+
+    // キャッシュに downloadURL が保存されている
+    #expect(
+      settingsManager.settings.updateCache?.downloadURL
+        == "https://github.com/test/releases/tag/v5.0.0")
+  }
+
+  @Test func cachedDownloadURLIsReturnedFromCache() async {
+    let mockSession = MockURLSession()
+    // API は呼ばれないはず
+    mockSession.dataToReturn = makeReleasesJSON([
+      makeRelease(tagName: "v99.0.0")
+    ])
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    // キャッシュに downloadURL を含めて設定
+    settingsManager.settings.updateCache = UpdateCache(
+      latestVersion: "2.0.0",
+      checkedAt: Date().addingTimeInterval(-6 * 3600),  // 6時間前（有効期間内）
+      downloadURL: "https://github.com/test/releases/tag/v2.0.0"
+    )
+
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    let result = await checker.checkForUpdate(currentVersion: "1.0.0")
+
+    // キャッシュから downloadURL が返される
+    #expect(result != nil)
+    #expect(result?.latestVersion == "2.0.0")
+    #expect(result?.downloadURL == "https://github.com/test/releases/tag/v2.0.0")
+    // API は呼ばれない
+    #expect(mockSession.requestedURL == nil)
   }
 }

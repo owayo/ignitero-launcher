@@ -117,18 +117,23 @@ public struct UpdateCache: Codable, Sendable, Equatable {
   public var latestVersion: String?
   public var checkedAt: Date?
   public var dismissedVersion: String?
+  public var downloadURL: String?
 
-  public init(latestVersion: String? = nil, checkedAt: Date? = nil, dismissedVersion: String? = nil)
-  {
+  public init(
+    latestVersion: String? = nil, checkedAt: Date? = nil, dismissedVersion: String? = nil,
+    downloadURL: String? = nil
+  ) {
     self.latestVersion = latestVersion
     self.checkedAt = checkedAt
     self.dismissedVersion = dismissedVersion
+    self.downloadURL = downloadURL
   }
 
   enum CodingKeys: String, CodingKey {
     case latestVersion = "latest_version"
     case checkedAt = "checked_at"
     case dismissedVersion = "dismissed_version"
+    case downloadURL = "download_url"
   }
 }
 

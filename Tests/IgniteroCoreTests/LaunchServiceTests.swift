@@ -444,6 +444,64 @@ struct LaunchServiceTempScriptCleanupTests {
     let removed = LaunchService.cleanupStaleCommandScripts(in: missingDir, now: Date())
     #expect(removed == 0)
   }
+
+  @Test func doesNotRemoveSubdirectoryWithIgniteroPrefix() throws {
+    let dir = try makeTempDir()
+    defer { try? FileManager.default.removeItem(at: dir) }
+
+    let now = Date(timeIntervalSince1970: 1_700_000_000)
+
+    // ignitero プレフィックス付きのサブディレクトリ（.command 拡張子）を作成
+    let subDir = dir.appendingPathComponent("ignitero-subdir.command")
+    try FileManager.default.createDirectory(at: subDir, withIntermediateDirectories: true)
+    // 古いタイムスタンプを設定
+    try FileManager.default.setAttributes(
+      [.modificationDate: now.addingTimeInterval(-600)],
+      ofItemAtPath: subDir.path
+    )
+
+    // 通常のスクリプトファイルも作成（こちらは削除されるべき）
+    let staleScript = dir.appendingPathComponent("ignitero-old.command")
+    try "#!/bin/bash\necho stale\n".write(to: staleScript, atomically: true, encoding: .utf8)
+    try FileManager.default.setAttributes(
+      [.modificationDate: now.addingTimeInterval(-600)],
+      ofItemAtPath: staleScript.path
+    )
+
+    let removed = LaunchService.cleanupStaleCommandScripts(
+      in: dir,
+      olderThan: 300,
+      now: now
+    )
+
+    // 通常ファイルだけ削除、ディレクトリはスキップ
+    #expect(removed == 1)
+    #expect(!FileManager.default.fileExists(atPath: staleScript.path))
+    #expect(FileManager.default.fileExists(atPath: subDir.path))
+  }
+
+  @Test func doesNotRemoveSymlinkWithIgniteroPrefix() throws {
+    let dir = try makeTempDir()
+    defer { try? FileManager.default.removeItem(at: dir) }
+
+    let now = Date(timeIntervalSince1970: 1_700_000_000)
+
+    // リンク先が存在しないシンボリックリンクを作成
+    let symlink = dir.appendingPathComponent("ignitero-link.command")
+    try FileManager.default.createSymbolicLink(
+      at: symlink,
+      withDestinationURL: URL(fileURLWithPath: "/nonexistent/target")
+    )
+
+    let removed = LaunchService.cleanupStaleCommandScripts(
+      in: dir,
+      olderThan: 300,
+      now: now
+    )
+
+    // シンボリックリンクは isRegularFile が false/nil なのでスキップ
+    #expect(removed == 0)
+  }
 }
 
 // MARK: - エディタパステスト

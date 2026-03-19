@@ -268,7 +268,7 @@ public final class LauncherViewModel {
     }
 
     // Web検索: x <keyword>
-    if normalized.hasPrefix("x ") {
+    else if normalized.hasPrefix("x ") {
       let keyword = String(normalized.dropFirst(2)).trimmingCharacters(in: .whitespaces)
       if !keyword.isEmpty,
         let encoded = keyword.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)

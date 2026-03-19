@@ -180,6 +180,24 @@ struct SettingsViewModelCacheUpdateTests {
   }
 
   @MainActor
+  @Test func setCacheUpdateSettingsCallsOnSettingsChanged() throws {
+    let manager = try makeTempSettingsManager()
+    let vm = SettingsViewModel(settingsManager: manager)
+
+    var callbackCount = 0
+    vm.onSettingsChanged = { callbackCount += 1 }
+
+    let newSettings = CacheUpdateSettings(
+      updateOnStartup: false,
+      autoUpdateEnabled: true,
+      autoUpdateIntervalHours: 6
+    )
+    try vm.setCacheUpdateSettings(newSettings)
+
+    #expect(callbackCount == 1)
+  }
+
+  @MainActor
   @Test func setCacheUpdateSettingsPersists() throws {
     let dir = FileManager.default.temporaryDirectory
       .appendingPathComponent("ignitero-settings-vm-\(UUID().uuidString)")
@@ -576,6 +594,89 @@ struct SettingsViewModelExcludedAppsTests {
     #expect(vm.allApps.count == 2)
     #expect(vm.allApps[0].name == "Safari")
     #expect(vm.allApps[1].name == "Mail")
+  }
+}
+
+// MARK: - onSettingsChanged Callback Tests
+
+@Suite("SettingsViewModel onSettingsChanged Callback")
+struct SettingsViewModelOnSettingsChangedTests {
+
+  @MainActor
+  @Test func setDefaultEditorCallsOnSettingsChanged() throws {
+    let manager = try makeTempSettingsManager()
+    let vm = SettingsViewModel(settingsManager: manager)
+
+    var callbackCount = 0
+    vm.onSettingsChanged = { callbackCount += 1 }
+
+    try vm.setDefaultEditor(.cursor)
+    #expect(callbackCount == 1)
+  }
+
+  @MainActor
+  @Test func setDefaultTerminalCallsOnSettingsChanged() throws {
+    let manager = try makeTempSettingsManager()
+    let vm = SettingsViewModel(settingsManager: manager)
+
+    var callbackCount = 0
+    vm.onSettingsChanged = { callbackCount += 1 }
+
+    try vm.setDefaultTerminal(.ghostty)
+    #expect(callbackCount == 1)
+  }
+
+  @MainActor
+  @Test func setCacheUpdateSettingsCallsOnSettingsChangedFromSuite() throws {
+    let manager = try makeTempSettingsManager()
+    let vm = SettingsViewModel(settingsManager: manager)
+
+    var callbackCount = 0
+    vm.onSettingsChanged = { callbackCount += 1 }
+
+    let newSettings = CacheUpdateSettings(
+      updateOnStartup: false,
+      autoUpdateEnabled: false,
+      autoUpdateIntervalHours: 24
+    )
+    try vm.setCacheUpdateSettings(newSettings)
+    #expect(callbackCount == 1)
+  }
+
+  @MainActor
+  @Test func multipleSettingsChangesCallCallbackMultipleTimes() throws {
+    let manager = try makeTempSettingsManager()
+    let vm = SettingsViewModel(settingsManager: manager)
+
+    var callbackCount = 0
+    vm.onSettingsChanged = { callbackCount += 1 }
+
+    try vm.setDefaultEditor(.vscode)
+    try vm.setDefaultTerminal(.warp)
+    let cacheSettings = CacheUpdateSettings(
+      updateOnStartup: true,
+      autoUpdateEnabled: true,
+      autoUpdateIntervalHours: 6
+    )
+    try vm.setCacheUpdateSettings(cacheSettings)
+
+    #expect(callbackCount == 3)
+  }
+
+  @MainActor
+  @Test func noCallbackWhenNotSet() throws {
+    let manager = try makeTempSettingsManager()
+    let vm = SettingsViewModel(settingsManager: manager)
+    // onSettingsChanged を設定しない状態でクラッシュしないこと
+    try vm.setDefaultEditor(.zed)
+    try vm.setDefaultTerminal(.terminal)
+    let cacheSettings = CacheUpdateSettings(
+      updateOnStartup: false,
+      autoUpdateEnabled: false,
+      autoUpdateIntervalHours: 12
+    )
+    try vm.setCacheUpdateSettings(cacheSettings)
+    // クラッシュしなければOK
   }
 }
 

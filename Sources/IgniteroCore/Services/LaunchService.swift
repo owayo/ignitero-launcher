@@ -236,7 +236,7 @@ public struct LaunchService: Launching, Sendable {
         let values = try? fileURL.resourceValues(forKeys: [
           .isRegularFileKey, .contentModificationDateKey, .creationDateKey,
         ]),
-        values.isRegularFile ?? true
+        values.isRegularFile ?? false
       else { continue }
 
       let modifiedAt = values.contentModificationDate ?? values.creationDate ?? now

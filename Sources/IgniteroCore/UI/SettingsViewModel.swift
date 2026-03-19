@@ -114,6 +114,7 @@ public final class SettingsViewModel {
   public func setCacheUpdateSettings(_ cacheSettings: CacheUpdateSettings) throws {
     settingsManager.settings.cacheUpdate = cacheSettings
     try settingsManager.save()
+    onSettingsChanged?()
   }
 
   // MARK: - Directory Tab

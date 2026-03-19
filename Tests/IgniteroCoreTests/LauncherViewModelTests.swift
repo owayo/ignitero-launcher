@@ -651,6 +651,47 @@ struct LauncherViewModelSpecialActionsTests {
     #expect(!vm.searchResults.isEmpty)
     #expect(vm.searchResults[0].kind == .emoji)
   }
+
+  @MainActor
+  @Test func gPrefixQueryMatchesOnlyGoogleNotX() {
+    let vm = LauncherViewModel()
+    // "g x foo" は "g " プレフィックスに一致するので Google 検索のみ
+    vm.searchQuery = "g x foo"
+    vm.updateSearch()
+    let webResults = vm.searchResults.filter { $0.kind == .webSearch }
+    #expect(webResults.count == 1)
+    #expect(webResults[0].name.contains("Google"))
+    #expect(webResults[0].path.contains("google.com/search"))
+    // X 検索は含まれない
+    #expect(!webResults.contains(where: { $0.path.contains("x.com/search") }))
+  }
+
+  @MainActor
+  @Test func xPrefixQueryMatchesOnlyXNotGoogle() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "x swift"
+    vm.updateSearch()
+    let webResults = vm.searchResults.filter { $0.kind == .webSearch }
+    #expect(webResults.count == 1)
+    #expect(webResults[0].name.contains("X"))
+    #expect(webResults[0].path.contains("x.com/search"))
+    // Google 検索は含まれない
+    #expect(!webResults.contains(where: { $0.path.contains("google.com/search") }))
+  }
+
+  @MainActor
+  @Test func gPrefixWithXKeywordProducesCorrectSearchTerm() {
+    let vm = LauncherViewModel()
+    // "g x swift" は Google 検索で "x swift" を検索
+    vm.searchQuery = "g x swift"
+    vm.updateSearch()
+    let webResults = vm.searchResults.filter { $0.kind == .webSearch }
+    #expect(webResults.count == 1)
+    #expect(webResults[0].path.contains("google.com/search"))
+    #expect(
+      webResults[0].path.contains("x%20swift") || webResults[0].path.contains("x+swift")
+        || webResults[0].path.contains("x swift"))
+  }
 }
 
 // MARK: - LauncherViewModel Confirm Selection Edge Cases

@@ -156,7 +156,7 @@ public struct UpdateChecker: Sendable {
         cachedVersion: cache.latestVersion,
         currentVersion: currentVersion,
         dismissedVersion: dismissedVersion,
-        downloadURL: nil
+        downloadURL: cache.downloadURL
       )
     }
 
@@ -166,7 +166,7 @@ public struct UpdateChecker: Sendable {
 
       // キャッシュを更新
       if let result {
-        updateCache(latestVersion: result.latestVersion)
+        updateCache(latestVersion: result.latestVersion, downloadURL: result.downloadURL)
       } else {
         // 新しいバージョンがない場合でもチェック日時を更新
         updateCache(latestVersion: currentVersion)
@@ -256,11 +256,12 @@ public struct UpdateChecker: Sendable {
   }
 
   /// キャッシュを更新する。
-  private func updateCache(latestVersion: String) {
+  private func updateCache(latestVersion: String, downloadURL: String? = nil) {
     settingsManager.settings.updateCache = UpdateCache(
       latestVersion: latestVersion,
       checkedAt: Date(),
-      dismissedVersion: settingsManager.settings.updateCache?.dismissedVersion
+      dismissedVersion: settingsManager.settings.updateCache?.dismissedVersion,
+      downloadURL: downloadURL
     )
     // 保存エラーは黙殺
     try? settingsManager.save()
