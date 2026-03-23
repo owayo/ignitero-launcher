@@ -234,6 +234,17 @@ struct LaunchServiceAppleScriptTests {
     #expect(script.contains("focused terminal of selected tab of w"))
   }
 
+  @Test func cmuxAppleScriptWithWorkingDirectory() {
+    let script = LaunchService.appleScript(
+      for: .cmux,
+      command: "npm run dev",
+      workingDirectory: "/Users/test/app"
+    )
+    #expect(script.contains("tell application \"cmux\""))
+    #expect(script.contains("input text \"cd '/Users/test/app' && npm run dev\\n\""))
+    #expect(script.contains("focused terminal of selected tab of w"))
+  }
+
   @Test func appleScriptEscapesDoubleQuotesInCommand() {
     let script = LaunchService.appleScript(
       for: .terminal,
@@ -333,13 +344,15 @@ struct LaunchServiceAppleScriptEscapingEdgeCaseTests {
     #expect(script.isEmpty)
   }
 
-  @Test func appleScriptCmuxReturnsEmpty() {
+  @Test func cmuxAppleScript() {
     let script = LaunchService.appleScript(
       for: .cmux,
       command: "echo test",
       workingDirectory: nil
     )
-    #expect(script.isEmpty)
+    #expect(script.contains("tell application \"cmux\""))
+    #expect(script.contains("input text \"echo test\\n\""))
+    #expect(script.contains("focused terminal of selected tab of w"))
   }
 }
 
