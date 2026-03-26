@@ -276,3 +276,102 @@ struct CalculatorEngineSpecialPatternTests {
     #expect(abs(result - 0.3) < 1e-10)
   }
 }
+
+// MARK: - NaN / Infinity 検出
+
+@Suite("CalculatorEngine - NaN and Infinity Detection")
+struct CalculatorEngineNaNInfinityTests {
+  let engine = CalculatorEngine()
+
+  @Test("0/0 は nil を返す（NaN 検出）")
+  func zeroDivZeroReturnsNil() {
+    #expect(engine.evaluate("0/0") == nil)
+  }
+
+  @Test("非常に大きい数同士の乗算は nil を返す（Infinity 検出）")
+  func overflowReturnsNil() {
+    // Double.greatestFiniteMagnitude を超える結果は Infinity → isFinite チェックで nil
+    let big = String(repeating: "9", count: 309)
+    #expect(engine.evaluate("\(big)*\(big)") == nil)
+  }
+
+  @Test("0 除算は nil を返す（負の被除数）")
+  func negativeDivByZero() {
+    #expect(engine.evaluate("-1/0") == nil)
+  }
+
+  @Test("極めて小さい正の数")
+  func verySmallPositive() {
+    let result = engine.evaluate("0.00000001/100000")
+    #expect(result != nil)
+    if let r = result {
+      #expect(r > 0)
+      #expect(r.isFinite)
+    }
+  }
+}
+
+// MARK: - 括弧のミスマッチ詳細
+
+@Suite("CalculatorEngine - Parenthesis Mismatch Details")
+struct CalculatorEngineParenthesisMismatchTests {
+  let engine = CalculatorEngine()
+
+  @Test("複数レベルの括弧不整合（左が多い）")
+  func multiLevelUnmatchedOpen() {
+    #expect(engine.evaluate("(((1+2)") == nil)
+  }
+
+  @Test("複数レベルの括弧不整合（右が多い）")
+  func multiLevelUnmatchedClose() {
+    #expect(engine.evaluate("(1+2)))") == nil)
+  }
+
+  @Test("空括弧を含む式")
+  func emptyParenInExpression() {
+    #expect(engine.evaluate("() + 5") == nil)
+  }
+
+  @Test("入れ子で内側が空")
+  func nestedEmptyParen() {
+    #expect(engine.evaluate("(1 + ())") == nil)
+  }
+
+  @Test("括弧のみ（空でない）は値を返す")
+  func parenOnlyWithValue() {
+    #expect(engine.evaluate("(42)") == 42.0)
+  }
+}
+
+// MARK: - 数値フォーマットの境界値
+
+@Suite("CalculatorEngine - Number Format Boundaries")
+struct CalculatorEngineNumberFormatBoundaryTests {
+  let engine = CalculatorEngine()
+
+  @Test("先頭ゼロ複数")
+  func multipleLeadingZeros() {
+    #expect(engine.evaluate("00001 + 00002") == 3.0)
+  }
+
+  @Test("小数点直後に何もない場合は nil")
+  func trailingDecimalInExpression() {
+    #expect(engine.evaluate("1. + 2") == nil)
+  }
+
+  @Test("1.2.3 は無効")
+  func multipleDecimalPointsInNumber() {
+    #expect(engine.evaluate("1.2.3") == nil)
+  }
+
+  @Test("1.5 + 2.3 は有効")
+  func twoDecimalNumbers() {
+    #expect(engine.evaluate("1.5 + 2.3") == 3.8)
+  }
+
+  @Test("非常に長い数値文字列（Infinity 検出）")
+  func extremelyLongNumber() {
+    let longNum = String(repeating: "9", count: 500)
+    #expect(engine.evaluate(longNum) == nil)
+  }
+}

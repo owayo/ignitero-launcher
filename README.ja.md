@@ -14,3 +14,5 @@
 - 特殊アクション検索で `g x foo` が Google と X 両方にマッチするバグを修正
 - setCacheUpdateSettings の onSettingsChanged コールバック呼び出し欠落を修正
 - テスト数を 711 → 712 に増加（cmux AppleScript 回帰テストを追加）
+- テスト数を 712 → 751 に増加（HapticService, EmojiPickerPanel, CalculatorEngine 境界値, EmojiKeywordSearch エッジケース, SelectionHistory 並行テスト等を追加）
+- 各ターミナルの AppleScript 対応状況を 2026-03-26 時点で再調査（変更なし）

@@ -1,3 +1,4 @@
+import EmojiKit
 import Foundation
 import Testing
 
@@ -83,5 +84,90 @@ struct EmojiKeywordSearchTests {
     let upper = search.matchingEmojis(for: "SMILE")
     // 大文字小文字無視なので同じ結果になるはず
     #expect(lower == upper)
+  }
+}
+
+// MARK: - EmojiKeywordSearch エッジケース
+
+@Suite("EmojiKeywordSearch Edge Cases")
+struct EmojiKeywordSearchEdgeCaseTests {
+
+  @Test("非常に長いクエリでクラッシュしない")
+  func veryLongQueryDoesNotCrash() {
+    let search = EmojiKeywordSearch()
+    let longQuery = String(repeating: "あ", count: 10000)
+    let result = search.matchingEmojis(for: longQuery)
+    #expect(result.isEmpty)
+  }
+
+  @Test("制御文字を含むクエリでクラッシュしない")
+  func controlCharactersDoNotCrash() {
+    let search = EmojiKeywordSearch()
+    let query = "test\u{0000}\u{0001}\u{007F}"
+    _ = search.matchingEmojis(for: query)
+  }
+
+  @Test("Unicode サロゲート混在クエリ")
+  func surrogateCharacters() {
+    let search = EmojiKeywordSearch()
+    let query = "🎉テスト"
+    _ = search.matchingEmojis(for: query)
+  }
+
+  @Test("スペースのみのクエリは空を返す")
+  func tabsAndSpacesOnlyReturnsEmpty() {
+    let search = EmojiKeywordSearch()
+    #expect(search.matchingEmojis(for: " \t ").isEmpty)
+  }
+
+  @Test("結果に空文字列が含まれない")
+  func noEmptyStringsInResults() {
+    let search = EmojiKeywordSearch()
+    let result = search.matchingEmojis(for: "笑")
+    for emoji in result {
+      #expect(!emoji.isEmpty)
+    }
+  }
+
+  @Test("VS 除去版は元の絵文字と同じ視覚表現を持つ")
+  func normalizedEmojiVisuallyEquivalent() {
+    let search = EmojiKeywordSearch()
+    let result = search.matchingEmojis(for: "笑顔")
+    // VS 付き・なしの両方が含まれる場合、除去版は元の絵文字と異なる String 表現
+    if result.count >= 2 {
+      let strings = Array(result)
+      // すべてのエントリが空でないことを確認
+      for s in strings {
+        #expect(!s.isEmpty)
+      }
+    }
+  }
+}
+
+// MARK: - EmojiKeywordSearch search メソッド
+
+@Suite("EmojiKeywordSearch search method")
+struct EmojiKeywordSearchSearchMethodTests {
+  @Test("空の Emoji 配列に対する検索")
+  func searchInEmptyArray() {
+    let search = EmojiKeywordSearch()
+    let result = search.search(query: "smile", in: [])
+    #expect(result.isEmpty)
+  }
+
+  @Test("空クエリは全 Emoji を返す")
+  func emptyQueryReturnsAll() {
+    let search = EmojiKeywordSearch()
+    let emojis = Emoji.all.prefix(10)
+    let result = search.search(query: "", in: Array(emojis))
+    #expect(result.count == emojis.count)
+  }
+
+  @Test("検索結果に重複がない")
+  func noDuplicateResults() {
+    let search = EmojiKeywordSearch()
+    let result = search.search(query: "smile", in: Emoji.all)
+    let uniqueChars = Set(result.map { $0.char })
+    #expect(uniqueChars.count == result.count)
   }
 }

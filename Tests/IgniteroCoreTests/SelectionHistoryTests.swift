@@ -256,4 +256,82 @@ struct SelectionHistoryTests {
       try history.load()
     }
   }
+
+  // MARK: - 並行 save + record
+
+  @Test("record と save の並行実行でクラッシュしない")
+  func concurrentRecordAndSave() async throws {
+    let path = makeTempFilePath()
+    defer { cleanup(path) }
+
+    let history = SelectionHistory(filePath: path)
+
+    await withTaskGroup(of: Void.self) { group in
+      for i in 0..<50 {
+        group.addTask {
+          history.record(keyword: "key\(i)", path: "/path/\(i)")
+        }
+      }
+      for _ in 0..<5 {
+        group.addTask {
+          try? history.save()
+        }
+      }
+    }
+
+    // クラッシュせずに完了し、ファイルが存在すること
+    #expect(FileManager.default.fileExists(atPath: path))
+    #expect(history.allEntries.count <= 50)
+    #expect(history.allEntries.count > 0)
+  }
+
+  // MARK: - 空文字列キーワード
+
+  @Test("空文字列のキーワードも記録できる")
+  func emptyKeyword() throws {
+    let path = makeTempFilePath()
+    defer { cleanup(path) }
+
+    let history = SelectionHistory(filePath: path)
+    history.record(keyword: "", path: "/path/test")
+
+    let results = history.entries(for: "")
+    #expect(results.count == 1)
+    #expect(results[0].keyword == "")
+  }
+
+  // MARK: - 長いパス
+
+  @Test("非常に長いパスでも正常に動作する")
+  func veryLongPath() throws {
+    let path = makeTempFilePath()
+    defer { cleanup(path) }
+
+    let history = SelectionHistory(filePath: path)
+    let longPath = "/Applications/" + String(repeating: "a", count: 5000) + ".app"
+    history.record(keyword: "test", path: longPath)
+
+    let results = history.entries(for: "test")
+    #expect(results.count == 1)
+    #expect(results[0].selectedPath == longPath)
+  }
+
+  // MARK: - save → load 往復で日本語が保持される
+
+  @Test("日本語キーワードの save/load 往復")
+  func japaneseKeywordRoundTrip() throws {
+    let path = makeTempFilePath()
+    defer { cleanup(path) }
+
+    let history = SelectionHistory(filePath: path)
+    history.record(keyword: "ターミナル", path: "/Applications/Terminal.app")
+    try history.save()
+
+    let loaded = SelectionHistory(filePath: path)
+    try loaded.load()
+
+    let results = loaded.entries(for: "ターミナル")
+    #expect(results.count == 1)
+    #expect(results[0].keyword == "ターミナル")
+  }
 }
