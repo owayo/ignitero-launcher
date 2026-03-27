@@ -372,6 +372,20 @@ struct DirectoryEditForm: View {
     self.onSave = onSave
   }
 
+  private var parentEditorBinding: Binding<EditorType?> {
+    Binding(
+      get: { editedDirectory.parentEditor.flatMap { EditorType(rawValue: $0) } },
+      set: { editedDirectory.parentEditor = $0?.rawValue }
+    )
+  }
+
+  private var subdirsEditorBinding: Binding<EditorType?> {
+    Binding(
+      get: { editedDirectory.subdirsEditor.flatMap { EditorType(rawValue: $0) } },
+      set: { editedDirectory.subdirsEditor = $0?.rawValue }
+    )
+  }
+
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       Picker("親ディレクトリ", selection: $editedDirectory.parentOpenMode) {
@@ -381,12 +395,32 @@ struct DirectoryEditForm: View {
       }
       .pickerStyle(.segmented)
 
+      if editedDirectory.parentOpenMode == .editor {
+        Picker("エディタ（親）", selection: parentEditorBinding) {
+          Text("デフォルト").tag(EditorType?.none)
+          ForEach(EditorType.allCases, id: \.self) { editor in
+            Text(editor.displayName).tag(EditorType?.some(editor))
+          }
+        }
+        .pickerStyle(.menu)
+      }
+
       Picker("サブディレクトリ", selection: $editedDirectory.subdirsOpenMode) {
         ForEach(OpenMode.allCases, id: \.self) { mode in
           Text(mode.displayName).tag(mode)
         }
       }
       .pickerStyle(.segmented)
+
+      if editedDirectory.subdirsOpenMode == .editor {
+        Picker("エディタ（サブ）", selection: subdirsEditorBinding) {
+          Text("デフォルト").tag(EditorType?.none)
+          ForEach(EditorType.allCases, id: \.self) { editor in
+            Text(editor.displayName).tag(EditorType?.some(editor))
+          }
+        }
+        .pickerStyle(.menu)
+      }
 
       Toggle("アプリをスキャン", isOn: $editedDirectory.scanForApps)
 
