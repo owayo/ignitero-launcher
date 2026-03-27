@@ -367,7 +367,9 @@ public final class AppCoordinator {
         case .app:
           try await launchService.launchApp(at: result.path)
         case .directory:
-          let editorType = result.editor.flatMap { EditorType(rawValue: $0) }
+          let editorType =
+            result.editor.flatMap { EditorType(rawValue: $0) }
+            ?? settingsManager.settings.defaultEditor
           try await launchService.openDirectory(result.path, editor: editorType)
         case .command:
           if let command = result.command {
