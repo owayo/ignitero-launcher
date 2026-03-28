@@ -19,7 +19,8 @@ public final class EmojiKeywordSearch: Sendable {
   private let normalizedLookup: [String: String]
 
   public init() {
-    guard let url = Bundle.module.url(forResource: "emoji_keywords_ja", withExtension: "json"),
+    guard
+      let url = ResourceBundle.bundle.url(forResource: "emoji_keywords_ja", withExtension: "json"),
       let data = try? Data(contentsOf: url),
       let dict = try? JSONDecoder().decode([String: [String]].self, from: data)
     else {
