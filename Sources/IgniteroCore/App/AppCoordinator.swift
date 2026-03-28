@@ -370,6 +370,9 @@ public final class AppCoordinator {
           let editorType =
             result.editor.flatMap { EditorType(rawValue: $0) }
             ?? settingsManager.settings.defaultEditor
+          Self.logger.info(
+            "Open directory: result.editor=\(result.editor ?? "nil", privacy: .public), defaultEditor=\(self.settingsManager.settings.defaultEditor.rawValue, privacy: .public), resolved=\(editorType.rawValue, privacy: .public)"
+          )
           try await launchService.openDirectory(result.path, editor: editorType)
         case .command:
           if let command = result.command {
