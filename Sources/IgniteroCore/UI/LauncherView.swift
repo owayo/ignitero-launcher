@@ -349,7 +349,8 @@ public struct LauncherView: View {
           .foregroundStyle(.secondary)
           .lineLimit(1)
 
-        if result.kind == .directory, let editor = result.editor {
+        if result.kind == .directory {
+          let editor = result.editor ?? viewModel.defaultEditorRawValue
           Text("\(editorDisplayName(editor))で開く")
             .font(.system(size: 11))
             .foregroundStyle(.secondary)
@@ -420,7 +421,7 @@ public struct LauncherView: View {
             .foregroundStyle(.secondary)
         }
       case .directory:
-        directoryIcon(editor: result.editor)
+        directoryIcon(editor: result.editor ?? viewModel.defaultEditorRawValue)
       case .command:
         Image(systemName: "terminal.fill")
           .font(.system(size: 26))

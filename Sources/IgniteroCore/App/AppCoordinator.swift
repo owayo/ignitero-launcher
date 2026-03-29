@@ -602,6 +602,7 @@ public final class AppCoordinator {
   /// 設定画面でディレクトリやコマンドが変更された際に呼び出す。
   public func reloadDataFromSettings() {
     launcherViewModel.commands = settingsManager.settings.customCommands
+    launcherViewModel.defaultEditorRawValue = settingsManager.settings.defaultEditor.rawValue
     let terminalType = settingsManager.settings.defaultTerminal
     launcherViewModel.defaultTerminalName = LaunchService.displayName(for: terminalType)
   }
@@ -692,6 +693,7 @@ public final class AppCoordinator {
       }
     }
     launcherViewModel.editorIconPaths = iconPaths
+    launcherViewModel.defaultEditorRawValue = settingsManager.settings.defaultEditor.rawValue
 
     // Load default terminal display name
     let terminalType = settingsManager.settings.defaultTerminal

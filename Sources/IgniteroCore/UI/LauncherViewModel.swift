@@ -77,6 +77,9 @@ public final class LauncherViewModel {
   /// エディタ名（rawValue）→ キャッシュ済みアイコンパスのマッピング
   public var editorIconPaths: [String: String] = [:]
 
+  /// デフォルトエディタの rawValue（アイコン表示フォールバック用）
+  public var defaultEditorRawValue: String = EditorType.cursor.rawValue
+
   /// デフォルトターミナルの表示名
   public var defaultTerminalName: String = "Terminal"
 
