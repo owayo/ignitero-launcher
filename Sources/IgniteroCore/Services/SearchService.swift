@@ -134,7 +134,10 @@ public struct SearchService: Sendable {
     history: [SelectionHistoryEntry]
   ) -> [SearchResult] {
     let normalized = SearchQueryNormalizer.normalize(query)
-    guard !normalized.isEmpty else { return [] }
+    guard !normalized.isEmpty else {
+      return recentHistoryResults(
+        apps: apps, directories: directories, commands: commands, history: history)
+    }
 
     let fuse = Fuse(threshold: 0.4)
 
@@ -180,6 +183,50 @@ public struct SearchService: Sendable {
 
   // MARK: - Private
 
+  /// 空クエリ時に選択履歴から最近使った項目を返す。
+  ///
+  /// 同一パスの履歴を集約し、使用回数と最終使用日時で優先度を決定する。
+  private func recentHistoryResults(
+    apps: [AppItem],
+    directories: [DirectoryItem],
+    commands: [CustomCommand],
+    history: [SelectionHistoryEntry]
+  ) -> [SearchResult] {
+    guard !history.isEmpty else { return [] }
+
+    // パスごとに使用回数と最終使用日時を集約
+    var pathStats: [String: (count: Int, lastUsed: Date)] = [:]
+    for entry in history {
+      if let existing = pathStats[entry.selectedPath] {
+        pathStats[entry.selectedPath] = (
+          count: existing.count + entry.count,
+          lastUsed: max(existing.lastUsed, entry.lastUsed)
+        )
+      } else {
+        pathStats[entry.selectedPath] = (count: entry.count, lastUsed: entry.lastUsed)
+      }
+    }
+
+    // 高速ルックアップ用辞書
+    let appsByPath = Dictionary(apps.map { ($0.path, $0) }, uniquingKeysWith: { first, _ in first })
+    let dirsByPath = Dictionary(
+      directories.map { ($0.path, $0) }, uniquingKeysWith: { first, _ in first })
+
+    var results: [SearchResult] = []
+    for (path, stats) in pathStats {
+      // スコア: 使用回数の負数（低いほど優先）
+      let score = -Double(stats.count)
+      if let app = appsByPath[path] {
+        results.append(SearchResult(appItem: app, score: score))
+      } else if let dir = dirsByPath[path] {
+        results.append(SearchResult(directoryItem: dir, score: score))
+      }
+    }
+
+    results.sort { $0.score < $1.score }
+    return Array(results.prefix(Self.maxResults))
+  }
+
   private func fuseScore(fuse: Fuse, pattern: String, text: String) -> Double? {
     fuse.search(pattern, in: text.lowercased())?.score
   }
@@ -199,12 +246,14 @@ public struct SearchService: Sendable {
         $0.keyword == query && $0.selectedPath == path
       }) {
         // 完全一致は最高優先度: スコアを大幅に下げる（負のスコアを許可）
-        results[i].score -= 1.0 + Double(exactEntry.count) * 0.01
+        let countBoost = min(Double(exactEntry.count) * 0.01, 0.5)
+        results[i].score -= 1.0 + countBoost
       } else if let prefixEntry = history.first(where: {
         $0.keyword.hasPrefix(query) && $0.selectedPath == path
       }) {
         // 前方一致は中程度の優先度
-        results[i].score -= 0.5 + Double(prefixEntry.count) * 0.005
+        let countBoost = min(Double(prefixEntry.count) * 0.005, 0.2)
+        results[i].score -= 0.5 + countBoost
       }
     }
   }

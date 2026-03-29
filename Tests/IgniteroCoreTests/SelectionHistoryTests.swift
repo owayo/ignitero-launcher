@@ -334,4 +334,74 @@ struct SelectionHistoryTests {
     #expect(results.count == 1)
     #expect(results[0].keyword == "ターミナル")
   }
+
+  // MARK: - 保持スコアによる削除戦略
+
+  @Test("頻繁に使用されるエントリは古くても保持される")
+  func frequentlyUsedEntryRetained() throws {
+    let path = makeTempFilePath()
+    defer { cleanup(path) }
+
+    let history = SelectionHistory(filePath: path)
+
+    // 頻繁に使用されるエントリを先に記録（count を上げる）
+    for _ in 0..<20 {
+      history.record(keyword: "frequent", path: "/path/frequent")
+    }
+
+    // 49件の他のエントリを追加（各 count=1）
+    for i in 1..<50 {
+      history.record(keyword: "key\(i)", path: "/path/\(i)")
+    }
+    #expect(history.allEntries.count == 50)
+
+    // 51件目を追加 → count=20 の frequent ではなく count=1 の古いエントリが削除される
+    history.record(keyword: "new", path: "/path/new")
+    #expect(history.allEntries.count == 50)
+
+    // frequent は高い count のおかげで保持されている
+    let frequentEntries = history.entries(for: "frequent")
+    #expect(frequentEntries.count == 1)
+    #expect(frequentEntries[0].count == 20)
+  }
+
+  // MARK: - 無効パスの削除
+
+  @Test("存在しないパスの履歴を削除できる")
+  func purgeInvalidPaths() throws {
+    let path = makeTempFilePath()
+    defer { cleanup(path) }
+
+    let history = SelectionHistory(filePath: path)
+    history.record(keyword: "app1", path: "/Applications/App1.app")
+    history.record(keyword: "app2", path: "/Applications/App2.app")
+    history.record(keyword: "dir1", path: "/Users/test/dir1")
+
+    #expect(history.allEntries.count == 3)
+
+    // App1 と dir1 のみ有効
+    let validPaths: Set<String> = ["/Applications/App1.app", "/Users/test/dir1"]
+    history.purgeInvalidPaths(validPaths)
+
+    #expect(history.allEntries.count == 2)
+    #expect(history.entries(for: "app1").count == 1)
+    #expect(history.entries(for: "app2").isEmpty)
+    #expect(history.entries(for: "dir1").count == 1)
+  }
+
+  @Test("空パスのエントリは purge で削除されない")
+  func purgeKeepsEmptyPathEntries() throws {
+    let path = makeTempFilePath()
+    defer { cleanup(path) }
+
+    let history = SelectionHistory(filePath: path)
+    history.record(keyword: "cmd", path: "")  // コマンド（空パス）
+    history.record(keyword: "app", path: "/Applications/App.app")
+
+    history.purgeInvalidPaths([])
+
+    // 空パスのエントリは残る、App は削除される
+    #expect(history.allEntries.count == 1)
+    #expect(history.entries(for: "cmd").count == 1)
+  }
 }

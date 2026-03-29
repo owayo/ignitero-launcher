@@ -681,9 +681,6 @@ public final class AppCoordinator {
     // Load commands from settings
     launcherViewModel.commands = settingsManager.settings.customCommands
 
-    // Load history
-    launcherViewModel.history = selectionHistory.allEntries
-
     // Load editor icon paths
     let editors = launchService.availableEditors()
     var iconPaths: [String: String] = [:]
@@ -706,6 +703,17 @@ public final class AppCoordinator {
     } catch {
       Self.logger.error("Failed to scan apps for settings: \(error.localizedDescription)")
     }
+
+    // Purge history entries for deleted apps/directories
+    // キャッシュDB + スキャナー両方のパスを有効とみなす
+    var validPaths = Set<String>()
+    for app in launcherViewModel.apps { validPaths.insert(app.path) }
+    for dir in launcherViewModel.directories { validPaths.insert(dir.path) }
+    for app in settingsViewModel.allApps { validPaths.insert(app.path) }
+    selectionHistory.purgeInvalidPaths(validPaths)
+
+    // Load history
+    launcherViewModel.history = selectionHistory.allEntries
   }
 
   /// アップデートチェックを実行する。

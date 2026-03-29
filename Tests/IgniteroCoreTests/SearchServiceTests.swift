@@ -294,6 +294,23 @@ struct SearchServiceMixedTests {
     #expect(results[0].path == "/Applications/Safeguard.app")
   }
 
+  @Test func historyBoostIsCapped() async {
+    let apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app")
+    ]
+    // 非常に大きい count でもブーストが際限なく増えないことを確認
+    let history = [
+      SelectionHistoryEntry(
+        keyword: "safari", selectedPath: "/Applications/Safari.app", count: 10000)
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "safari", apps: apps, directories: [], commands: [], history: history)
+    #expect(!results.isEmpty)
+    // 完全一致ブーストのキャップ: -1.0 - 0.5 = -1.5（count*0.01 は max 0.5）
+    #expect(results[0].score >= -2.0)
+  }
+
   @Test func noHistoryBoostForDifferentPath() async {
     let apps = [
       AppItem(name: "Safari", path: "/Applications/Safari.app"),
@@ -314,6 +331,56 @@ struct SearchServiceMixedTests {
     if !resultsWithHistory.isEmpty && !resultsWithout.isEmpty {
       #expect(resultsWithHistory[0].score == resultsWithout[0].score)
     }
+  }
+
+  @Test func emptyQueryWithHistoryReturnsRecentItems() async {
+    let apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app"),
+      AppItem(name: "Finder", path: "/System/Applications/Finder.app"),
+      AppItem(name: "Xcode", path: "/Applications/Xcode.app"),
+    ]
+    let history = [
+      SelectionHistoryEntry(
+        keyword: "saf", selectedPath: "/Applications/Safari.app", count: 5),
+      SelectionHistoryEntry(
+        keyword: "xc", selectedPath: "/Applications/Xcode.app", count: 10),
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "", apps: apps, directories: [], commands: [], history: history)
+    // 履歴にあるアイテムのみが返される
+    #expect(results.count == 2)
+    // Xcode が count=10 で最優先
+    #expect(results[0].path == "/Applications/Xcode.app")
+    #expect(results[1].path == "/Applications/Safari.app")
+  }
+
+  @Test func emptyQueryWithoutHistoryReturnsEmpty() async {
+    let apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app")
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "", apps: apps, directories: [], commands: [], history: [])
+    #expect(results.isEmpty)
+  }
+
+  @Test func emptyQueryHistoryWithDeletedAppReturnsOnlyExisting() async {
+    let apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app")
+    ]
+    let history = [
+      SelectionHistoryEntry(
+        keyword: "saf", selectedPath: "/Applications/Safari.app", count: 3),
+      SelectionHistoryEntry(
+        keyword: "old", selectedPath: "/Applications/DeletedApp.app", count: 10),
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "", apps: apps, directories: [], commands: [], history: history)
+    // 存在するアプリのみ返される
+    #expect(results.count == 1)
+    #expect(results[0].path == "/Applications/Safari.app")
   }
 
   @Test func mixedResultsSortedByScore() async {

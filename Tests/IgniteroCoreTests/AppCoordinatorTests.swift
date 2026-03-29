@@ -268,10 +268,14 @@ struct AppCoordinatorLifecycleTests {
   @MainActor
   func startLoadsSelectionHistory() async {
     let history = makeTempSelectionHistory()
-    history.record(keyword: "test", path: "/path/to/app")
+    let testApp = AppItem(name: "TestApp", path: "/Applications/TestApp.app")
+    history.record(keyword: "test", path: testApp.path)
     try? history.save()
 
-    let coordinator = makeCoordinator(selectionHistory: history)
+    let coordinator = makeCoordinator(
+      appScanner: MockAppScanner(apps: [testApp]),
+      selectionHistory: history
+    )
     await coordinator.start()
 
     #expect(coordinator.selectionHistory.allEntries.count == 1)

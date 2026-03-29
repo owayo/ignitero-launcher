@@ -51,11 +51,13 @@ public final class SelectionHistory: Sendable {
         entries.append(entry)
       }
 
-      // 上限を超えたら最も古いエントリを削除
+      // 上限を超えたら保持価値が最も低いエントリを削除
+      // 保持スコア = lastUsed + log2(count+1) * 1日分（頻繁に使うほど猶予を与える）
       if entries.count > SelectionHistory.maxEntries {
-        if let oldestIndex = entries.indices.min(by: { entries[$0].lastUsed < entries[$1].lastUsed }
-        ) {
-          entries.remove(at: oldestIndex)
+        if let evictIndex = entries.indices.min(by: {
+          Self.retentionScore(entries[$0]) < Self.retentionScore(entries[$1])
+        }) {
+          entries.remove(at: evictIndex)
         }
       }
     }
@@ -77,6 +79,26 @@ public final class SelectionHistory: Sendable {
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
     let data = try encoder.encode(allEntries)
     try data.write(to: URL(fileURLWithPath: filePath), options: .atomic)
+  }
+
+  /// 存在しないパスの履歴エントリを削除する。
+  ///
+  /// キャッシュ読み込み後に呼び出して、削除済みアプリやディレクトリの履歴をクリーンアップする。
+  /// 空パスのエントリ（カスタムコマンド等）は削除対象外。
+  /// - Parameter validPaths: 有効なパスの集合
+  public func purgeInvalidPaths(_ validPaths: Set<String>) {
+    storage.withLock { entries in
+      entries.removeAll { entry in
+        !entry.selectedPath.isEmpty && !validPaths.contains(entry.selectedPath)
+      }
+    }
+  }
+
+  /// エントリの保持スコアを計算する（高いほど保持価値が高い）。
+  ///
+  /// 使用頻度が高いエントリほど「猶予期間」が長くなる（count の対数 × 1日）。
+  private static func retentionScore(_ entry: SelectionHistoryEntry) -> Double {
+    entry.lastUsed.timeIntervalSinceReferenceDate + log2(Double(entry.count) + 1) * 86400
   }
 
   /// JSON ファイルからエントリを読み込む
