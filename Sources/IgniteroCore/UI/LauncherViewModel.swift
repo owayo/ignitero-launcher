@@ -91,6 +91,9 @@ public final class LauncherViewModel {
   private let searchService: SearchService
   private let calculatorEngine: CalculatorEngine
 
+  /// clearSearch() 実行中に onChange が updateSearch() を呼ばないようにする抑制フラグ
+  private var isClearingSearch = false
+
   // MARK: - Computed Properties
 
   /// アップデートバナーを表示すべきかどうか
@@ -119,6 +122,9 @@ public final class LauncherViewModel {
   ///
   /// 検索クエリが変更されるたびに呼び出す。結果更新時に selectedIndex を 0 にリセットする。
   public func updateSearch() {
+    // clearSearch() 中は再検索しない（レイアウト再帰防止）
+    guard !isClearingSearch else { return }
+
     // 検索実行
     searchResults = searchService.search(
       query: searchQuery,
@@ -223,10 +229,12 @@ public final class LauncherViewModel {
 
   /// 検索状態をすべてリセットする。フォーカス喪失時に呼び出す。
   public func clearSearch() {
+    isClearingSearch = true
     searchQuery = ""
     searchResults = []
     selectedIndex = 0
     calculatorResult = nil
+    isClearingSearch = false
   }
 
   // MARK: - Update Banner
