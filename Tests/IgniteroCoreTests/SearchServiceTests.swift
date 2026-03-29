@@ -3,7 +3,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - Query Normalization
+// MARK: - クエリ正規化
 
 @Suite("SearchService Query Normalization")
 struct SearchServiceNormalizationTests {
@@ -37,7 +37,7 @@ struct SearchServiceNormalizationTests {
   }
 }
 
-// MARK: - Search Result
+// MARK: - 検索結果
 
 @Suite("SearchResult")
 struct SearchResultTests {
@@ -69,6 +69,18 @@ struct SearchResultTests {
     #expect(result.workingDirectory == "/app")
   }
 
+  @Test func commandResultUsesHistoryIdentifier() throws {
+    let commandID = try #require(UUID(uuidString: "11111111-1111-1111-1111-111111111111"))
+    let cmd = CustomCommand(
+      id: commandID,
+      alias: "deploy",
+      command: "npm run deploy",
+      workingDirectory: "/app"
+    )
+    let result = SearchResult(customCommand: cmd, score: 0.0)
+    #expect(result.path == "command://11111111-1111-1111-1111-111111111111")
+  }
+
   @Test func sortByScore() {
     let r1 = SearchResult(
       appItem: AppItem(name: "A", path: "/a"), score: 0.5)
@@ -83,7 +95,7 @@ struct SearchResultTests {
   }
 }
 
-// MARK: - SearchService Basic
+// MARK: - 基本検索
 
 @Suite("SearchService Basic")
 struct SearchServiceBasicTests {
@@ -143,7 +155,7 @@ struct SearchServiceBasicTests {
   }
 }
 
-// MARK: - SearchService Original Name Matching
+// MARK: - 元のアプリ名一致
 
 @Suite("SearchService Original Name")
 struct SearchServiceOriginalNameTests {
@@ -162,7 +174,7 @@ struct SearchServiceOriginalNameTests {
   }
 }
 
-// MARK: - SearchService Fullwidth Query
+// MARK: - 全角クエリ
 
 @Suite("SearchService Fullwidth")
 struct SearchServiceFullwidthTests {
@@ -179,7 +191,7 @@ struct SearchServiceFullwidthTests {
   }
 }
 
-// MARK: - SearchService History Boosting
+// MARK: - 履歴ブースト
 
 @Suite("SearchService History")
 struct SearchServiceHistoryTests {
@@ -200,7 +212,7 @@ struct SearchServiceHistoryTests {
       query: "saf", apps: apps, directories: [], commands: [], history: [])
     #expect(!resultsWithHistory.isEmpty)
     #expect(!resultsWithout.isEmpty)
-    // With history, Safeguard should be boosted to first position
+    // 履歴がある場合は Safeguard が先頭に来る
     #expect(resultsWithHistory[0].path == "/Applications/Safeguard.app")
   }
 
@@ -221,7 +233,7 @@ struct SearchServiceHistoryTests {
   }
 }
 
-// MARK: - SearchService Mixed Results
+// MARK: - 複合ケース
 
 @Suite("SearchService Mixed")
 struct SearchServiceMixedTests {
@@ -272,7 +284,7 @@ struct SearchServiceMixedTests {
     let results = service.search(
       query: "safari", apps: apps, directories: [], commands: [], history: history)
     #expect(!results.isEmpty)
-    // 負のスコアは履歴ブーストによる意図的な設計（優先度最大化）
+    // 負のスコアは履歴ブーストによる意図的な設計
     #expect(results[0].score < 0.0)
   }
 
@@ -307,7 +319,7 @@ struct SearchServiceMixedTests {
     let results = service.search(
       query: "safari", apps: apps, directories: [], commands: [], history: history)
     #expect(!results.isEmpty)
-    // 完全一致ブーストのキャップ: -1.0 - 0.5 = -1.5（count*0.01 は max 0.5）
+    // 完全一致ブーストには上限がある
     #expect(results[0].score >= -2.0)
   }
 
@@ -353,6 +365,58 @@ struct SearchServiceMixedTests {
     // Xcode が count=10 で最優先
     #expect(results[0].path == "/Applications/Xcode.app")
     #expect(results[1].path == "/Applications/Safari.app")
+  }
+
+  @Test func emptyQueryWithSameCountUsesLastUsedOrder() async {
+    let apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app"),
+      AppItem(name: "Xcode", path: "/Applications/Xcode.app"),
+    ]
+    let history = [
+      SelectionHistoryEntry(
+        keyword: "saf",
+        selectedPath: "/Applications/Safari.app",
+        count: 3,
+        lastUsed: Date(timeIntervalSince1970: 1_700_000_000)
+      ),
+      SelectionHistoryEntry(
+        keyword: "xc",
+        selectedPath: "/Applications/Xcode.app",
+        count: 3,
+        lastUsed: Date(timeIntervalSince1970: 1_700_000_600)
+      ),
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "", apps: apps, directories: [], commands: [], history: history)
+    #expect(results.count == 2)
+    #expect(results[0].path == "/Applications/Xcode.app")
+    #expect(results[1].path == "/Applications/Safari.app")
+  }
+
+  @Test func emptyQueryWithCommandHistoryReturnsCommand() throws {
+    let commandID = try #require(UUID(uuidString: "22222222-2222-2222-2222-222222222222"))
+    let command = CustomCommand(
+      id: commandID,
+      alias: "build",
+      command: "make build",
+      workingDirectory: "/project"
+    )
+    let history = [
+      SelectionHistoryEntry(
+        keyword: "build",
+        selectedPath: command.historyIdentifier,
+        count: 4,
+        lastUsed: Date(timeIntervalSince1970: 1_700_000_000)
+      )
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "", apps: [], directories: [], commands: [command], history: history)
+    #expect(results.count == 1)
+    #expect(results[0].kind == .command)
+    #expect(results[0].name == "build")
+    #expect(results[0].path == command.historyIdentifier)
   }
 
   @Test func emptyQueryWithoutHistoryReturnsEmpty() async {

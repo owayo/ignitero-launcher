@@ -1,7 +1,7 @@
 import Foundation
 import Fuse
 
-// MARK: - SearchQueryNormalizer
+// MARK: - 検索クエリ正規化
 
 /// 全角英数字を半角に正規化するユーティリティ
 public enum SearchQueryNormalizer: Sendable {
@@ -33,7 +33,7 @@ public enum SearchQueryNormalizer: Sendable {
   }
 }
 
-// MARK: - SearchResult
+// MARK: - 検索結果
 
 /// 検索結果の種別
 public enum SearchResultKind: Sendable {
@@ -83,7 +83,7 @@ public struct SearchResult: Sendable {
 
   public init(customCommand: CustomCommand, score: Double) {
     self.name = customCommand.alias
-    self.path = ""
+    self.path = customCommand.historyIdentifier
     self.kind = .command
     self.score = score
     self.iconPath = nil
@@ -106,7 +106,7 @@ public struct SearchResult: Sendable {
   }
 }
 
-// MARK: - SearchService
+// MARK: - 検索サービス
 
 /// ファジー検索サービス
 ///
@@ -181,7 +181,7 @@ public struct SearchService: Sendable {
     return Array(results.prefix(Self.maxResults))
   }
 
-  // MARK: - Private
+  // MARK: - 非公開メソッド
 
   /// 空クエリ時に選択履歴から最近使った項目を返す。
   ///
@@ -211,20 +211,34 @@ public struct SearchService: Sendable {
     let appsByPath = Dictionary(apps.map { ($0.path, $0) }, uniquingKeysWith: { first, _ in first })
     let dirsByPath = Dictionary(
       directories.map { ($0.path, $0) }, uniquingKeysWith: { first, _ in first })
+    let commandsByIdentifier = Dictionary(
+      commands.map { ($0.historyIdentifier, $0) },
+      uniquingKeysWith: { first, _ in first }
+    )
 
-    var results: [SearchResult] = []
+    var results: [(result: SearchResult, lastUsed: Date)] = []
     for (path, stats) in pathStats {
       // スコア: 使用回数の負数（低いほど優先）
       let score = -Double(stats.count)
       if let app = appsByPath[path] {
-        results.append(SearchResult(appItem: app, score: score))
+        results.append((SearchResult(appItem: app, score: score), stats.lastUsed))
       } else if let dir = dirsByPath[path] {
-        results.append(SearchResult(directoryItem: dir, score: score))
+        results.append((SearchResult(directoryItem: dir, score: score), stats.lastUsed))
+      } else if let command = commandsByIdentifier[path] {
+        results.append((SearchResult(customCommand: command, score: score), stats.lastUsed))
       }
     }
 
-    results.sort { $0.score < $1.score }
-    return Array(results.prefix(Self.maxResults))
+    results.sort {
+      if $0.result.score != $1.result.score {
+        return $0.result.score < $1.result.score
+      }
+      if $0.lastUsed != $1.lastUsed {
+        return $0.lastUsed > $1.lastUsed
+      }
+      return $0.result.name.localizedCaseInsensitiveCompare($1.result.name) == .orderedAscending
+    }
+    return Array(results.prefix(Self.maxResults).map(\.result))
   }
 
   private func fuseScore(fuse: Fuse, pattern: String, text: String) -> Double? {

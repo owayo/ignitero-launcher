@@ -328,16 +328,16 @@ public final class AppCoordinator {
   /// 選択履歴を記録してランチャーを非表示にする。
   /// - Parameter result: 実行する検索結果
   public func executeResult(_ result: SearchResult) {
-    // Record selection history
+    // 選択履歴を記録する
     selectionHistory.record(
       keyword: launcherViewModel.searchQuery,
       path: result.path
     )
 
-    // Update history in view model
+    // ViewModel 側の履歴も即時更新する
     launcherViewModel.history = selectionHistory.allEntries
 
-    // Instant actions (synchronous — run while app is still active)
+    // 即時アクションはアプリがアクティブなうちに同期実行する
     switch result.kind {
     case .webSearch:
       if let url = URL(string: result.path) {
@@ -360,7 +360,7 @@ public final class AppCoordinator {
       break
     }
 
-    // Async actions (app, directory, command)
+    // 非同期アクション（アプリ、ディレクトリ、コマンド）を実行する
     Task {
       do {
         switch result.kind {
@@ -391,7 +391,7 @@ public final class AppCoordinator {
       }
     }
 
-    // Clear search and dismiss
+    // 検索状態をクリアしてランチャーを閉じる
     dismissLauncher()
   }
 
@@ -692,11 +692,11 @@ public final class AppCoordinator {
     launcherViewModel.editorIconPaths = iconPaths
     launcherViewModel.defaultEditorRawValue = settingsManager.settings.defaultEditor.rawValue
 
-    // Load default terminal display name
+    // 既定ターミナルの表示名を読み込む
     let terminalType = settingsManager.settings.defaultTerminal
     launcherViewModel.defaultTerminalName = LaunchService.displayName(for: terminalType)
 
-    // Load all apps (without exclusion filter) for settings excluded apps tab
+    // 設定画面の除外アプリ一覧向けに、除外フィルタなしで全アプリを読み込む
     do {
       let allApps = try appScanner.scanApplications(excludedApps: [])
       settingsViewModel.allApps = allApps
@@ -704,15 +704,16 @@ public final class AppCoordinator {
       Self.logger.error("Failed to scan apps for settings: \(error.localizedDescription)")
     }
 
-    // Purge history entries for deleted apps/directories
-    // キャッシュDB + スキャナー両方のパスを有効とみなす
+    // 削除済みアプリやディレクトリの履歴を削除する
+    // キャッシュ DB、スキャナー、カスタムコマンド識別子をすべて有効とみなす
     var validPaths = Set<String>()
     for app in launcherViewModel.apps { validPaths.insert(app.path) }
     for dir in launcherViewModel.directories { validPaths.insert(dir.path) }
+    for command in launcherViewModel.commands { validPaths.insert(command.historyIdentifier) }
     for app in settingsViewModel.allApps { validPaths.insert(app.path) }
     selectionHistory.purgeInvalidPaths(validPaths)
 
-    // Load history
+    // 履歴を読み込む
     launcherViewModel.history = selectionHistory.allEntries
   }
 

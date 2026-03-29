@@ -69,6 +69,11 @@ public struct CustomCommand: Codable, Sendable, Equatable, Identifiable {
     self.workingDirectory = workingDirectory
   }
 
+  /// 選択履歴や検索結果で利用する、カスタムコマンド固有の識別子。
+  public var historyIdentifier: String {
+    "command://\(id.uuidString.lowercased())"
+  }
+
   enum CodingKeys: String, CodingKey {
     case id
     case alias

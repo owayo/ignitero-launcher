@@ -34,6 +34,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - 🚀 **高速検索**: SQLiteキャッシュによる高速なインクリメンタル検索
 - 🧮 **計算機能**: 検索欄に計算式を入力すると結果を表示（`Enter`でクリップボードにコピー）
 - ⚡ **カスタムコマンド**: よく使うコマンドをエイリアスで登録し、素早く実行
+- 🕘 **最近使った項目の再表示**: 空クエリで履歴を表示し、使用回数と最終利用日時で優先度を決定
 - ⌨️ **自動IME制御**: ウィンドウ表示時に自動的に英字入力モードへ切り替え（TIS APIをメインスレッドで実行して安定化、権限チェックのキャッシュ化により快適な操作）
 - 🎯 **アプリケーション起動**: /Applications配下のアプリを素早く起動
 - 📁 **柔軟なディレクトリ管理**: ディレクトリ自身や配下のディレクトリをFinder/エディタで開く
@@ -61,18 +62,19 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - 検索欄にエイリアスを入力して`Enter`でコマンドを実行
 - 実行ディレクトリを指定可能（オプション）
 - 実行ディレクトリはシェルエスケープして処理（スペースや`'`を含むパスに対応）
+- 空クエリでは最近使ったカスタムコマンドも履歴候補として再表示
 - AppleScript実行失敗時はエラーを検出し、Ghostty は `.command`、cmux は CLI 方式へ自動フォールバック
 - デフォルトターミナル（macOSターミナル / iTerm2 / Warp / Ghostty / cmux）で実行
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-03-23確認）
+#### ターミナル自動化方式（2026-03-30確認）
 
 - macOSターミナル: AppleScript（`do script`）
 - iTerm2: AppleScript（`create window` + `write text`）
-- Warp: AppleScript辞書なし（`sdef`不可、`do script` 構文未定義）のため `.command` ファイル方式
+- Warp: 公式ドキュメントは URI Scheme / Launch Configurations を案内。AppleScript 辞書を確認できないため `.command` ファイル方式
 - Ghostty: AppleScript（Ghostty 1.3.0 公式 API: `make new window` + `input text "...\n"`）。AppleScriptが無効な環境では `.command` ファイル方式へフォールバック
-- cmux: AppleScript（`new window` + `input text "...\n"`）。AppleScriptが無効な環境ではCLI（`cmux new-workspace --command ...`）方式へフォールバック
+- cmux: AppleScript（`new window` + `input text "...\n"`）。公式ドキュメント上の主要自動化導線は CLI / Socket API。AppleScriptが無効な環境ではCLI（`cmux new-workspace --command ...`）方式へフォールバック
   - **注意**: CLI フォールバックを使う場合は cmux の Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
 
 ### アップデート通知

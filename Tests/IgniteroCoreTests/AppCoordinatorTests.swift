@@ -247,7 +247,7 @@ struct AppCoordinatorLifecycleTests {
   func startRunsWithoutCrash() async {
     let coordinator = makeCoordinator()
     await coordinator.start()
-    // If we reach here, start() completed without crash
+    // ここまで到達すれば start() はクラッシュせず完了している
     #expect(Bool(true))
   }
 
@@ -298,6 +298,34 @@ struct AppCoordinatorLifecycleTests {
     #expect(coordinator.launcherViewModel.commands[0].alias == "build")
   }
 
+  @Test("start() preserves command selection history")
+  @MainActor
+  func startPreservesCommandSelectionHistory() async throws {
+    let settings = makeTempSettingsManager()
+    let commandID = try #require(UUID(uuidString: "33333333-3333-3333-3333-333333333333"))
+    let command = CustomCommand(id: commandID, alias: "build", command: "make build")
+    settings.settings.customCommands = [command]
+    try? settings.save()
+
+    let history = makeTempSelectionHistory()
+    history.record(keyword: "build", path: command.historyIdentifier)
+    try? history.save()
+
+    let coordinator = makeCoordinator(
+      settingsManager: settings,
+      selectionHistory: history
+    )
+    await coordinator.start()
+
+    coordinator.launcherViewModel.searchQuery = ""
+    coordinator.launcherViewModel.updateSearch()
+
+    #expect(coordinator.selectionHistory.allEntries.count == 1)
+    #expect(coordinator.launcherViewModel.searchResults.count == 1)
+    #expect(coordinator.launcherViewModel.searchResults[0].kind == .command)
+    #expect(coordinator.launcherViewModel.searchResults[0].name == "build")
+  }
+
   @Test("shutdown() does not crash")
   @MainActor
   func shutdownDoesNotCrash() async {
@@ -314,16 +342,16 @@ struct AppCoordinatorLifecycleTests {
     let coordinator = makeCoordinator(selectionHistory: history)
     await coordinator.start()
 
-    // Record something
+    // 履歴を追加する
     history.record(keyword: "chrome", path: "/Applications/Chrome.app")
 
     coordinator.shutdown()
 
-    // Reload history to verify save
+    // 保存確認のため再読み込み用インスタンスを作る
     let reloaded = SelectionHistory(filePath: history.allEntries.isEmpty ? "" : "")
-    // The file should have been written (we verify by checking no crash)
+    // ファイル保存時にクラッシュしないことを確認する
     #expect(Bool(true))
-    _ = reloaded  // suppress unused variable warning
+    _ = reloaded  // 未使用警告を避ける
   }
 }
 
@@ -440,7 +468,7 @@ struct AppCoordinatorExecuteResultTests {
 
     coordinator.executeResult(result)
 
-    // Wait for async task to complete
+    // 非同期タスクの完了を待つ
     try await Task.sleep(nanoseconds: 100_000_000)
 
     #expect(mockLaunch.executeCommandCalledWith?.command == "make build")
@@ -469,6 +497,25 @@ struct AppCoordinatorExecuteResultTests {
     #expect(history.allEntries.count == 1)
     #expect(history.allEntries[0].keyword == "safari")
     #expect(history.allEntries[0].selectedPath == "/Applications/Safari.app")
+  }
+
+  @Test("Execute command result records command history identifier")
+  @MainActor
+  func executeCommandResultRecordsCommandHistoryIdentifier() async throws {
+    let history = makeTempSelectionHistory()
+    let coordinator = makeCoordinator(
+      launchService: MockLaunchService(),
+      selectionHistory: history
+    )
+    let commandID = try #require(UUID(uuidString: "44444444-4444-4444-4444-444444444444"))
+    let command = CustomCommand(id: commandID, alias: "build", command: "make build")
+
+    coordinator.launcherViewModel.searchQuery = "build"
+    coordinator.executeResult(SearchResult(customCommand: command, score: 0.0))
+
+    #expect(history.allEntries.count == 1)
+    #expect(history.allEntries[0].keyword == "build")
+    #expect(history.allEntries[0].selectedPath == command.historyIdentifier)
   }
 
   @Test("Execute result clears search")
