@@ -1,6 +1,6 @@
 import Foundation
 
-// MARK: - Enums
+// MARK: - 列挙型
 
 public enum TerminalType: String, Codable, Sendable, CaseIterable {
   case terminal
@@ -16,7 +16,7 @@ public enum OpenMode: String, Codable, Sendable, CaseIterable {
   case editor
 }
 
-// MARK: - Data Models
+// MARK: - データモデル
 
 public struct RegisteredDirectory: Codable, Sendable, Equatable {
   public var path: String
@@ -142,7 +142,7 @@ public struct UpdateCache: Codable, Sendable, Equatable {
   }
 }
 
-// MARK: - Settings
+// MARK: - 設定
 
 public struct Settings: Codable, Sendable {
   public var registeredDirectories: [RegisteredDirectory]
@@ -213,7 +213,7 @@ public struct Settings: Codable, Sendable {
   }
 }
 
-// MARK: - SettingsManager
+// MARK: - 設定マネージャ
 
 @Observable
 public final class SettingsManager: @unchecked Sendable {

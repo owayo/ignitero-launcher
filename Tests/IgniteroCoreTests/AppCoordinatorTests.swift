@@ -4,7 +4,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - Mock Implementations
+// MARK: - モック実装
 
 /// テスト用モック CacheDatabase
 private final class MockCacheDB: CacheDatabaseProtocol, @unchecked Sendable {
@@ -139,7 +139,7 @@ private struct MockURLSession: URLSessionProtocol {
   }
 }
 
-// MARK: - Test Helpers
+// MARK: - テスト補助
 
 private func makeTempSettingsManager() -> SettingsManager {
   let dir = FileManager.default.temporaryDirectory
@@ -177,7 +177,7 @@ private func makeCoordinator(
   )
 }
 
-// MARK: - Initialization Tests
+// MARK: - 初期化テスト
 
 @Suite("AppCoordinator Initialization")
 struct AppCoordinatorInitTests {
@@ -204,16 +204,16 @@ struct AppCoordinatorInitTests {
       urlSession: MockURLSession()
     )
 
-    // Verify core services
+    // コアサービスを確認する
     #expect(coordinator.settingsManager === settings)
     #expect(coordinator.selectionHistory === history)
 
-    // Verify UI components exist
+    // UI コンポーネントの存在を確認する
     #expect(coordinator.windowManager.launcherPanel === coordinator.launcherPanel)
     #expect(coordinator.launcherViewModel.searchQuery == "")
     #expect(coordinator.settingsViewModel.settingsManager === settings)
 
-    // Verify app-level coordinators
+    // アプリ層コーディネーターを確認する
     #expect(coordinator.globalShortcut.windowManager === coordinator.windowManager)
     #expect(coordinator.menuBarActions.windowManager === coordinator.windowManager)
     #expect(coordinator.menuBarActions.settingsManager === settings)
@@ -222,7 +222,7 @@ struct AppCoordinatorInitTests {
   @Test("Default initialization succeeds")
   @MainActor
   func defaultInitializationSucceeds() {
-    // Using mock DB to avoid file system access
+    // ファイルシステムアクセスを避けるためモック DB を使う
     let coordinator = makeCoordinator()
     #expect(coordinator.launcherViewModel.searchQuery == "")
     #expect(coordinator.launcherViewModel.searchResults.isEmpty)
@@ -237,7 +237,7 @@ struct AppCoordinatorInitTests {
   }
 }
 
-// MARK: - Start / Shutdown Tests
+// MARK: - 起動・終了テスト
 
 @Suite("AppCoordinator Lifecycle")
 struct AppCoordinatorLifecycleTests {
@@ -355,7 +355,7 @@ struct AppCoordinatorLifecycleTests {
   }
 }
 
-// MARK: - Search Flow Tests
+// MARK: - 検索フローテスト
 
 @Suite("AppCoordinator Search Flow")
 struct AppCoordinatorSearchFlowTests {
@@ -365,13 +365,13 @@ struct AppCoordinatorSearchFlowTests {
   func searchQueryUpdatesResults() async {
     let coordinator = makeCoordinator()
 
-    // Set up data
+    // データを準備する
     coordinator.launcherViewModel.apps = [
       AppItem(name: "Safari", path: "/Applications/Safari.app"),
       AppItem(name: "Xcode", path: "/Applications/Xcode.app"),
     ]
 
-    // Perform search
+    // 検索を実行する
     coordinator.launcherViewModel.searchQuery = "saf"
     coordinator.launcherViewModel.updateSearch()
 
@@ -428,7 +428,7 @@ struct AppCoordinatorSearchFlowTests {
   }
 }
 
-// MARK: - Execute Result Tests
+// MARK: - 実行結果テスト
 
 @Suite("AppCoordinator Execute Result")
 struct AppCoordinatorExecuteResultTests {
@@ -446,7 +446,7 @@ struct AppCoordinatorExecuteResultTests {
 
     coordinator.executeResult(result)
 
-    // Wait for async task to complete
+    // 非同期タスクの完了を待つ
     try await Task.sleep(nanoseconds: 100_000_000)
 
     #expect(mockLaunch.launchAppCalledWith == "/Applications/Safari.app")
@@ -541,7 +541,7 @@ struct AppCoordinatorExecuteResultTests {
   }
 }
 
-// MARK: - Dismiss Launcher Tests
+// MARK: - ランチャー非表示テスト
 
 @Suite("AppCoordinator Dismiss Launcher")
 struct AppCoordinatorDismissLauncherTests {
@@ -551,7 +551,7 @@ struct AppCoordinatorDismissLauncherTests {
   func dismissLauncherClearsAndHides() {
     let coordinator = makeCoordinator()
 
-    // Show launcher first
+    // 先にランチャーを表示する
     coordinator.windowManager.showLauncher()
     #expect(coordinator.windowManager.isLauncherVisible == true)
 
@@ -563,7 +563,7 @@ struct AppCoordinatorDismissLauncherTests {
   }
 }
 
-// MARK: - Open In Terminal Tests
+// MARK: - ターミナル起動テスト
 
 @Suite("AppCoordinator Open In Terminal")
 struct AppCoordinatorOpenInTerminalTests {
@@ -582,7 +582,7 @@ struct AppCoordinatorOpenInTerminalTests {
 
     coordinator.openInTerminal("/Users/dev/project")
 
-    // Wait for async task
+    // 非同期タスクの完了を待つ
     try await Task.sleep(nanoseconds: 100_000_000)
 
     #expect(mockLaunch.openInTerminalCalledWith?.path == "/Users/dev/project")
@@ -590,7 +590,7 @@ struct AppCoordinatorOpenInTerminalTests {
   }
 }
 
-// MARK: - Settings Integration Tests
+// MARK: - 設定連携テスト
 
 @Suite("AppCoordinator Settings Integration")
 struct AppCoordinatorSettingsIntegrationTests {
@@ -601,15 +601,15 @@ struct AppCoordinatorSettingsIntegrationTests {
     let settings = makeTempSettingsManager()
     let coordinator = makeCoordinator(settingsManager: settings)
 
-    // Initially empty
+    // 初期状態では空
     #expect(coordinator.launcherViewModel.commands.isEmpty)
 
-    // Add a command through settings
+    // 設定経由でコマンドを追加する
     settings.settings.customCommands = [
       CustomCommand(alias: "deploy", command: "npm run deploy")
     ]
 
-    // Trigger reload
+    // 再読み込みを実行する
     coordinator.reloadDataFromSettings()
 
     #expect(coordinator.launcherViewModel.commands.count == 1)
@@ -638,7 +638,7 @@ struct AppCoordinatorSettingsIntegrationTests {
       launchService: mockLaunch
     )
 
-    // Change default terminal via settings
+    // 設定経由で既定ターミナルを変更する
     settings.settings.defaultTerminal = .warp
 
     coordinator.openInTerminal("/test")
@@ -649,7 +649,7 @@ struct AppCoordinatorSettingsIntegrationTests {
   }
 }
 
-// MARK: - Keyboard Shortcut Integration Tests
+// MARK: - キーボードショートカット連携テスト
 
 @Suite("AppCoordinator Keyboard Shortcut Integration")
 struct AppCoordinatorShortcutIntegrationTests {
@@ -659,7 +659,7 @@ struct AppCoordinatorShortcutIntegrationTests {
   func globalShortcutWiredToWindowManager() {
     let coordinator = makeCoordinator()
 
-    // The shortcut manager should use the same window manager
+    // ショートカット管理は同じ WindowManager を使う
     #expect(coordinator.globalShortcut.windowManager === coordinator.windowManager)
   }
 
@@ -670,19 +670,19 @@ struct AppCoordinatorShortcutIntegrationTests {
 
     #expect(coordinator.windowManager.isLauncherVisible == false)
 
-    // Simulate shortcut press
+    // ショートカット押下をシミュレートする
     coordinator.globalShortcut.handleShortcut()
 
     #expect(coordinator.windowManager.isLauncherVisible == true)
 
-    // Toggle again
+    // もう一度トグルする
     coordinator.globalShortcut.handleShortcut()
 
     #expect(coordinator.windowManager.isLauncherVisible == false)
   }
 }
 
-// MARK: - Menu Bar Actions Integration Tests
+// MARK: - メニューバー連携テスト
 
 @Suite("AppCoordinator Menu Bar Integration")
 struct AppCoordinatorMenuBarIntegrationTests {
@@ -747,7 +747,7 @@ struct AppCoordinatorMenuBarIntegrationTests {
   }
 }
 
-// MARK: - Cache Bootstrap Integration Tests
+// MARK: - キャッシュブートストラップ連携テスト
 
 @Suite("AppCoordinator Cache Bootstrap Integration")
 struct AppCoordinatorCacheBootstrapTests {
@@ -789,7 +789,7 @@ struct AppCoordinatorCacheBootstrapTests {
   }
 }
 
-// MARK: - Special Key Action Tests
+// MARK: - 特殊キーアクションテスト
 
 @Suite("AppCoordinator Special Key Actions")
 struct AppCoordinatorSpecialKeyActionTests {
@@ -831,12 +831,12 @@ struct AppCoordinatorSpecialKeyActionTests {
     coordinator.launcherViewModel.searchQuery = "project"
     coordinator.launcherViewModel.updateSearch()
 
-    // Ensure we have a directory result selected
+    // ディレクトリ結果が選択されていることを確認する
     guard
       let firstResult = coordinator.launcherViewModel.searchResults.first,
       firstResult.kind == .directory
     else {
-      // Skip if no directory result
+      // ディレクトリ結果がなければこのテストは終了する
       return
     }
 
@@ -892,7 +892,7 @@ struct AppCoordinatorSpecialKeyActionTests {
   }
 }
 
-// MARK: - Editor/Terminal Picker Integration Tests
+// MARK: - エディタ・ターミナルピッカー連携テスト
 
 @Suite("AppCoordinator Picker Integration")
 struct AppCoordinatorPickerIntegrationTests {
@@ -908,7 +908,7 @@ struct AppCoordinatorPickerIntegrationTests {
   @MainActor
   func terminalPickerPanelExists() {
     let coordinator = makeCoordinator()
-    // TerminalPickerPanel starts with empty terminals
+    // TerminalPickerPanel は空の端末一覧で開始する
     #expect(coordinator.terminalPickerPanel.state.terminals.isEmpty)
   }
 
@@ -933,7 +933,7 @@ struct AppCoordinatorPickerIntegrationTests {
   }
 }
 
-// MARK: - Update Checker Integration Tests
+// MARK: - アップデートチェッカー連携テスト
 
 @Suite("AppCoordinator Update Checker Integration")
 struct AppCoordinatorUpdateCheckerTests {
@@ -945,7 +945,7 @@ struct AppCoordinatorUpdateCheckerTests {
 
     await coordinator.start()
 
-    // Empty releases array means no update
+    // 空の releases 配列はアップデートなしを意味する
     #expect(coordinator.launcherViewModel.updateBannerVersion == nil)
   }
 
@@ -972,7 +972,7 @@ struct AppCoordinatorUpdateCheckerTests {
   }
 }
 
-// MARK: - End-to-End Flow Tests
+// MARK: - エンドツーエンドフローテスト
 
 @Suite("AppCoordinator End-to-End Flows")
 struct AppCoordinatorEndToEndFlowTests {
@@ -987,37 +987,37 @@ struct AppCoordinatorEndToEndFlowTests {
       selectionHistory: history
     )
 
-    // 1. Set up apps data
+    // 1. アプリデータを準備する
     coordinator.launcherViewModel.apps = [
       AppItem(name: "Safari", path: "/Applications/Safari.app"),
       AppItem(name: "Xcode", path: "/Applications/Xcode.app"),
       AppItem(name: "Slack", path: "/Applications/Slack.app"),
     ]
 
-    // 2. Show launcher
+    // 2. ランチャーを表示する
     coordinator.windowManager.showLauncher()
     #expect(coordinator.windowManager.isLauncherVisible == true)
 
-    // 3. Enter search query
+    // 3. 検索クエリを入力する
     coordinator.launcherViewModel.searchQuery = "xco"
     coordinator.launcherViewModel.updateSearch()
     #expect(!coordinator.launcherViewModel.searchResults.isEmpty)
     #expect(coordinator.launcherViewModel.searchResults[0].name == "Xcode")
 
-    // 4. Execute selection
+    // 4. 選択項目を実行する
     let selected = coordinator.launcherViewModel.confirmSelection()!
     coordinator.executeResult(selected)
 
-    // 5. Wait for async execution
+    // 5. 非同期実行の完了を待つ
     try await Task.sleep(nanoseconds: 100_000_000)
 
-    // 6. Verify app was launched
+    // 6. アプリが起動されたことを確認する
     #expect(mockLaunch.launchAppCalledWith == "/Applications/Xcode.app")
 
-    // 7. Verify search was cleared
+    // 7. 検索状態がクリアされたことを確認する
     #expect(coordinator.launcherViewModel.searchQuery == "")
 
-    // 8. Verify history was recorded
+    // 8. 履歴が記録されたことを確認する
     #expect(history.allEntries.count == 1)
     #expect(history.allEntries[0].keyword == "xco")
   }
@@ -1034,12 +1034,12 @@ struct AppCoordinatorEndToEndFlowTests {
       launchService: mockLaunch
     )
 
-    // 1. Set up directory data
+    // 1. ディレクトリデータを準備する
     coordinator.launcherViewModel.directories = [
       DirectoryItem(name: "my-project", path: "/Users/dev/my-project")
     ]
 
-    // 2. Search for directory
+    // 2. ディレクトリを検索する
     coordinator.launcherViewModel.searchQuery = "my-proj"
     coordinator.launcherViewModel.updateSearch()
 
@@ -1047,15 +1047,15 @@ struct AppCoordinatorEndToEndFlowTests {
       let firstResult = coordinator.launcherViewModel.searchResults.first,
       firstResult.kind == .directory
     else {
-      // Skip if no directory result (fuzzy search threshold)
+      // ディレクトリ結果がなければこのテストは終了する
       return
     }
 
-    // 3. Simulate right arrow key (open in terminal)
+    // 3. 右矢印キー入力をシミュレートする
     let action = coordinator.launcherViewModel.handleSpecialKey(.right, modifiers: [])
     #expect(action == .openInTerminal)
 
-    // 4. Execute the terminal open
+    // 4. ターミナル起動を実行する
     coordinator.openInTerminal(firstResult.path)
 
     try await Task.sleep(nanoseconds: 100_000_000)
@@ -1070,16 +1070,16 @@ struct AppCoordinatorEndToEndFlowTests {
     let settings = makeTempSettingsManager()
     let coordinator = makeCoordinator(settingsManager: settings)
 
-    // Initially no commands
+    // 初期状態ではコマンドがない
     #expect(coordinator.launcherViewModel.commands.isEmpty)
 
-    // Add command through settings
+    // 設定経由でコマンドを追加する
     settings.settings.customCommands = [
       CustomCommand(alias: "deploy", command: "npm run deploy")
     ]
     coordinator.reloadDataFromSettings()
 
-    // Search for command
+    // コマンドを検索する
     coordinator.launcherViewModel.searchQuery = "deploy"
     coordinator.launcherViewModel.updateSearch()
 
@@ -1094,23 +1094,23 @@ struct AppCoordinatorEndToEndFlowTests {
     let history = makeTempSelectionHistory()
     let coordinator = makeCoordinator(selectionHistory: history)
 
-    // Set up two apps
+    // 2つのアプリを準備する
     coordinator.launcherViewModel.apps = [
       AppItem(name: "Safari", path: "/Applications/Safari.app"),
       AppItem(name: "Slack", path: "/Applications/Slack.app"),
     ]
 
-    // Record history for Slack with keyword "s"
+    // キーワード "s" で Slack の履歴を記録する
     history.record(keyword: "s", path: "/Applications/Slack.app")
     history.record(keyword: "s", path: "/Applications/Slack.app")
     history.record(keyword: "s", path: "/Applications/Slack.app")
     coordinator.launcherViewModel.history = history.allEntries
 
-    // Search for "s"
+    // "s" を検索する
     coordinator.launcherViewModel.searchQuery = "s"
     coordinator.launcherViewModel.updateSearch()
 
-    // Slack should be boosted to top due to history
+    // 履歴により Slack が先頭に来る
     #expect(!coordinator.launcherViewModel.searchResults.isEmpty)
     if coordinator.launcherViewModel.searchResults.count >= 2 {
       #expect(coordinator.launcherViewModel.searchResults[0].name == "Slack")
@@ -1118,7 +1118,7 @@ struct AppCoordinatorEndToEndFlowTests {
   }
 }
 
-// MARK: - Window Manager Integration Tests
+// MARK: - WindowManager 連携テスト
 
 @Suite("AppCoordinator Window Manager Integration")
 struct AppCoordinatorWindowManagerTests {

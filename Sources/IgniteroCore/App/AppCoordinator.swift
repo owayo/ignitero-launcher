@@ -15,7 +15,7 @@ public final class AppCoordinator {
   private static let logger = Logger(
     subsystem: "com.ignitero.launcher", category: "AppCoordinator")
 
-  // MARK: - Core Services
+  // MARK: - コアサービス
 
   /// 設定の永続化管理
   public let settingsManager: SettingsManager
@@ -50,7 +50,7 @@ public final class AppCoordinator {
   /// 選択履歴
   public let selectionHistory: SelectionHistory
 
-  // MARK: - App-Level Coordinators
+  // MARK: - アプリ層コーディネーター
 
   /// グローバルショートカット管理
   public let globalShortcut: GlobalShortcutManager
@@ -64,7 +64,7 @@ public final class AppCoordinator {
   /// アップデートチェッカー
   public let updateChecker: UpdateChecker
 
-  // MARK: - UI Components
+  // MARK: - UIコンポーネント
 
   /// ランチャービューモデル
   public let launcherViewModel: LauncherViewModel
@@ -87,7 +87,7 @@ public final class AppCoordinator {
   /// 起動処理がすべて完了し、操作可能な状態かどうか
   public private(set) var isReady: Bool = false
 
-  // MARK: - Initialization
+  // MARK: - 初期化
 
   /// AppCoordinator を初期化し、全コンポーネントを接続する。
   ///
@@ -111,7 +111,7 @@ public final class AppCoordinator {
     urlSession: (any URLSessionProtocol)? = nil,
     shortcutDebounceInterval: Duration = .milliseconds(300)
   ) {
-    // Core services
+    // コアサービスを初期化する
     let settings = settingsManager ?? SettingsManager()
     self.settingsManager = settings
 
@@ -123,7 +123,7 @@ public final class AppCoordinator {
         self.cacheDatabase = try CacheDatabase(path: dbPath)
       } catch {
         Self.logger.error("Failed to open cache database: \(error.localizedDescription)")
-        // インメモリデータベースにフォールバック
+        // インメモリデータベースへフォールバックする
         do {
           self.cacheDatabase = try CacheDatabase(inMemory: true)
         } catch {
@@ -149,18 +149,18 @@ public final class AppCoordinator {
       ?? SelectionHistory(filePath: Self.defaultHistoryPath())
     self.selectionHistory = history
 
-    // Window Manager
+    // WindowManager を初期化する
     let wm = WindowManager()
     self.windowManager = wm
 
-    // Global Shortcut
+    // グローバルショートカット管理を初期化する
     self.globalShortcut = GlobalShortcutManager(
       windowManager: wm,
       imeController: self.imeController,
       debounceInterval: shortcutDebounceInterval
     )
 
-    // Menu Bar Actions
+    // メニューバー操作を初期化する
     self.menuBarActions = MenuBarActions(
       windowManager: wm,
       settingsManager: settings,
@@ -168,7 +168,7 @@ public final class AppCoordinator {
       directoryScanner: dirScanner
     )
 
-    // Cache Bootstrap
+    // キャッシュ更新制御を初期化する
     self.cacheBootstrap = CacheBootstrap(
       settingsManager: settings,
       cacheDatabase: self.cacheDatabase,
@@ -176,13 +176,13 @@ public final class AppCoordinator {
       directoryScanner: dirScanner
     )
 
-    // Update Checker
+    // アップデートチェッカーを初期化する
     self.updateChecker = UpdateChecker(
       session: urlSession ?? URLSession.shared,
       settingsManager: settings
     )
 
-    // View Models
+    // ViewModel 群を初期化する
     let launcherVM = LauncherViewModel(
       searchService: self.searchService,
       calculatorEngine: self.calculatorEngine
@@ -197,13 +197,13 @@ public final class AppCoordinator {
     }
     self.settingsViewModel = settingsVM
 
-    // Panels
+    // パネル群を初期化する
     self.launcherPanel = LauncherPanel()
     self.editorPickerPanel = EditorPickerPanel()
     self.terminalPickerPanel = TerminalPickerPanel()
     self.emojiPickerPanel = EmojiPickerPanel()
 
-    // Wire launcher panel to window manager
+    // ランチャーパネルを WindowManager に接続する
     wm.launcherPanel = self.launcherPanel
 
     // ランチャー表示時に前回の検索をクリアし、検索フィールドにフォーカスを要求する
@@ -239,7 +239,7 @@ public final class AppCoordinator {
     }
   }
 
-  // MARK: - Lifecycle
+  // MARK: - ライフサイクル
 
   /// アプリケーション起動時の初期化フローを実行する。
   ///
@@ -251,7 +251,7 @@ public final class AppCoordinator {
   /// 6. アップデートチェック
   /// 7. 自動更新タイマーの開始（有効な場合）
   public func start() async {
-    // 1. Load settings
+    // 1. 設定を読み込む
     do {
       try settingsManager.load()
       Self.logger.info("Settings loaded")
@@ -259,7 +259,7 @@ public final class AppCoordinator {
       Self.logger.error("Failed to load settings: \(error.localizedDescription)")
     }
 
-    // 2. Load selection history
+    // 2. 選択履歴を読み込む
     do {
       try selectionHistory.load()
       Self.logger.info("Selection history loaded")
@@ -267,22 +267,22 @@ public final class AppCoordinator {
       Self.logger.error("Failed to load selection history: \(error.localizedDescription)")
     }
 
-    // 3. Set up global shortcut
+    // 3. グローバルショートカットを設定する
     globalShortcut.setup()
     Self.logger.info("Global shortcut registered")
 
-    // 4. Set up launcher panel with LauncherView
+    // 4. LauncherView をランチャーパネルへ設定する
     setupLauncherView()
 
-    // 5. Perform initial cache scan
+    // 5. 初回キャッシュスキャンを実行する
     await cacheBootstrap.performInitialScan()
     await loadCacheDataIntoViewModel()
     Self.logger.info("Initial cache scan completed")
 
-    // 6. Check for updates
+    // 6. アップデートを確認する
     await checkForUpdates()
 
-    // 7. Start auto-update timer if enabled
+    // 7. 必要なら自動更新タイマーを開始する
     cacheBootstrap.startAutoUpdate()
 
     // 起動完了
@@ -294,23 +294,23 @@ public final class AppCoordinator {
   ///
   /// ショートカットの解除、自動更新の停止、状態の保存を行う。
   public func shutdown() {
-    // Tear down shortcuts
+    // ショートカットを解除する
     globalShortcut.teardown()
 
-    // Stop auto-update
+    // 自動更新を停止する
     cacheBootstrap.stopAutoUpdate()
 
-    // Save selection history
+    // 選択履歴を保存する
     do {
       try selectionHistory.save()
     } catch {
       Self.logger.error("Failed to save selection history: \(error.localizedDescription)")
     }
 
-    // Save window position
+    // ウィンドウ位置を保存する
     windowManager.savePanelPosition()
 
-    // Save settings
+    // 設定を保存する
     do {
       try settingsManager.save()
     } catch {
@@ -320,7 +320,7 @@ public final class AppCoordinator {
     Self.logger.info("App coordinator shut down")
   }
 
-  // MARK: - Launcher Flow
+  // MARK: - ランチャーフロー
 
   /// 検索結果を選択実行する。
   ///
@@ -443,7 +443,7 @@ public final class AppCoordinator {
     }
   }
 
-  /// SpecialKeyAction を実行する。
+  /// 特殊キーアクションを実行する。
   private func handleSpecialKeyAction(_ action: SpecialKeyAction) {
     switch action {
     case .dismiss:
@@ -531,27 +531,27 @@ public final class AppCoordinator {
     let editors = allEditors.filter { $0.installed }
     let frame = launcherPanel.frame
 
-    // デフォルト選択: ディレクトリに紐づくエディタ → 設定のデフォルトエディタの順でフォールバック
+    // 既定選択: ディレクトリに紐づくエディタ → 設定の既定エディタの順でフォールバックする
     let defaultIndex =
       currentEditor.flatMap { editor in
         editors.firstIndex { $0.id == editor }
       } ?? editors.firstIndex { $0.id == settingsManager.settings.defaultEditor }
 
-    // ピッカーを先に表示（hidesOnDeactivate 対策: キーウィンドウを維持）
+    // ピッカーを先に表示し、キーウィンドウを維持する
     windowManager.showPicker()
     editorPickerPanel.show(
       relativeTo: frame, editors: editors, directoryPath: directoryPath,
       defaultIndex: defaultIndex)
 
-    // ピッカーがキーウィンドウになった後にランチャーを隠す
+    // ピッカーがキーウィンドウになった後でランチャーを隠す
     windowManager.hideLauncher()
 
-    // ピッカー閉じた時のコールバック
+    // ピッカーを閉じたときのコールバックを設定する
     editorPickerPanel.onDismiss = { [weak self] in
       self?.windowManager.hidePicker()
     }
 
-    // EditorPickerPanel の確定監視を設定
+    // EditorPickerPanel の確定監視を設定する
     setupEditorPickerObservation(directoryPath: directoryPath)
   }
 
@@ -564,19 +564,19 @@ public final class AppCoordinator {
     let terminals = allTerminals.filter { $0.installed }
     let frame = launcherPanel.frame
 
-    // デフォルト選択: 設定のデフォルトターミナルのインデックスを特定
+    // 既定ターミナルのインデックスを特定する
     let defaultTerminal = settingsManager.settings.defaultTerminal
     let defaultIndex = terminals.firstIndex { $0.id == defaultTerminal } ?? 0
 
-    // ピッカーを先に表示（hidesOnDeactivate 対策: キーウィンドウを維持）
+    // ピッカーを先に表示し、キーウィンドウを維持する
     windowManager.showPicker()
     terminalPickerPanel.show(relativeTo: frame, terminals: terminals, defaultIndex: defaultIndex)
 
-    // ピッカーがキーウィンドウになった後にランチャーを隠す
+    // ピッカーがキーウィンドウになった後でランチャーを隠す
     windowManager.hideLauncher()
     Self.logger.info("showTerminalPicker: panel visible=\(self.terminalPickerPanel.isVisible)")
 
-    // TerminalPickerPanel のコールバック設定
+    // TerminalPickerPanel のコールバックを設定する
     terminalPickerPanel.onSelect = { [weak self] terminal in
       guard let self else { return }
       Task {
@@ -595,7 +595,7 @@ public final class AppCoordinator {
     }
   }
 
-  // MARK: - Settings Integration
+  // MARK: - 設定連携
 
   /// 設定変更後にキャッシュデータを再読み込みする。
   ///
@@ -607,7 +607,7 @@ public final class AppCoordinator {
     launcherViewModel.defaultTerminalName = LaunchService.displayName(for: terminalType)
   }
 
-  // MARK: - Private Helpers
+  // MARK: - 非公開ヘルパー
 
   /// ランチャーパネルに LauncherView を設定する。
   private func setupLauncherView() {
@@ -644,10 +644,10 @@ public final class AppCoordinator {
 
     launcherPanel.setContentView(view)
 
-    // Restore window position
+    // ウィンドウ位置を復元する
     windowManager.restorePanelPosition()
 
-    // Set initial size
+    // 初期サイズを設定する
     let frame = NSRect(
       x: launcherPanel.frame.origin.x,
       y: launcherPanel.frame.origin.y,
@@ -678,10 +678,10 @@ public final class AppCoordinator {
       }
     }
 
-    // Load commands from settings
+    // 設定からコマンドを読み込む
     launcherViewModel.commands = settingsManager.settings.customCommands
 
-    // Load editor icon paths
+    // エディタアイコンパスを読み込む
     let editors = launchService.availableEditors()
     var iconPaths: [String: String] = [:]
     for editor in editors where editor.installed {
@@ -727,7 +727,7 @@ public final class AppCoordinator {
 
   /// エディタピッカーの確定監視を設定する。
   private func setupEditorPickerObservation(directoryPath: String) {
-    // エディタピッカーの状態変化を polling で監視するタスク
+    // エディタピッカーの状態変化をポーリングで監視するタスク
     Task { @MainActor [weak self] in
       guard let self else { return }
       let state = self.editorPickerPanel.pickerState
@@ -757,7 +757,7 @@ public final class AppCoordinator {
     }
   }
 
-  // MARK: - Default Paths
+  // MARK: - 既定パス
 
   /// デフォルトのデータベースファイルパスを返す。
   private static func defaultDatabasePath() -> String {
