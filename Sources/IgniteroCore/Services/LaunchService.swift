@@ -282,9 +282,9 @@ public struct LaunchService: Launching, Sendable {
         throw LaunchError.editorNotFound(editor)
       }
 
-      // .code-workspace ファイルがあればそちらを開く
+      // .code-workspace ファイルがあればそちらを開く（Zed は非対応のためディレクトリを直接開く）
       let targetURL: URL
-      if let workspacePath = findWorkspaceFile(in: path) {
+      if editor.supportsCodeWorkspace, let workspacePath = findWorkspaceFile(in: path) {
         targetURL = URL(fileURLWithPath: workspacePath)
       } else {
         targetURL = URL(fileURLWithPath: path)

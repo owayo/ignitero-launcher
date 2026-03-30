@@ -170,4 +170,15 @@ struct EditorTypeDisplayNameTests {
       #expect(decoded == editor)
     }
   }
+
+  @Test func zedDoesNotSupportCodeWorkspace() {
+    #expect(EditorType.zed.supportsCodeWorkspace == false)
+  }
+
+  @Test func vscodeBasedEditorsSupportCodeWorkspace() {
+    #expect(EditorType.vscode.supportsCodeWorkspace == true)
+    #expect(EditorType.cursor.supportsCodeWorkspace == true)
+    #expect(EditorType.windsurf.supportsCodeWorkspace == true)
+    #expect(EditorType.antigravity.supportsCodeWorkspace == true)
+  }
 }
