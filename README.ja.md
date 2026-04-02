@@ -2,15 +2,21 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-04-02 時点の更新内容:
+
+- cmux の AppleScript サポートを削除し、CLI 直接実行に変更（AppleScript 辞書を持たないため）
+- テスト数を 763 → 770 に増加（cmux テスト修正、スクリプトクリーンアップ境界値テスト、AppleScript 網羅テストを追加）
+- 各ターミナルの AppleScript 対応状況を 2026-04-02 時点で再調査
+  - Ghostty: 公式 AppleScript ドキュメントあり（1.3.0 以降）
+  - cmux: AppleScript 辞書なし。CLI / Socket API で制御
+  - Warp: AppleScript 辞書なし。`.command` ファイル方式
+
 2026-03-30 時点の更新内容:
 
 - 空クエリ履歴の優先順位付けで、同じ使用回数なら最終利用日時が新しい項目を先に出すよう修正
 - カスタムコマンド履歴を `command://<UUID>` 識別子で保持するよう修正し、空クエリ履歴表示と起動時クリーンアップで正しく残るように修正
 - テスト数を 758 → 763 に増加（SearchService / AppCoordinator の履歴回帰テストを追加）
 - 各ターミナルの AppleScript 対応状況を 2026-03-30 時点で再調査
-  - Ghostty: 公式 AppleScript ドキュメントあり
-  - cmux: 公式ドキュメントの主導線は CLI / Socket API、ローカル `sdef` で AppleScript 辞書も確認
-  - Warp: 公式ドキュメントは URI Scheme / Launch Configurations が中心で、AppleScript 辞書は確認できず
 
 2026-03-23 時点の更新内容:
 

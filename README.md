@@ -63,19 +63,19 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - 実行ディレクトリを指定可能（オプション）
 - 実行ディレクトリはシェルエスケープして処理（スペースや`'`を含むパスに対応）
 - 空クエリでは最近使ったカスタムコマンドも履歴候補として再表示
-- AppleScript実行失敗時はエラーを検出し、Ghostty は `.command`、cmux は CLI 方式へ自動フォールバック
+- AppleScript実行失敗時はエラーを検出し、Ghostty は `.command` 方式へ自動フォールバック
 - デフォルトターミナル（macOSターミナル / iTerm2 / Warp / Ghostty / cmux）で実行
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-03-30確認）
+#### ターミナル自動化方式（2026-04-02確認）
 
 - macOSターミナル: AppleScript（`do script`）
 - iTerm2: AppleScript（`create window` + `write text`）
 - Warp: 公式ドキュメントは URI Scheme / Launch Configurations を案内。AppleScript 辞書を確認できないため `.command` ファイル方式
 - Ghostty: AppleScript（Ghostty 1.3.0 公式 API: `make new window` + `input text "...\n"`）。AppleScriptが無効な環境では `.command` ファイル方式へフォールバック
-- cmux: AppleScript（`new window` + `input text "...\n"`）。公式ドキュメント上の主要自動化導線は CLI / Socket API。AppleScriptが無効な環境ではCLI（`cmux new-workspace --command ...`）方式へフォールバック
-  - **注意**: CLI フォールバックを使う場合は cmux の Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
+- cmux: CLI 直接実行（`cmux new-workspace --command ...`）。AppleScript 辞書を持たないため CLI / Socket API で制御
+  - **注意**: cmux の Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
 
 ### アップデート通知
 - GitHub Releases（`owayo/ignitero-launcher`）を確認し、新バージョンがあれば起動後に通知

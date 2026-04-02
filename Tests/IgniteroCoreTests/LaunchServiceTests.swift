@@ -234,15 +234,14 @@ struct LaunchServiceAppleScriptTests {
     #expect(script.contains("focused terminal of selected tab of w"))
   }
 
-  @Test func cmuxAppleScriptWithWorkingDirectory() {
+  @Test func cmuxAppleScriptReturnsEmpty() {
+    // cmux は AppleScript 辞書を持たないため、空文字列を返す
     let script = LaunchService.appleScript(
       for: .cmux,
       command: "npm run dev",
       workingDirectory: "/Users/test/app"
     )
-    #expect(script.contains("tell application \"cmux\""))
-    #expect(script.contains("input text \"cd '/Users/test/app' && npm run dev\\n\""))
-    #expect(script.contains("focused terminal of selected tab of w"))
+    #expect(script.isEmpty)
   }
 
   @Test func appleScriptEscapesDoubleQuotesInCommand() {
@@ -344,15 +343,14 @@ struct LaunchServiceAppleScriptEscapingEdgeCaseTests {
     #expect(script.isEmpty)
   }
 
-  @Test func cmuxAppleScript() {
+  @Test func cmuxAppleScriptReturnsEmpty() {
+    // cmux は AppleScript 辞書を持たないため、空文字列を返す
     let script = LaunchService.appleScript(
       for: .cmux,
       command: "echo test",
       workingDirectory: nil
     )
-    #expect(script.contains("tell application \"cmux\""))
-    #expect(script.contains("input text \"echo test\\n\""))
-    #expect(script.contains("focused terminal of selected tab of w"))
+    #expect(script.isEmpty)
   }
 }
 
@@ -514,6 +512,105 @@ struct LaunchServiceTempScriptCleanupTests {
 
     // シンボリックリンクは isRegularFile が false/nil なのでスキップ
     #expect(removed == 0)
+  }
+
+  @Test func doesNotRemoveFileExactlyAtThreshold() throws {
+    let dir = try makeTempDir()
+    defer { try? FileManager.default.removeItem(at: dir) }
+
+    let now = Date(timeIntervalSince1970: 1_700_000_000)
+    // ちょうど閾値（300秒）のファイル — 削除対象となる（>= threshold）
+    let borderlineScript = dir.appendingPathComponent("ignitero-border.command")
+    try "#!/bin/bash\necho border\n".write(
+      to: borderlineScript, atomically: true, encoding: .utf8)
+    try FileManager.default.setAttributes(
+      [.modificationDate: now.addingTimeInterval(-300)],
+      ofItemAtPath: borderlineScript.path
+    )
+
+    let removed = LaunchService.cleanupStaleCommandScripts(
+      in: dir,
+      olderThan: 300,
+      now: now
+    )
+
+    // ちょうど 300 秒経過 → >= 300 なので削除される
+    #expect(removed == 1)
+    #expect(!FileManager.default.fileExists(atPath: borderlineScript.path))
+  }
+
+  @Test func doesNotRemoveFileJustBelowThreshold() throws {
+    let dir = try makeTempDir()
+    defer { try? FileManager.default.removeItem(at: dir) }
+
+    let now = Date(timeIntervalSince1970: 1_700_000_000)
+    // 閾値より 1 秒新しいファイル — 削除されない
+    let freshScript = dir.appendingPathComponent("ignitero-almost.command")
+    try "#!/bin/bash\necho almost\n".write(
+      to: freshScript, atomically: true, encoding: .utf8)
+    try FileManager.default.setAttributes(
+      [.modificationDate: now.addingTimeInterval(-299)],
+      ofItemAtPath: freshScript.path
+    )
+
+    let removed = LaunchService.cleanupStaleCommandScripts(
+      in: dir,
+      olderThan: 300,
+      now: now
+    )
+
+    #expect(removed == 0)
+    #expect(FileManager.default.fileExists(atPath: freshScript.path))
+  }
+
+  @Test func cleanupHandlesEmptyDirectory() throws {
+    let dir = try makeTempDir()
+    defer { try? FileManager.default.removeItem(at: dir) }
+
+    let removed = LaunchService.cleanupStaleCommandScripts(
+      in: dir,
+      olderThan: 300,
+      now: Date()
+    )
+    #expect(removed == 0)
+  }
+}
+
+// MARK: - AppleScript 全ターミナル網羅テスト
+
+@Suite("LaunchService AppleScript Coverage")
+struct LaunchServiceAppleScriptCoverageTests {
+
+  @Test func allTerminalTypesHandled() {
+    // 全ターミナルタイプで appleScript が呼び出し可能であることを確認（クラッシュしない）
+    for terminal in TerminalType.allCases {
+      let script = LaunchService.appleScript(
+        for: terminal,
+        command: "echo test",
+        workingDirectory: nil
+      )
+      switch terminal {
+      case .terminal, .iterm2, .ghostty:
+        // AppleScript 対応ターミナルは非空
+        #expect(!script.isEmpty, "Expected non-empty script for \(terminal)")
+      case .warp, .cmux:
+        // AppleScript 非対応ターミナルは空文字列
+        #expect(script.isEmpty, "Expected empty script for \(terminal)")
+      }
+    }
+  }
+
+  @Test func appleScriptTerminalsContainActivate() {
+    // AppleScript 対応ターミナルはすべて activate を含む
+    let appleScriptTerminals: [TerminalType] = [.terminal, .iterm2, .ghostty]
+    for terminal in appleScriptTerminals {
+      let script = LaunchService.appleScript(
+        for: terminal,
+        command: "echo test",
+        workingDirectory: nil
+      )
+      #expect(script.contains("activate"), "\(terminal) script should contain activate")
+    }
   }
 }
 

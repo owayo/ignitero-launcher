@@ -163,15 +163,6 @@ public struct LaunchService: Launching, Sendable {
           input text "\(scriptCommand)\\n" to term
         end tell
         """
-    case .cmux:
-      return """
-        tell application "cmux"
-          activate
-          set w to new window
-          set term to focused terminal of selected tab of w
-          input text "\(scriptCommand)\\n" to term
-        end tell
-        """
     default:
       return ""
     }
@@ -332,7 +323,7 @@ public struct LaunchService: Launching, Sendable {
     terminal: TerminalType
   ) async throws {
     switch terminal {
-    case .terminal, .iterm2, .ghostty, .cmux:
+    case .terminal, .iterm2, .ghostty:
       let script = Self.appleScript(
         for: terminal,
         command: command,
@@ -341,7 +332,7 @@ public struct LaunchService: Launching, Sendable {
       do {
         try Self.executeAppleScript(script, terminal: terminal)
       } catch {
-        // Ghostty / cmux は設定やバージョン差分で AppleScript が無効な場合があるため従来方式にフォールバックする。
+        // Ghostty は設定やバージョン差分で AppleScript が無効な場合があるため .command 方式にフォールバックする。
         if terminal == .ghostty {
           Self.logger.debug(
             "Ghostty AppleScript failed. Falling back to command script: \(error.localizedDescription, privacy: .public)"
@@ -351,18 +342,17 @@ public struct LaunchService: Launching, Sendable {
             workingDirectory: workingDirectory,
             terminal: terminal
           )
-        } else if terminal == .cmux {
-          Self.logger.debug(
-            "cmux AppleScript failed. Falling back to CLI: \(error.localizedDescription, privacy: .public)"
-          )
-          try await Self.executeCommandViaCmuxCLI(
-            command,
-            workingDirectory: workingDirectory
-          )
         } else {
           throw error
         }
       }
+
+    case .cmux:
+      // cmux は AppleScript 辞書を持たないため、直接 CLI で実行する。
+      try await Self.executeCommandViaCmuxCLI(
+        command,
+        workingDirectory: workingDirectory
+      )
 
     case .warp:
       try await Self.executeCommandViaCommandScript(
