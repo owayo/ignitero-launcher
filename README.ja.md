@@ -2,6 +2,11 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-04-03 時点の更新内容:
+
+- テスト数を 770 → 778 に増加（SearchService 履歴集約テスト、LauncherViewModel コマンドキー操作テストを追加）
+- 各ターミナルの AppleScript 対応状況を 2026-04-03 時点で再調査（変更なし）
+
 2026-04-02 時点の更新内容:
 
 - cmux の AppleScript サポートを削除し、CLI 直接実行に変更（AppleScript 辞書を持たないため）

@@ -463,3 +463,130 @@ struct SearchServiceMixedTests {
     #expect(results.count >= 1)
   }
 }
+
+// MARK: - 履歴集約テスト
+
+@Suite("SearchService History Aggregation")
+struct SearchServiceHistoryAggregationTests {
+
+  @Test func emptyQueryAggregatesDuplicatePathEntries() async {
+    // 同一パスに対する複数の履歴エントリが正しく集約されることを確認
+    let apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app"),
+      AppItem(name: "Xcode", path: "/Applications/Xcode.app"),
+    ]
+    let history = [
+      SelectionHistoryEntry(
+        keyword: "saf",
+        selectedPath: "/Applications/Safari.app",
+        count: 3,
+        lastUsed: Date(timeIntervalSince1970: 1_700_000_000)
+      ),
+      SelectionHistoryEntry(
+        keyword: "safari",
+        selectedPath: "/Applications/Safari.app",
+        count: 5,
+        lastUsed: Date(timeIntervalSince1970: 1_700_001_000)
+      ),
+      SelectionHistoryEntry(
+        keyword: "xc",
+        selectedPath: "/Applications/Xcode.app",
+        count: 4,
+        lastUsed: Date(timeIntervalSince1970: 1_700_000_500)
+      ),
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "", apps: apps, directories: [], commands: [], history: history)
+    // Safari: count 3+5=8, Xcode: count 4 → Safari が優先
+    #expect(results.count == 2)
+    #expect(results[0].path == "/Applications/Safari.app")
+    #expect(results[1].path == "/Applications/Xcode.app")
+  }
+
+  @Test func emptyQueryAggregatesLastUsedCorrectly() async {
+    // 集約時に最新の lastUsed が採用されることを確認
+    let apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app"),
+      AppItem(name: "Xcode", path: "/Applications/Xcode.app"),
+    ]
+    let history = [
+      SelectionHistoryEntry(
+        keyword: "saf",
+        selectedPath: "/Applications/Safari.app",
+        count: 2,
+        lastUsed: Date(timeIntervalSince1970: 1_700_000_000)
+      ),
+      SelectionHistoryEntry(
+        keyword: "safari",
+        selectedPath: "/Applications/Safari.app",
+        count: 1,
+        lastUsed: Date(timeIntervalSince1970: 1_700_002_000)
+      ),
+      SelectionHistoryEntry(
+        keyword: "xc",
+        selectedPath: "/Applications/Xcode.app",
+        count: 3,
+        lastUsed: Date(timeIntervalSince1970: 1_700_001_000)
+      ),
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "", apps: apps, directories: [], commands: [], history: history)
+    // Safari: count=3, Xcode: count=3 → 同数なので lastUsed が新しい Safari が先
+    #expect(results.count == 2)
+    #expect(results[0].path == "/Applications/Safari.app")
+    #expect(results[1].path == "/Applications/Xcode.app")
+  }
+
+  @Test func emptyQueryWithDirectoryHistory() async {
+    // ディレクトリの履歴も正しく集約されることを確認
+    let dirs = [
+      DirectoryItem(name: "my-project", path: "/Users/test/my-project", editor: "cursor")
+    ]
+    let history = [
+      SelectionHistoryEntry(
+        keyword: "my",
+        selectedPath: "/Users/test/my-project",
+        count: 2,
+        lastUsed: Date(timeIntervalSince1970: 1_700_000_000)
+      ),
+      SelectionHistoryEntry(
+        keyword: "proj",
+        selectedPath: "/Users/test/my-project",
+        count: 3,
+        lastUsed: Date(timeIntervalSince1970: 1_700_001_000)
+      ),
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "", apps: [], directories: dirs, commands: [], history: history)
+    #expect(results.count == 1)
+    #expect(results[0].kind == .directory)
+    #expect(results[0].path == "/Users/test/my-project")
+  }
+
+  @Test func emptyQueryNameFallbackSortForSameScoreAndDate() async {
+    // count と lastUsed が同一の場合、名前のアルファベット順でソートされることを確認
+    let apps = [
+      AppItem(name: "Zulu", path: "/Applications/Zulu.app"),
+      AppItem(name: "Alpha", path: "/Applications/Alpha.app"),
+    ]
+    let sameDate = Date(timeIntervalSince1970: 1_700_000_000)
+    let history = [
+      SelectionHistoryEntry(
+        keyword: "z", selectedPath: "/Applications/Zulu.app",
+        count: 1, lastUsed: sameDate),
+      SelectionHistoryEntry(
+        keyword: "a", selectedPath: "/Applications/Alpha.app",
+        count: 1, lastUsed: sameDate),
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "", apps: apps, directories: [], commands: [], history: history)
+    #expect(results.count == 2)
+    // 名前順で Alpha が先
+    #expect(results[0].name == "Alpha")
+    #expect(results[1].name == "Zulu")
+  }
+}

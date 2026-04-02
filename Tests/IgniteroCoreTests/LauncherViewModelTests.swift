@@ -723,3 +723,77 @@ struct LauncherViewModelConfirmEdgeCaseTests {
     #expect(vm.searchResults.count <= 20)
   }
 }
+
+// MARK: - LauncherViewModel コマンド結果のキー操作
+
+@Suite("LauncherViewModel Command Key Handling")
+struct LauncherViewModelCommandKeyTests {
+
+  @MainActor
+  @Test func rightArrowOnCommandReturnsNil() {
+    // コマンド結果に対して右キーは無効（ディレクトリ専用）
+    let vm = LauncherViewModel()
+    vm.commands = [
+      CustomCommand(alias: "deploy", command: "npm run deploy")
+    ]
+    vm.searchQuery = "deploy"
+    vm.updateSearch()
+    guard !vm.searchResults.isEmpty, vm.searchResults[0].kind == .command else {
+      Issue.record("Expected command result")
+      return
+    }
+    let action = vm.handleSpecialKey(.right, modifiers: [])
+    #expect(action == nil)
+  }
+
+  @MainActor
+  @Test func leftArrowOnCommandReturnsNil() {
+    // コマンド結果に対して左キーは無効（ディレクトリ専用）
+    let vm = LauncherViewModel()
+    vm.commands = [
+      CustomCommand(alias: "deploy", command: "npm run deploy")
+    ]
+    vm.searchQuery = "deploy"
+    vm.updateSearch()
+    guard !vm.searchResults.isEmpty, vm.searchResults[0].kind == .command else {
+      Issue.record("Expected command result")
+      return
+    }
+    let action = vm.handleSpecialKey(.left, modifiers: [])
+    #expect(action == nil)
+  }
+
+  @MainActor
+  @Test func commandRightArrowOnCommandReturnsNil() {
+    // コマンド結果に対して Cmd+右キーも無効
+    let vm = LauncherViewModel()
+    vm.commands = [
+      CustomCommand(alias: "deploy", command: "npm run deploy")
+    ]
+    vm.searchQuery = "deploy"
+    vm.updateSearch()
+    guard !vm.searchResults.isEmpty, vm.searchResults[0].kind == .command else {
+      Issue.record("Expected command result")
+      return
+    }
+    let action = vm.handleSpecialKey(.right, modifiers: .command)
+    #expect(action == nil)
+  }
+
+  @MainActor
+  @Test func commandLeftArrowOnDirectoryReturnsEditorPicker() {
+    // Cmd+左キーでもエディタピッカー表示（修飾キーは左矢印では無視される）
+    let vm = LauncherViewModel()
+    vm.directories = [
+      DirectoryItem(name: "my-project", path: "/Users/test/my-project")
+    ]
+    vm.searchQuery = "project"
+    vm.updateSearch()
+    guard !vm.searchResults.isEmpty, vm.searchResults[0].kind == .directory else {
+      Issue.record("Expected directory result")
+      return
+    }
+    let action = vm.handleSpecialKey(.left, modifiers: .command)
+    #expect(action == .showEditorPicker)
+  }
+}
