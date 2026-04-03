@@ -237,7 +237,7 @@ public final class EmojiPickerPanel: NSPanel {
     visualEffect.wantsLayer = true
     visualEffect.layer?.cornerRadius = 12
 
-    let hostingView = NSHostingView(rootView: view)
+    let hostingView = SafeHostingView(rootView: view)
     hostingView.translatesAutoresizingMaskIntoConstraints = false
     visualEffect.addSubview(hostingView)
     NSLayoutConstraint.activate([

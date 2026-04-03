@@ -136,7 +136,7 @@ public final class TerminalPickerPanel: NSPanel {
   ///
   /// - Parameter view: 表示する SwiftUI ビュー
   public func setContentView<V: View>(_ view: V) {
-    let hostingView = NSHostingView(rootView: view)
+    let hostingView = SafeHostingView(rootView: view)
     contentView = hostingView
   }
 
