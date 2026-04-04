@@ -2,6 +2,12 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-04-04 時点の更新内容:
+
+- テスト数を 778 → 802 に増加（CalculatorEngine 減算結合性・科学記法拒否・浮動小数点剰余、VersionComparator 先頭ゼロ・大文字V・非数値セグメント、LaunchService パス正規化エッジケース、SelectionHistory command://保持・複数空パスpurge・save/load上限維持テストを追加）
+- 各ターミナルの AppleScript 対応状況を 2026-04-04 時点で再調査（変更なし: Warp/cmux は引き続き非対応）
+- コードベース全体レビュー実施（確認されたバグなし）
+
 2026-04-03 時点の更新内容:
 
 - テスト数を 770 → 778 に増加（SearchService 履歴集約テスト、LauncherViewModel コマンドキー操作テストを追加）

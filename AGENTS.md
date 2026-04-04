@@ -29,7 +29,7 @@ Sources/
   IgniteroLauncher/         # 実行可能ターゲット (@main エントリ)
     IgniteroApp.swift
 Tests/
-  IgniteroCoreTests/        # 778テスト (Swift Testing)
+  IgniteroCoreTests/        # 802テスト (Swift Testing)
 .backup/                    # Tauri v2 旧実装 (参照用)
 ```
 
@@ -64,4 +64,4 @@ make clean        # ビルドキャッシュ削除
 - **Sendable**: Swift 6.2 Strict Concurrency 準拠
 
 # currentDate
-Today's date is 2026-04-03.
+Today's date is 2026-04-04.

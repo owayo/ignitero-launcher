@@ -375,3 +375,86 @@ struct CalculatorEngineNumberFormatBoundaryTests {
     #expect(engine.evaluate(longNum) == nil)
   }
 }
+
+// MARK: - 減算の結合性
+
+@Suite("CalculatorEngine - Subtraction Associativity")
+struct CalculatorEngineSubtractionAssociativityTests {
+  let engine = CalculatorEngine()
+
+  @Test("減算は左結合: 10-5-2 = 3")
+  func subtractionIsLeftAssociative() {
+    // 左結合なら (10-5)-2 = 3、右結合なら 10-(5-2) = 7
+    #expect(engine.evaluate("10-5-2") == 3.0)
+  }
+
+  @Test("除算は左結合: 100/10/2 = 5")
+  func divisionIsLeftAssociative() {
+    // 左結合なら (100/10)/2 = 5、右結合なら 100/(10/2) = 20
+    #expect(engine.evaluate("100/10/2") == 5.0)
+  }
+
+  @Test("複合: 20-5-3-2 = 10")
+  func chainedSubtraction() {
+    #expect(engine.evaluate("20-5-3-2") == 10.0)
+  }
+
+  @Test("混合演算子の優先順位: 2*3+4*5/2 = 16")
+  func mixedOperatorPrecedence() {
+    // 2*3 = 6, 4*5 = 20, 20/2 = 10, 6+10 = 16
+    #expect(engine.evaluate("2*3+4*5/2") == 16.0)
+  }
+}
+
+// MARK: - 科学記法・16進数の拒否
+
+@Suite("CalculatorEngine - Unsupported Notation Rejection")
+struct CalculatorEngineUnsupportedNotationTests {
+  let engine = CalculatorEngine()
+
+  @Test("科学記法 1e10 は無効")
+  func scientificNotationRejected() {
+    #expect(engine.evaluate("1e10") == nil)
+  }
+
+  @Test("科学記法 1.5e-3 は無効")
+  func scientificNotationWithDecimalRejected() {
+    #expect(engine.evaluate("1.5e-3") == nil)
+  }
+
+  @Test("16進数 0xFF は無効")
+  func hexNotationRejected() {
+    #expect(engine.evaluate("0xFF") == nil)
+  }
+
+  @Test("先頭が小数点 .5 は有効（0.5として解釈）")
+  func leadingDecimalPointAccepted() {
+    #expect(engine.evaluate(".5") == 0.5)
+  }
+
+  @Test("先頭が小数点 .5+1 は有効（0.5+1=1.5）")
+  func leadingDecimalPointInExpressionAccepted() {
+    #expect(engine.evaluate(".5+1") == 1.5)
+  }
+}
+
+// MARK: - 浮動小数点の剰余
+
+@Suite("CalculatorEngine - Float Modulo")
+struct CalculatorEngineFloatModuloTests {
+  let engine = CalculatorEngine()
+
+  @Test("浮動小数点の剰余: 7.5 % 2.5 = 0")
+  func floatModulo() {
+    let result = engine.evaluate("7.5%2.5")
+    #expect(result != nil)
+    #expect(abs(result! - 0.0) < 1e-10)
+  }
+
+  @Test("浮動小数点の剰余: 10.5 % 3 = 1.5")
+  func floatModuloMixed() {
+    let result = engine.evaluate("10.5%3")
+    #expect(result != nil)
+    #expect(abs(result! - 1.5) < 1e-10)
+  }
+}

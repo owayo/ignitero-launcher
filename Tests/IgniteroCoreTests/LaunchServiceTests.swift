@@ -715,3 +715,29 @@ struct LaunchServiceAppleScriptUnicodeTests {
     #expect(script.contains("echo done"))
   }
 }
+
+// MARK: - normalizedDirectoryPath テスト（workspaceGlobPattern 経由で間接検証）
+
+@Suite("LaunchService normalizedDirectoryPath Edge Cases")
+struct LaunchServiceNormalizedDirectoryPathTests {
+
+  @Test func rootPathPreservesSlash() {
+    let pattern = LaunchService.workspaceGlobPattern(for: "/")
+    #expect(pattern == "/*.code-workspace")
+  }
+
+  @Test func pathWithTrailingSlashIsNormalized() {
+    let pattern = LaunchService.workspaceGlobPattern(for: "/Users/test/project/")
+    #expect(pattern == "/Users/test/project/*.code-workspace")
+  }
+
+  @Test func pathWithoutTrailingSlashUnchanged() {
+    let pattern = LaunchService.workspaceGlobPattern(for: "/Users/test/project")
+    #expect(pattern == "/Users/test/project/*.code-workspace")
+  }
+
+  @Test func unicodePathNormalized() {
+    let pattern = LaunchService.workspaceGlobPattern(for: "/Users/test/プロジェクト/")
+    #expect(pattern == "/Users/test/プロジェクト/*.code-workspace")
+  }
+}

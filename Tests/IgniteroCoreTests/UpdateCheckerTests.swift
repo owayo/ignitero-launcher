@@ -186,6 +186,37 @@ struct VersionComparisonTests {
     #expect(VersionComparator.isNewer("27.0.0", than: "26.1.105") == true)
     #expect(VersionComparator.isNewer("26.1.105", than: "27.0.0") == false)
   }
+
+  @Test func handlesLeadingZerosInVersionSegments() {
+    // "01" は Int("01") = 1 として扱われるため、"1.2.3" と等価
+    #expect(VersionComparator.isNewer("v01.02.03", than: "1.2.3") == false)
+    #expect(VersionComparator.isNewer("1.2.4", than: "v01.02.03") == true)
+  }
+
+  @Test func handlesCapitalVPrefix() {
+    #expect(VersionComparator.isNewer("V2.0.0", than: "1.0.0") == true)
+    #expect(VersionComparator.isNewer("V2.0.0", than: "V1.0.0") == true)
+    #expect(VersionComparator.isNewer("v2.0.0", than: "V1.0.0") == true)
+  }
+
+  @Test func nonNumericSegmentsAreDropped() {
+    // "v1.2.beta" → split は ["1", "2", "beta"]、compactMap(Int) で [1, 2]
+    // "v1.2.3" → [1, 2, 3]
+    // 比較: 1==1, 2==2, 0 < 3 → false（candidate は新しくない）
+    #expect(VersionComparator.isNewer("v1.2.beta", than: "v1.2.3") == false)
+  }
+
+  @Test func emptyVersionAfterStrippingPrefix() {
+    // "v" のみ → parseVersion は空配列 → maxLength 0 → false
+    #expect(VersionComparator.isNewer("v", than: "1.0.0") == false)
+    #expect(VersionComparator.isNewer("1.0.0", than: "v") == true)
+  }
+
+  @Test func singleSegmentVersion() {
+    // "1" vs "1.0.0" → [1] vs [1,0,0] → パディングで [1,0,0] vs [1,0,0] → 同じ
+    #expect(VersionComparator.isNewer("1", than: "1.0.0") == false)
+    #expect(VersionComparator.isNewer("2", than: "1.0.0") == true)
+  }
 }
 
 // MARK: - UpdateChecker 新バージョン検出テスト
