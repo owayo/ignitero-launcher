@@ -5,6 +5,7 @@ import Testing
 
 // MARK: - Test Helpers
 
+@MainActor
 private func makeTempSettingsManager() throws -> SettingsManager {
   let dir = FileManager.default.temporaryDirectory
     .appendingPathComponent("ignitero-settings-vm-\(UUID().uuidString)")
@@ -37,6 +38,7 @@ struct SettingsTabTests {
 // MARK: - SettingsViewModel Initial State Tests
 
 @Suite("SettingsViewModel Initial State")
+@MainActor
 struct SettingsViewModelInitialStateTests {
 
   @MainActor
@@ -72,6 +74,7 @@ struct SettingsViewModelInitialStateTests {
 // MARK: - Tab Selection Tests
 
 @Suite("SettingsViewModel Tab Selection")
+@MainActor
 struct SettingsViewModelTabSelectionTests {
 
   @MainActor
@@ -111,6 +114,7 @@ struct SettingsViewModelTabSelectionTests {
 // MARK: - Default Terminal Tests
 
 @Suite("SettingsViewModel Default Terminal")
+@MainActor
 struct SettingsViewModelDefaultTerminalTests {
 
   @MainActor
@@ -159,6 +163,7 @@ struct SettingsViewModelDefaultTerminalTests {
 // MARK: - Cache Update Settings Tests
 
 @Suite("SettingsViewModel Cache Update Settings")
+@MainActor
 struct SettingsViewModelCacheUpdateTests {
 
   @MainActor
@@ -223,6 +228,7 @@ struct SettingsViewModelCacheUpdateTests {
 // MARK: - Directory Management Tests
 
 @Suite("SettingsViewModel Directory Management")
+@MainActor
 struct SettingsViewModelDirectoryTests {
 
   @MainActor
@@ -380,6 +386,7 @@ struct SettingsViewModelDirectoryTests {
 // MARK: - Command Management Tests
 
 @Suite("SettingsViewModel Command Management")
+@MainActor
 struct SettingsViewModelCommandTests {
 
   @MainActor
@@ -500,6 +507,7 @@ struct SettingsViewModelCommandTests {
 // MARK: - Excluded Apps Tests
 
 @Suite("SettingsViewModel Excluded Apps")
+@MainActor
 struct SettingsViewModelExcludedAppsTests {
 
   @MainActor
@@ -600,6 +608,7 @@ struct SettingsViewModelExcludedAppsTests {
 // MARK: - onSettingsChanged Callback Tests
 
 @Suite("SettingsViewModel onSettingsChanged Callback")
+@MainActor
 struct SettingsViewModelOnSettingsChangedTests {
 
   @MainActor
@@ -683,6 +692,7 @@ struct SettingsViewModelOnSettingsChangedTests {
 // MARK: - Version Tests
 
 @Suite("SettingsViewModel Version")
+@MainActor
 struct SettingsViewModelVersionTests {
 
   @MainActor

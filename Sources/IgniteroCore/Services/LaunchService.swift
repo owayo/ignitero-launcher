@@ -459,6 +459,7 @@ public struct LaunchService: Launching, Sendable {
     }
 
     // cmux CLI の ping で疎通確認（CLI がソケットパスを自動検出する）
+    // cooperative thread pool をブロックしないよう Task.sleep を使用する。
     let deadline = Date().addingTimeInterval(cmuxSocketTimeout)
     while Date() < deadline {
       let process = Process()
@@ -471,7 +472,7 @@ public struct LaunchService: Launching, Sendable {
       if process.terminationStatus == 0 {
         return
       }
-      usleep(cmuxSocketPollInterval)
+      try? await Task.sleep(nanoseconds: UInt64(cmuxSocketPollInterval) * 1000)
     }
     throw LaunchError.scriptExecutionFailed(
       "cmux socket did not become available within \(Int(cmuxSocketTimeout))s"

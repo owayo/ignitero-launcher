@@ -313,7 +313,14 @@ public final class EditorPickerPanel: NSPanel {
   }
 
   /// パネルを非表示にする。
+  ///
+  /// pickerState の isDismissed をセットしてから orderOut → onDismiss の順で実行する。
+  /// これにより、外部からの dismissPanel() 呼び出し（onCloseAllPickers 等）でも
+  /// ポーリングタスクが正しく終了する。
   public func dismissPanel() {
+    if !pickerState.isDismissed && pickerState.confirmedEditor == nil {
+      pickerState.dismiss()
+    }
     orderOut(nil)
     onDismiss?()
   }

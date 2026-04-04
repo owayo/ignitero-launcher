@@ -494,4 +494,45 @@ struct SelectionHistoryTests {
     loaded.record(keyword: "new", path: "/path/new")
     #expect(loaded.allEntries.count == 50)
   }
+
+  // MARK: - load() で maxEntries を超えるエントリの切り詰め
+
+  @Test("load() で 50 件を超えるエントリが保持スコア順に切り詰められる")
+  func loadTruncatesExcessEntries() throws {
+    let path = makeTempFilePath()
+    defer { cleanup(path) }
+
+    // 60 件のエントリを JSON として書き出す（手動編集や旧バージョンを想定）
+    let formatter = ISO8601DateFormatter()
+    let baseDate = Date(timeIntervalSinceReferenceDate: 700_000_000)
+
+    var entries: [[String: Any]] = []
+    for i in 0..<60 {
+      // 最初の 10 件は高い count を設定（保持スコアが高くなるようにする）
+      let count = i < 10 ? 100 : 1
+      let lastUsed = baseDate.addingTimeInterval(Double(i) * 60)
+      let entry: [String: Any] = [
+        "keyword": "key\(i)",
+        "selectedPath": "/path/\(i)",
+        "count": count,
+        "lastUsed": formatter.string(from: lastUsed),
+      ]
+      entries.append(entry)
+    }
+
+    let jsonData = try JSONSerialization.data(withJSONObject: entries, options: .prettyPrinted)
+    try jsonData.write(to: URL(fileURLWithPath: path))
+
+    let history = SelectionHistory(filePath: path)
+    try history.load()
+
+    // 50 件に切り詰められていること
+    #expect(history.allEntries.count == 50)
+
+    // 高い count を持つ最初の 10 件（保持スコアが高い）はすべて保持されていること
+    for i in 0..<10 {
+      let found = history.allEntries.contains { $0.keyword == "key\(i)" }
+      #expect(found, "高スコアのエントリ key\(i) が保持されるべき")
+    }
+  }
 }

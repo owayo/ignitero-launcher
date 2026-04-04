@@ -437,6 +437,36 @@ struct WindowManagerCallbackTests {
     manager.hideLauncher()
     #expect(!called)
   }
+
+  @MainActor
+  @Test("showLauncher で isLauncherVisible が true になる")
+  func showLauncherSetsIsLauncherVisibleToTrue() {
+    let manager = WindowManager(userDefaults: .makeTempDefaults())
+    #expect(manager.isLauncherVisible == false)
+    manager.showLauncher()
+    #expect(manager.isLauncherVisible == true)
+  }
+
+  @MainActor
+  @Test("hideLauncher で isLauncherVisible が false になる")
+  func hideLauncherSetsIsLauncherVisibleToFalse() {
+    let manager = WindowManager(userDefaults: .makeTempDefaults())
+    manager.showLauncher()
+    #expect(manager.isLauncherVisible == true)
+    manager.hideLauncher()
+    #expect(manager.isLauncherVisible == false)
+  }
+
+  @MainActor
+  @Test("toggleLauncher で表示状態が切り替わる")
+  func toggleLauncherTogglesVisibility() {
+    let manager = WindowManager(userDefaults: .makeTempDefaults())
+    #expect(manager.isLauncherVisible == false)
+    manager.toggleLauncher()
+    #expect(manager.isLauncherVisible == true)
+    manager.toggleLauncher()
+    #expect(manager.isLauncherVisible == false)
+  }
 }
 
 // MARK: - UserDefaults Test Helper

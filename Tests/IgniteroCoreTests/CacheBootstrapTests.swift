@@ -67,6 +67,7 @@ private struct CacheBootstrapMockDirScanner: DirectoryScannerProtocol {
 // MARK: - Tests
 
 @Suite("CacheBootstrap")
+@MainActor
 struct CacheBootstrapTests {
 
   // MARK: - Helpers

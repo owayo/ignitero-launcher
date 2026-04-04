@@ -35,6 +35,7 @@ private struct MenuBarMockDirectoryScanner: DirectoryScannerProtocol, @unchecked
 // MARK: - Initial State Tests
 
 @Suite("MenuBarActions Initial State")
+@MainActor
 struct MenuBarActionsInitialStateTests {
 
   @MainActor
@@ -63,6 +64,7 @@ struct MenuBarActionsInitialStateTests {
 // MARK: - Show Window Tests
 
 @Suite("MenuBarActions Show Window")
+@MainActor
 struct MenuBarActionsShowWindowTests {
 
   @MainActor
@@ -99,6 +101,7 @@ struct MenuBarActionsShowWindowTests {
 // MARK: - Rebuild Cache Tests
 
 @Suite("MenuBarActions Rebuild Cache")
+@MainActor
 struct MenuBarActionsRebuildCacheTests {
 
   @MainActor
@@ -172,6 +175,7 @@ struct MenuBarActionsRebuildCacheTests {
 // MARK: - Open Settings Tests
 
 @Suite("MenuBarActions Open Settings")
+@MainActor
 struct MenuBarActionsOpenSettingsTests {
 
   @MainActor
@@ -220,6 +224,7 @@ struct MenuBarActionsOpenSettingsTests {
 // MARK: - Quit Tests
 
 @Suite("MenuBarActions Quit")
+@MainActor
 struct MenuBarActionsQuitTests {
 
   @MainActor
@@ -241,6 +246,7 @@ struct MenuBarActionsQuitTests {
 // MARK: - Dependencies Tests
 
 @Suite("MenuBarActions Dependencies")
+@MainActor
 struct MenuBarActionsDependenciesTests {
 
   @MainActor
@@ -273,6 +279,7 @@ struct MenuBarActionsDependenciesTests {
 // MARK: - Menu Items Tests
 
 @Suite("MenuBarActions Menu Items")
+@MainActor
 struct MenuBarActionsMenuItemsTests {
 
   @MainActor

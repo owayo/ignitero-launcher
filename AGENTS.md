@@ -29,7 +29,7 @@ Sources/
   IgniteroLauncher/         # 実行可能ターゲット (@main エントリ)
     IgniteroApp.swift
 Tests/
-  IgniteroCoreTests/        # 802テスト (Swift Testing)
+  IgniteroCoreTests/        # 815テスト (Swift Testing)
 .backup/                    # Tauri v2 旧実装 (参照用)
 ```
 
@@ -62,6 +62,7 @@ make clean        # ビルドキャッシュ削除
 - **Protocol-based DI**: テスト容易性のためプロトコル経由で依存注入
 - **@MainActor + @Observable**: SwiftUI/AppKit の状態管理
 - **Sendable**: Swift 6.2 Strict Concurrency 準拠
+- **@MainActor**: SettingsManager, WindowManager 等の状態管理クラスはメインアクター隔離で保護
 
 # currentDate
-Today's date is 2026-04-04.
+Today's date is 2026-04-05.

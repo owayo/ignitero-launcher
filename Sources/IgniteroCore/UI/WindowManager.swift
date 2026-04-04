@@ -156,10 +156,12 @@ public final class WindowManager {
     stopDismissMonitors()
 
     // アプリ外（デスクトップ・他ウィンドウ）のクリックを検知
+    // addGlobalMonitorForEvents のコールバックはメインスレッド保証がないため、
+    // Task で MainActor にディスパッチする（assumeIsolated はデータレースの原因になる）。
     clickMonitor = NSEvent.addGlobalMonitorForEvents(
       matching: [.leftMouseDown, .rightMouseDown]
     ) { [weak self] _ in
-      MainActor.assumeIsolated {
+      Task { @MainActor in
         self?.autoDismiss()
       }
     }

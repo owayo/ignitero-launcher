@@ -245,6 +245,7 @@ struct SettingsCodableTests {
 // MARK: - SettingsManager Tests
 
 @Suite("SettingsManager Save/Load")
+@MainActor
 struct SettingsManagerTests {
 
   private func makeTempDir() throws -> URL {

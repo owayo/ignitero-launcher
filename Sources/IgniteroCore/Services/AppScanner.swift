@@ -224,15 +224,20 @@ public struct AppScanner: AppScannerProtocol, Sendable {
 
     do {
       try process.run()
+      // パイプバッファが満杯になった場合のデッドロックを防ぐため、
+      // waitUntilExit の前に readDataToEndOfFile を呼ぶ。
+      let data = pipe.fileHandleForReading.readDataToEndOfFile()
       process.waitUntilExit()
+      guard process.terminationStatus == 0 else { return nil }
+      return Self.parseLocalizedName(from: data)
     } catch {
       Self.logger.debug("mdls failed for \(appPath): \(error.localizedDescription)")
       return nil
     }
+  }
 
-    guard process.terminationStatus == 0 else { return nil }
-
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+  /// mdls の出力データからローカライズ名をパースする。
+  private static func parseLocalizedName(from data: Data) -> String? {
     guard
       let output = String(data: data, encoding: .utf8)?.trimmingCharacters(
         in: .whitespacesAndNewlines)

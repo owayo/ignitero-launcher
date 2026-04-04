@@ -430,3 +430,53 @@ struct EditorPickerPanelKeyEventTests {
     #expect(EditorPickerState.editor(forShortcutKey: "x") == nil)
   }
 }
+
+// MARK: - EditorPickerPanel DismissPanel Tests
+
+@Suite("EditorPickerPanel DismissPanel")
+struct EditorPickerPanelDismissPanelTests {
+
+  @MainActor
+  @Test("dismissPanel で isDismissed が true になる")
+  func dismissPanelSetsIsDismissed() {
+    let panel = EditorPickerPanel()
+    #expect(panel.pickerState.isDismissed == false)
+    panel.dismissPanel()
+    #expect(panel.pickerState.isDismissed == true)
+  }
+
+  @MainActor
+  @Test("エディタ確定後の dismissPanel では isDismissed が false のまま")
+  func dismissPanelDoesNotResetIsDismissedWhenEditorConfirmed() {
+    let panel = EditorPickerPanel()
+    // エディタを選択して確定
+    panel.pickerState.moveDown()
+    panel.pickerState.confirm()
+    #expect(panel.pickerState.confirmedEditor != nil)
+
+    // confirmedEditor != nil の場合、dismissPanel は dismiss() を呼ばない
+    panel.dismissPanel()
+    #expect(panel.pickerState.isDismissed == false)
+  }
+
+  @MainActor
+  @Test("dismissPanel で onDismiss コールバックが呼ばれる")
+  func dismissPanelCallsOnDismissCallback() {
+    let panel = EditorPickerPanel()
+    var callbackInvoked = false
+    panel.onDismiss = { callbackInvoked = true }
+    panel.dismissPanel()
+    #expect(callbackInvoked == true)
+  }
+
+  @MainActor
+  @Test("dismissPanel を2回呼んでもクラッシュしない（冪等性）")
+  func dismissPanelIsIdempotent() {
+    let panel = EditorPickerPanel()
+    panel.dismissPanel()
+    #expect(panel.pickerState.isDismissed == true)
+    // 2回目の呼び出しでもクラッシュしないこと
+    panel.dismissPanel()
+    #expect(panel.pickerState.isDismissed == true)
+  }
+}

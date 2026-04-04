@@ -741,3 +741,66 @@ struct LaunchServiceNormalizedDirectoryPathTests {
     #expect(pattern == "/Users/test/プロジェクト/*.code-workspace")
   }
 }
+
+// MARK: - EditorType supportsCodeWorkspace テスト
+
+@Suite("EditorType supportsCodeWorkspace")
+struct EditorTypeSupportsCodeWorkspaceTests {
+
+  @Test("Zed は .code-workspace をサポートしない")
+  func zedDoesNotSupportCodeWorkspace() {
+    #expect(EditorType.zed.supportsCodeWorkspace == false)
+  }
+
+  @Test("Zed 以外のエディタはすべて .code-workspace をサポートする")
+  func allEditorsExceptZedSupportCodeWorkspace() {
+    for editor in EditorType.allCases where editor != .zed {
+      #expect(
+        editor.supportsCodeWorkspace == true,
+        "\(editor.rawValue) は supportsCodeWorkspace == true であるべき"
+      )
+    }
+  }
+}
+
+// MARK: - CustomCommand テスト
+
+@Suite("CustomCommand")
+struct CustomCommandTests {
+
+  @Test("historyIdentifier のフォーマットが command://<小文字UUID> になる")
+  func historyIdentifierFormat() {
+    let knownID = UUID(uuidString: "12345678-ABCD-EF01-2345-6789ABCDEF01")!
+    let cmd = CustomCommand(id: knownID, alias: "deploy", command: "make deploy")
+    #expect(cmd.historyIdentifier == "command://12345678-abcd-ef01-2345-6789abcdef01")
+  }
+
+  @Test("id フィールドなしの JSON をデコードすると新しい UUID が生成される")
+  func decodingWithoutIdGeneratesNewId() throws {
+    let json = """
+      {"alias":"test","command":"echo hello"}
+      """
+    let data = json.data(using: .utf8)!
+    let decoded = try JSONDecoder().decode(CustomCommand.self, from: data)
+    // id が生成されていること（UUID として有効）
+    #expect(decoded.alias == "test")
+    #expect(decoded.command == "echo hello")
+    // UUID が nil ではないことを確認（型が non-optional なので常に true だが、値が有効であることを検証）
+    let uuidString = decoded.id.uuidString
+    #expect(!uuidString.isEmpty)
+    #expect(UUID(uuidString: uuidString) != nil)
+  }
+
+  @Test("id フィールド付きの JSON をデコードすると元の UUID が保持される")
+  func decodingWithIdPreservesIt() throws {
+    let expectedID = UUID()
+    let json = """
+      {"id":"\(expectedID.uuidString)","alias":"build","command":"make build"}
+      """
+    let data = json.data(using: .utf8)!
+    let decoded = try JSONDecoder().decode(CustomCommand.self, from: data)
+    #expect(decoded.id == expectedID)
+    #expect(decoded.alias == "build")
+    #expect(decoded.command == "make build")
+  }
+}

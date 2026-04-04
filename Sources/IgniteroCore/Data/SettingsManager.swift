@@ -215,6 +215,7 @@ public struct Settings: Codable, Sendable {
 
 // MARK: - 設定マネージャ
 
+@MainActor
 @Observable
 public final class SettingsManager: @unchecked Sendable {
   public var settings: Settings

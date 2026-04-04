@@ -222,6 +222,7 @@ struct VersionComparisonTests {
 // MARK: - UpdateChecker 新バージョン検出テスト
 
 @Suite("UpdateChecker New Version Detection")
+@MainActor
 struct UpdateCheckerNewVersionTests {
 
   @Test func detectsNewVersion() async {
@@ -288,6 +289,7 @@ struct UpdateCheckerNewVersionTests {
 // MARK: - UpdateChecker プレリリース除外テスト
 
 @Suite("UpdateChecker Prerelease Filtering")
+@MainActor
 struct UpdateCheckerPrereleaseTests {
 
   @Test func skipsPrereleaseVersions() async {
@@ -333,6 +335,7 @@ struct UpdateCheckerPrereleaseTests {
 // MARK: - UpdateChecker キャッシュテスト
 
 @Suite("UpdateChecker Cache")
+@MainActor
 struct UpdateCheckerCacheTests {
 
   @Test func usesCachedResultWithin12Hours() async {
@@ -442,6 +445,7 @@ struct UpdateCheckerCacheTests {
 // MARK: - UpdateChecker 非表示バージョンテスト
 
 @Suite("UpdateChecker Dismissed Version")
+@MainActor
 struct UpdateCheckerDismissedVersionTests {
 
   @Test func suppressesNotificationForDismissedVersion() async {
@@ -498,6 +502,7 @@ struct UpdateCheckerDismissedVersionTests {
 // MARK: - UpdateChecker エラーハンドリングテスト
 
 @Suite("UpdateChecker Error Handling")
+@MainActor
 struct UpdateCheckerErrorHandlingTests {
 
   @Test func returnsNilOnNetworkError() async {
@@ -592,6 +597,7 @@ struct UpdateCheckerErrorHandlingTests {
 // MARK: - UpdateChecker API URL テスト
 
 @Suite("UpdateChecker API URL")
+@MainActor
 struct UpdateCheckerAPIURLTests {
 
   @Test func usesCorrectGitHubAPIURL() async {
@@ -634,6 +640,7 @@ struct UpdateCheckerAPIURLTests {
 // MARK: - UpdateChecker キャッシュ更新テスト
 
 @Suite("UpdateChecker Cache Update")
+@MainActor
 struct UpdateCheckerCacheUpdateTests {
 
   @Test func updatesCacheAfterSuccessfulFetch() async {

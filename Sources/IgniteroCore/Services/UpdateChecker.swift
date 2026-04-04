@@ -143,6 +143,7 @@ public struct UpdateChecker: Sendable {
   ///
   /// - Parameter currentVersion: 現在のアプリバージョン
   /// - Returns: 新しいバージョンがある場合は `UpdateCheckResult`、なければ `nil`
+  @MainActor
   public func checkForUpdate(currentVersion: String) async -> UpdateCheckResult? {
     let cache = settingsManager.settings.updateCache
     let dismissedVersion = cache?.dismissedVersion
@@ -256,6 +257,7 @@ public struct UpdateChecker: Sendable {
   }
 
   /// キャッシュを更新する。
+  @MainActor
   private func updateCache(latestVersion: String, downloadURL: String? = nil) {
     settingsManager.settings.updateCache = UpdateCache(
       latestVersion: latestVersion,

@@ -110,7 +110,12 @@ public final class SelectionHistory: Sendable {
     let data = try Data(contentsOf: url)
     let decoder = JSONDecoder()
     decoder.dateDecodingStrategy = .iso8601
-    let loaded = try decoder.decode([SelectionHistoryEntry].self, from: data)
+    var loaded = try decoder.decode([SelectionHistoryEntry].self, from: data)
+    // ファイルが maxEntries を超えている場合（手動編集・旧バージョン等）は切り詰める
+    if loaded.count > Self.maxEntries {
+      loaded.sort { Self.retentionScore($0) > Self.retentionScore($1) }
+      loaded = Array(loaded.prefix(Self.maxEntries))
+    }
     storage.withLock { $0 = loaded }
   }
 }

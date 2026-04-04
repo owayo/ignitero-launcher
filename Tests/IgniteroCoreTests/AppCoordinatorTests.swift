@@ -141,6 +141,7 @@ private struct MockURLSession: URLSessionProtocol {
 
 // MARK: - テスト補助
 
+@MainActor
 private func makeTempSettingsManager() -> SettingsManager {
   let dir = FileManager.default.temporaryDirectory
     .appendingPathComponent("ignitero-coord-test-\(UUID().uuidString)")
