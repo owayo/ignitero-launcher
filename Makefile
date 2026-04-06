@@ -35,6 +35,7 @@ bundle: build
 	@for b in $(BUILD_DIR)/release/*.bundle; do \
 		[ -d "$$b" ] && cp -R "$$b" "$(BUNDLE_DIR)/Contents/Resources/" && cp -R "$$b" "$(BUNDLE_DIR)/Contents/MacOS/"; \
 	done
+	@find "$(BUNDLE_DIR)" -name "*.bundle" -type d -exec codesign --force --sign - {} \;
 	@codesign --force --sign - --entitlements "Resources/IgniteroLauncher.entitlements" "$(BUNDLE_DIR)"
 	@echo "Bundle created: $(BUNDLE_DIR)"
 
@@ -63,6 +64,7 @@ dev: build-debug
 	@for b in $(BUILD_DIR)/debug/*.bundle; do \
 		[ -d "$$b" ] && cp -R "$$b" "$(BUNDLE_DIR)/Contents/Resources/" && cp -R "$$b" "$(BUNDLE_DIR)/Contents/MacOS/"; \
 	done
+	@find "$(BUNDLE_DIR)" -name "*.bundle" -type d -exec codesign --force --sign - {} \;
 	@codesign --force --sign - --entitlements "Resources/IgniteroLauncher.entitlements" "$(BUNDLE_DIR)"
 	@"$(BUNDLE_DIR)/Contents/MacOS/$(EXEC_NAME)"
 
