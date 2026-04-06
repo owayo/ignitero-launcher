@@ -23,6 +23,7 @@ test:
 	swift test
 
 bundle: build
+	@rm -rf "$(BUNDLE_DIR)"
 	@mkdir -p "$(BUNDLE_DIR)/Contents/MacOS"
 	@mkdir -p "$(BUNDLE_DIR)/Contents/Resources"
 	@cp "$(RELEASE_BIN)" "$(BUNDLE_DIR)/Contents/MacOS/$(EXEC_NAME)"
@@ -50,6 +51,7 @@ run: bundle
 	@open "$(BUNDLE_DIR)"
 
 dev: build-debug
+	@rm -rf "$(BUNDLE_DIR)"
 	@mkdir -p "$(BUNDLE_DIR)/Contents/MacOS"
 	@mkdir -p "$(BUNDLE_DIR)/Contents/Resources"
 	@cp "$(DEBUG_BIN)" "$(BUNDLE_DIR)/Contents/MacOS/$(EXEC_NAME)"
