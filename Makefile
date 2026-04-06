@@ -32,7 +32,7 @@ bundle: build
 	@cp "Resources/MenuBarIcon@2x.png" "$(BUNDLE_DIR)/Contents/Resources/MenuBarIcon@2x.png"
 	@cp "Resources/IgniteroLauncher.entitlements" "$(BUNDLE_DIR)/Contents/Resources/"
 	@for b in $(BUILD_DIR)/release/*.bundle; do \
-		[ -d "$$b" ] && cp -R "$$b" "$(BUNDLE_DIR)/Contents/Resources/"; \
+		[ -d "$$b" ] && cp -R "$$b" "$(BUNDLE_DIR)/Contents/Resources/" && cp -R "$$b" "$(BUNDLE_DIR)/"; \
 	done
 	@codesign --force --sign - --entitlements "Resources/IgniteroLauncher.entitlements" "$(BUNDLE_DIR)"
 	@echo "Bundle created: $(BUNDLE_DIR)"
@@ -59,7 +59,7 @@ dev: build-debug
 	@cp "Resources/MenuBarIcon@2x.png" "$(BUNDLE_DIR)/Contents/Resources/MenuBarIcon@2x.png"
 	@cp "Resources/IgniteroLauncher.entitlements" "$(BUNDLE_DIR)/Contents/Resources/"
 	@for b in $(BUILD_DIR)/debug/*.bundle; do \
-		[ -d "$$b" ] && cp -R "$$b" "$(BUNDLE_DIR)/Contents/Resources/"; \
+		[ -d "$$b" ] && cp -R "$$b" "$(BUNDLE_DIR)/Contents/Resources/" && cp -R "$$b" "$(BUNDLE_DIR)/"; \
 	done
 	@codesign --force --sign - --entitlements "Resources/IgniteroLauncher.entitlements" "$(BUNDLE_DIR)"
 	@"$(BUNDLE_DIR)/Contents/MacOS/$(EXEC_NAME)"
