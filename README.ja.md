@@ -2,6 +2,14 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-04-08 時点の更新内容:
+
+- テスト数を 815 → 822 に増加（CacheBootstrap autoUpdateIntervalNanoseconds のインターバルクランプ境界値テスト7件を追加）
+- 各ターミナルの AppleScript 対応状況を 2026-04-08 時点で再調査（変更なし: Warp/cmux は引き続き非対応）
+- コードベース全体レビュー実施、以下のバグを修正:
+  - CacheBootstrap: `startAutoUpdate` のインターバル計算で `UInt64` オーバーフロー防止のためクランプ処理を追加（1〜8760時間に制限）
+  - LauncherPanel: `updateConstraints` の不要なガード分岐を削除しコメントを正確な記述に修正
+
 2026-04-05 時点の更新内容:
 
 - テスト数を 802 → 815 に増加（SelectionHistory maxEntries 切り詰めテスト、EditorPickerPanel dismissPanel 回帰テスト、EditorType supportsCodeWorkspace テスト、CustomCommand 後方互換デコードテスト、WindowManager 状態管理テストを追加）

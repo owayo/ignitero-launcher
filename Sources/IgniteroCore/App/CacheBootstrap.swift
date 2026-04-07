@@ -70,8 +70,8 @@ public final class CacheBootstrap {
     // 既存のタスクをキャンセル
     stopAutoUpdate()
 
-    let intervalSeconds = UInt64(max(settings.autoUpdateIntervalHours, 1)) * 3600
-    let intervalNanoseconds = intervalSeconds * 1_000_000_000
+    let intervalNanoseconds = Self.autoUpdateIntervalNanoseconds(
+      hours: settings.autoUpdateIntervalHours)
 
     autoUpdateTask = Task { [weak self] in
       while !Task.isCancelled {
@@ -108,6 +108,15 @@ public final class CacheBootstrap {
       Self.logger.error("Failed to clear cache: \(error.localizedDescription)")
     }
     await runScan()
+  }
+
+  // MARK: - Internal
+
+  /// 自動更新インターバル（時間）をナノ秒に変換する。
+  /// オーバーフロー防止のため 1〜8760 時間（1年）にクランプする。
+  nonisolated static func autoUpdateIntervalNanoseconds(hours: Int) -> UInt64 {
+    let clamped = UInt64(max(min(hours, 8760), 1))
+    return clamped * 3600 * 1_000_000_000
   }
 
   // MARK: - Private

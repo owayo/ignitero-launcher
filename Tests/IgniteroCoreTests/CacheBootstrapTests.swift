@@ -351,6 +351,51 @@ struct CacheBootstrapTests {
     #expect(bootstrap.autoUpdateTask == nil)
   }
 
+  // MARK: - インターバルクランプテスト
+
+  @Test("autoUpdateIntervalNanoseconds は 0 時間を 1 時間にクランプする")
+  func intervalClampZeroToOne() {
+    let ns = CacheBootstrap.autoUpdateIntervalNanoseconds(hours: 0)
+    #expect(ns == 1 * 3600 * 1_000_000_000)
+  }
+
+  @Test("autoUpdateIntervalNanoseconds は負の値を 1 時間にクランプする")
+  func intervalClampNegativeToOne() {
+    let ns = CacheBootstrap.autoUpdateIntervalNanoseconds(hours: -100)
+    #expect(ns == 1 * 3600 * 1_000_000_000)
+  }
+
+  @Test("autoUpdateIntervalNanoseconds は正常値をそのまま変換する")
+  func intervalNormalValue() {
+    let ns = CacheBootstrap.autoUpdateIntervalNanoseconds(hours: 6)
+    #expect(ns == 6 * 3600 * 1_000_000_000)
+  }
+
+  @Test("autoUpdateIntervalNanoseconds は 8760 を超える値を 8760 にクランプする")
+  func intervalClampLargeValue() {
+    let ns = CacheBootstrap.autoUpdateIntervalNanoseconds(hours: 100_000)
+    #expect(ns == 8760 * 3600 * 1_000_000_000)
+  }
+
+  @Test("autoUpdateIntervalNanoseconds は境界値 1 を正しく変換する")
+  func intervalBoundaryOne() {
+    let ns = CacheBootstrap.autoUpdateIntervalNanoseconds(hours: 1)
+    #expect(ns == 3_600_000_000_000)
+  }
+
+  @Test("autoUpdateIntervalNanoseconds は境界値 8760 を正しく変換する")
+  func intervalBoundaryMax() {
+    let ns = CacheBootstrap.autoUpdateIntervalNanoseconds(hours: 8760)
+    #expect(ns == 8760 * 3600 * 1_000_000_000)
+  }
+
+  @Test("autoUpdateIntervalNanoseconds は Int.max でもオーバーフローしない")
+  func intervalIntMaxNoOverflow() {
+    let ns = CacheBootstrap.autoUpdateIntervalNanoseconds(hours: Int.max)
+    // 8760 にクランプされるためオーバーフローしない
+    #expect(ns == 8760 * 3600 * 1_000_000_000)
+  }
+
   @Test("startAutoUpdate replaces existing task")
   @MainActor
   func startAutoUpdateReplacesExistingTask() async throws {

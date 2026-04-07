@@ -29,12 +29,8 @@ final class SafeHostingView<Content: View>: NSHostingView<Content> {
   }
 
   override func updateConstraints() {
-    // ウィンドウが非表示の場合、コンストレイント更新をスキップ。
-    // orderOut 後の @Observable 状態変更による不要なレイアウト計算を回避する。
-    guard window?.isVisible == true else {
-      super.updateConstraints()
-      return
-    }
+    // AppKit の規約上 super.updateConstraints() は必ず呼ぶ必要がある。
+    // ウィンドウ非表示時は super 呼び出しのみ行い、追加のレイアウト計算を回避する。
     super.updateConstraints()
   }
 }
