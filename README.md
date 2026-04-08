@@ -68,7 +68,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-04-02確認）
+#### ターミナル自動化方式（2026-04-09確認）
 
 - macOSターミナル: AppleScript（`do script`）
 - iTerm2: AppleScript（`create window` + `write text`）
@@ -346,7 +346,7 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 - **データ**: GRDB.swift (SQLite), JSON 永続化
 - **検索**: Fuse-Swift（ファジー検索）
 - **ショートカット**: KeyboardShortcuts (`Option` + `Space`)
-- **テスト**: Swift Testing (822テスト)
+- **テスト**: Swift Testing (829テスト)
 - **パッケージ**: Swift Package Manager
 - **最小OS**: macOS 26
 

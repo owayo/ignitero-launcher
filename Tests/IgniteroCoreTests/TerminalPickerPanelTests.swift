@@ -21,24 +21,24 @@ struct TerminalPickerStateTests {
 
   // MARK: - Initial State
 
-  @Test func initialStateHasNoTerminals() {
+  @Test @MainActor func initialStateHasNoTerminals() {
     let state = TerminalPickerState()
     #expect(state.terminals.isEmpty)
   }
 
-  @Test func initialHighlightedIndexIsZero() {
+  @Test @MainActor func initialHighlightedIndexIsZero() {
     let state = TerminalPickerState()
     #expect(state.highlightedIndex == 0)
   }
 
-  @Test func initialSelectedTerminalIsNil() {
+  @Test @MainActor func initialSelectedTerminalIsNil() {
     let state = TerminalPickerState()
     #expect(state.selectedTerminal == nil)
   }
 
   // MARK: - Reset
 
-  @Test func resetSetsTerminals() {
+  @Test @MainActor func resetSetsTerminals() {
     let state = TerminalPickerState()
     let terminals = makeSampleTerminals()
     state.reset(terminals: terminals)
@@ -47,7 +47,7 @@ struct TerminalPickerStateTests {
     #expect(state.terminals[3].id == .warp)
   }
 
-  @Test func resetSetsHighlightedIndexToZero() {
+  @Test @MainActor func resetSetsHighlightedIndexToZero() {
     let state = TerminalPickerState()
     let terminals = makeSampleTerminals()
     state.reset(terminals: terminals)
@@ -59,7 +59,7 @@ struct TerminalPickerStateTests {
     #expect(state.highlightedIndex == 0)
   }
 
-  @Test func resetClearsSelectedTerminal() {
+  @Test @MainActor func resetClearsSelectedTerminal() {
     let state = TerminalPickerState()
     let terminals = makeSampleTerminals()
     state.reset(terminals: terminals)
@@ -72,7 +72,7 @@ struct TerminalPickerStateTests {
 
   // MARK: - Move Down
 
-  @Test func moveDownIncrementsHighlightedIndex() {
+  @Test @MainActor func moveDownIncrementsHighlightedIndex() {
     let state = TerminalPickerState()
     state.reset(terminals: makeSampleTerminals())
 
@@ -83,7 +83,7 @@ struct TerminalPickerStateTests {
     #expect(state.highlightedIndex == 2)
   }
 
-  @Test func moveDownWrapsAroundToFirstItem() {
+  @Test @MainActor func moveDownWrapsAroundToFirstItem() {
     let state = TerminalPickerState()
     state.reset(terminals: makeSampleTerminals())
 
@@ -96,7 +96,7 @@ struct TerminalPickerStateTests {
     #expect(state.highlightedIndex == 0)
   }
 
-  @Test func moveDownWithEmptyTerminalsStaysAtZero() {
+  @Test @MainActor func moveDownWithEmptyTerminalsStaysAtZero() {
     let state = TerminalPickerState()
     state.moveDown()
     #expect(state.highlightedIndex == 0)
@@ -104,7 +104,7 @@ struct TerminalPickerStateTests {
 
   // MARK: - Move Up
 
-  @Test func moveUpDecrementsHighlightedIndex() {
+  @Test @MainActor func moveUpDecrementsHighlightedIndex() {
     let state = TerminalPickerState()
     state.reset(terminals: makeSampleTerminals())
     state.moveDown()
@@ -115,7 +115,7 @@ struct TerminalPickerStateTests {
     #expect(state.highlightedIndex == 1)
   }
 
-  @Test func moveUpWrapsAroundToLastItem() {
+  @Test @MainActor func moveUpWrapsAroundToLastItem() {
     let state = TerminalPickerState()
     state.reset(terminals: makeSampleTerminals())
     #expect(state.highlightedIndex == 0)
@@ -124,7 +124,7 @@ struct TerminalPickerStateTests {
     #expect(state.highlightedIndex == 3)
   }
 
-  @Test func moveUpWithEmptyTerminalsStaysAtZero() {
+  @Test @MainActor func moveUpWithEmptyTerminalsStaysAtZero() {
     let state = TerminalPickerState()
     state.moveUp()
     #expect(state.highlightedIndex == 0)
@@ -132,14 +132,14 @@ struct TerminalPickerStateTests {
 
   // MARK: - Confirm Selection
 
-  @Test func confirmSelectionSetsSelectedTerminal() {
+  @Test @MainActor func confirmSelectionSetsSelectedTerminal() {
     let state = TerminalPickerState()
     state.reset(terminals: makeSampleTerminals())
     state.confirmSelection()
     #expect(state.selectedTerminal == .terminal)
   }
 
-  @Test func confirmSelectionWithNavigationSelectsCorrectTerminal() {
+  @Test @MainActor func confirmSelectionWithNavigationSelectsCorrectTerminal() {
     let state = TerminalPickerState()
     state.reset(terminals: makeSampleTerminals())
     state.moveDown()
@@ -148,7 +148,7 @@ struct TerminalPickerStateTests {
     #expect(state.selectedTerminal == .ghostty)
   }
 
-  @Test func confirmSelectionAfterWrapSelectsCorrectTerminal() {
+  @Test @MainActor func confirmSelectionAfterWrapSelectsCorrectTerminal() {
     let state = TerminalPickerState()
     state.reset(terminals: makeSampleTerminals())
     state.moveUp()  // wraps to 3 (warp)
@@ -156,7 +156,7 @@ struct TerminalPickerStateTests {
     #expect(state.selectedTerminal == .warp)
   }
 
-  @Test func confirmSelectionWithEmptyTerminalsKeepsNil() {
+  @Test @MainActor func confirmSelectionWithEmptyTerminalsKeepsNil() {
     let state = TerminalPickerState()
     state.confirmSelection()
     #expect(state.selectedTerminal == nil)
@@ -164,7 +164,7 @@ struct TerminalPickerStateTests {
 
   // MARK: - Full Navigation Cycle
 
-  @Test func fullCycleDownReturnsToStart() {
+  @Test @MainActor func fullCycleDownReturnsToStart() {
     let state = TerminalPickerState()
     state.reset(terminals: makeSampleTerminals())
 
@@ -174,7 +174,7 @@ struct TerminalPickerStateTests {
     #expect(state.highlightedIndex == 0)
   }
 
-  @Test func fullCycleUpReturnsToStart() {
+  @Test @MainActor func fullCycleUpReturnsToStart() {
     let state = TerminalPickerState()
     state.reset(terminals: makeSampleTerminals())
 

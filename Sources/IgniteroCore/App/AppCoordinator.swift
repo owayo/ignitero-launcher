@@ -87,6 +87,9 @@ public final class AppCoordinator {
   /// 起動処理がすべて完了し、操作可能な状態かどうか
   public private(set) var isReady: Bool = false
 
+  /// エディタピッカー確定監視タスク（連続呼び出し時のリーク防止用）
+  private var editorPickerObservationTask: Task<Void, Never>?
+
   // MARK: - 初期化
 
   /// AppCoordinator を初期化し、全コンポーネントを接続する。
@@ -727,15 +730,19 @@ public final class AppCoordinator {
 
   /// エディタピッカーの確定監視を設定する。
   private func setupEditorPickerObservation(directoryPath: String) {
+    // 前回のポーリングタスクが残っている場合はキャンセルする
+    editorPickerObservationTask?.cancel()
+
     // エディタピッカーの状態変化をポーリングで監視するタスク
-    Task { @MainActor [weak self] in
+    editorPickerObservationTask = Task { @MainActor [weak self] in
       guard let self else { return }
       let state = self.editorPickerPanel.pickerState
 
-      // 確定またはキャンセルまで待機
-      while !state.isDismissed && state.confirmedEditor == nil {
+      // 確定またはキャンセルまで待機（タスクキャンセル時も即座に抜ける）
+      while !Task.isCancelled && !state.isDismissed && state.confirmedEditor == nil {
         try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms
       }
+      guard !Task.isCancelled else { return }
 
       if let editor = state.confirmedEditor {
         Task {

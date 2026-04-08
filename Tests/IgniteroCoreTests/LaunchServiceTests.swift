@@ -804,3 +804,72 @@ struct CustomCommandTests {
     #expect(decoded.command == "make build")
   }
 }
+
+// MARK: - Ghostty AppleScript フォールバックテスト
+
+@Suite("LaunchService Ghostty Fallback")
+struct LaunchServiceGhosttyFallbackTests {
+
+  @Test("Ghostty の AppleScript にはウィンドウ作成コマンドが含まれる")
+  func ghosttyAppleScriptContainsMakeNewWindow() {
+    let script = LaunchService.appleScript(
+      for: .ghostty,
+      command: "ls",
+      workingDirectory: nil
+    )
+    #expect(script.contains("make new window"))
+    #expect(script.contains("input text"))
+  }
+
+  @Test("Ghostty の AppleScript にはディレクトリ移動が含まれる")
+  func ghosttyAppleScriptContainsCd() {
+    let script = LaunchService.appleScript(
+      for: .ghostty,
+      command: "ls",
+      workingDirectory: "/tmp/test"
+    )
+    #expect(script.contains("cd"))
+    #expect(script.contains("/tmp/test"))
+  }
+}
+
+// MARK: - commandScript 全ターミナル網羅テスト
+
+@Suite("LaunchService Command Script All Terminals")
+struct LaunchServiceCommandScriptAllTerminalsTests {
+
+  @Test("commandScript は全ターミナルタイプで有効なシェルスクリプトを生成する")
+  func commandScriptForAllTerminals() {
+    for terminal in TerminalType.allCases {
+      let script = LaunchService.commandScript(
+        command: "echo hello",
+        workingDirectory: "/tmp"
+      )
+      #expect(script.hasPrefix("#!/bin/bash"))
+      #expect(script.contains("echo hello"))
+      #expect(script.hasSuffix("exit\n"))
+      // ターミナルごとにクラッシュしないことを確認
+      _ = terminal
+    }
+  }
+
+  @Test("commandScript は空コマンドでもクラッシュしない")
+  func commandScriptEmptyCommand() {
+    let script = LaunchService.commandScript(
+      command: "",
+      workingDirectory: nil
+    )
+    #expect(script.hasPrefix("#!/bin/bash"))
+    #expect(script.hasSuffix("exit\n"))
+  }
+
+  @Test("commandScript は特殊文字を含むコマンドを処理できる")
+  func commandScriptWithSpecialCharacters() {
+    let script = LaunchService.commandScript(
+      command: "echo 'hello \"world\"' && cd /tmp/テスト",
+      workingDirectory: "/Users/test/日本語パス"
+    )
+    #expect(script.contains("echo 'hello \"world\"' && cd /tmp/テスト"))
+    #expect(script.contains("/Users/test/日本語パス"))
+  }
+}

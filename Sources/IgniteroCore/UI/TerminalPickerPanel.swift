@@ -7,6 +7,7 @@ import SwiftUI
 ///
 /// `@Observable` で SwiftUI バインディングに対応し、
 /// キーボードナビゲーションによるターミナル選択ロジックを提供する。
+@MainActor
 @Observable
 public final class TerminalPickerState {
 

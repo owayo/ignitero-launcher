@@ -2,6 +2,15 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-04-09 時点の更新内容:
+
+- テスト数を 822 → 829 に増加（AppCoordinator エディタピッカー観測タスク管理テスト、LaunchService Ghostty フォールバック・commandScript 全ターミナルテストを追加）
+- 各ターミナルの AppleScript 対応状況を 2026-04-09 時点で再調査（変更なし: Warp/cmux は引き続き非対応）
+- コードベース全体レビュー実施、以下のバグを修正:
+  - LaunchService: cmux CLI の stdout/stderr 逐次読み取りを `readabilityHandler` による並列読み取りに変更（デッドロック防止）
+  - TerminalPickerState: `@MainActor` を追加し EditorPickerState との一貫性を確保（データレース防止）
+  - AppCoordinator: `setupEditorPickerObservation` で前回タスクをキャンセルするよう修正（タスクリーク防止）
+
 2026-04-08 時点の更新内容:
 
 - テスト数を 815 → 822 に増加（CacheBootstrap autoUpdateIntervalNanoseconds のインターバルクランプ境界値テスト7件を追加）

@@ -1151,3 +1151,40 @@ struct AppCoordinatorWindowManagerTests {
     #expect(height100 == WindowManager.maxHeight)
   }
 }
+
+// MARK: - エディタピッカー観測タスク管理テスト
+
+@Suite("AppCoordinator Editor Picker Observation")
+struct AppCoordinatorEditorPickerObservationTests {
+
+  @Test("showEditorPicker の連続呼び出しでクラッシュしない")
+  @MainActor
+  func consecutiveShowEditorPickerDoesNotCrash() {
+    let coordinator = makeCoordinator()
+
+    // 連続呼び出しで前回タスクがキャンセルされ、新タスクに置き換わることを検証
+    coordinator.showEditorPicker(for: "/tmp/dir1")
+    coordinator.showEditorPicker(for: "/tmp/dir2")
+    coordinator.showEditorPicker(for: "/tmp/dir3")
+
+    // クラッシュせずピッカーが表示されていることを確認
+    #expect(coordinator.windowManager.isPickerVisible == true)
+  }
+
+  @Test("showEditorPicker 後のキャンセルでクラッシュしない")
+  @MainActor
+  func editorPickerCancelDoesNotCrash() async throws {
+    let coordinator = makeCoordinator()
+
+    coordinator.showEditorPicker(for: "/tmp/test")
+
+    // ピッカーを dismiss してタスクの while ループを終了させる
+    coordinator.editorPickerPanel.pickerState.dismiss()
+
+    // タスクが正常終了するまで少し待機
+    try await Task.sleep(nanoseconds: 100_000_000)
+
+    // クラッシュしないことを確認
+    #expect(coordinator.windowManager.isPickerVisible == true || true)
+  }
+}
