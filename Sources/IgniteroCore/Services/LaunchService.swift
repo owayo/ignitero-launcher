@@ -368,6 +368,8 @@ public struct LaunchService: Launching, Sendable {
     let stderrPipe = Pipe()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
     process.arguments = ["-e", script]
+    // stdout を破棄してカーネルバッファ溢れによるデッドロックを防ぐ
+    process.standardOutput = FileHandle.nullDevice
     process.standardError = stderrPipe
     try process.run()
     let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
@@ -493,23 +495,20 @@ public struct LaunchService: Launching, Sendable {
     process.arguments = arguments
     process.standardOutput = stdoutPipe
     process.standardError = stderrPipe
+    try process.run()
     // stdout と stderr を並列に読み取る。逐次読み取りでは、一方のパイプの
     // カーネルバッファ（64KB）が溢れた際にプロセスがブロックしデッドロックする。
+    // readabilityHandler はGCDキューで呼ばれるため、DispatchSemaphore で
+    // 完了を同期し、readDataToEndOfFile でスレッドセーフに読み取る。
     nonisolated(unsafe) var stderrData = Data()
-    stderrPipe.fileHandleForReading.readabilityHandler = { handle in
-      let chunk = handle.availableData
-      if chunk.isEmpty {
-        // EOF: ハンドラを解除
-        handle.readabilityHandler = nil
-      } else {
-        stderrData.append(chunk)
-      }
+    let semaphore = DispatchSemaphore(value: 0)
+    DispatchQueue.global().async {
+      stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+      semaphore.signal()
     }
-    try process.run()
     let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
     process.waitUntilExit()
-    // プロセス終了後に readabilityHandler を確実にクリア
-    stderrPipe.fileHandleForReading.readabilityHandler = nil
+    semaphore.wait()
     guard process.terminationStatus == 0 else {
       let stderrText = String(data: stderrData, encoding: .utf8)?
         .trimmingCharacters(in: .whitespacesAndNewlines)
