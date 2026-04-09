@@ -538,28 +538,36 @@ struct CommandsSettingsTab: View {
         }
 
         ForEach(viewModel.settings.customCommands) { command in
-          if let index = viewModel.settings.customCommands.firstIndex(where: { $0.id == command.id }
-          ) {
-            CommandRow(
-              command: command,
-              onUpdate: { updated in
-                do {
-                  try viewModel.updateCommand(at: index, updated)
-                  errorMessage = nil
-                } catch {
-                  errorMessage = "コマンドの更新に失敗しました"
-                }
-              },
-              onDelete: {
-                do {
-                  try viewModel.removeCommand(at: index)
-                  errorMessage = nil
-                } catch {
-                  errorMessage = "コマンドの削除に失敗しました"
-                }
+          CommandRow(
+            command: command,
+            onUpdate: { updated in
+              do {
+                // id ベースで検索し、削除によるインデックスずれを防ぐ
+                guard
+                  let currentIndex = viewModel.settings.customCommands.firstIndex(where: {
+                    $0.id == command.id
+                  })
+                else { return }
+                try viewModel.updateCommand(at: currentIndex, updated)
+                errorMessage = nil
+              } catch {
+                errorMessage = "コマンドの更新に失敗しました"
               }
-            )
-          }
+            },
+            onDelete: {
+              do {
+                guard
+                  let currentIndex = viewModel.settings.customCommands.firstIndex(where: {
+                    $0.id == command.id
+                  })
+                else { return }
+                try viewModel.removeCommand(at: currentIndex)
+                errorMessage = nil
+              } catch {
+                errorMessage = "コマンドの削除に失敗しました"
+              }
+            }
+          )
         }
 
         if isAddingCommand {

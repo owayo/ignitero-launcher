@@ -742,7 +742,11 @@ public final class AppCoordinator {
       while !Task.isCancelled && !state.isDismissed && state.confirmedEditor == nil {
         try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms
       }
-      guard !Task.isCancelled else { return }
+      guard !Task.isCancelled else {
+        // キャンセル時もピッカーを確実に閉じて isPickerVisible の固着を防ぐ
+        self.windowManager.hidePicker()
+        return
+      }
 
       if let editor = state.confirmedEditor {
         Task {
