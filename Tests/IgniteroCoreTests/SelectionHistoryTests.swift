@@ -451,6 +451,26 @@ struct SelectionHistoryTests {
     #expect(history.entries(for: "cmd3").count == 1)
   }
 
+  // MARK: - command:// パスを validPaths に含めた場合の保持
+
+  @Test("command:// パスが validPaths に含まれていれば保持される")
+  func purgeKeepsCommandProtocolIfInValidPaths() throws {
+    let path = makeTempFilePath()
+    defer { cleanup(path) }
+
+    let history = SelectionHistory(filePath: path)
+    history.record(keyword: "deploy", path: "command://abc-123")
+    history.record(keyword: "app", path: "/Applications/App.app")
+
+    let validPaths: Set<String> = ["command://abc-123"]
+    history.purgeInvalidPaths(validPaths)
+
+    #expect(history.allEntries.count == 1)
+    let deployEntries = history.entries(for: "deploy")
+    #expect(deployEntries.count == 1)
+    #expect(deployEntries[0].selectedPath == "command://abc-123")
+  }
+
   // MARK: - allEntries のカウント順ソート
 
   @Test("allEntries はカウントの降順でソートされない（挿入順）")

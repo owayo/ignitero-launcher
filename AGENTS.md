@@ -29,7 +29,7 @@ Sources/
   IgniteroLauncher/         # 実行可能ターゲット (@main エントリ)
     IgniteroApp.swift
 Tests/
-  IgniteroCoreTests/        # 829テスト (Swift Testing)
+  IgniteroCoreTests/        # 848テスト (Swift Testing)
 .backup/                    # Tauri v2 旧実装 (参照用)
 ```
 
@@ -65,4 +65,4 @@ make clean        # ビルドキャッシュ削除
 - **@MainActor**: SettingsManager, WindowManager 等の状態管理クラスはメインアクター隔離で保護
 
 # currentDate
-Today's date is 2026-04-09.
+Today's date is 2026-04-10.

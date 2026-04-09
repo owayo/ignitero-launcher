@@ -458,3 +458,47 @@ struct CalculatorEngineFloatModuloTests {
     #expect(abs(result! - 1.5) < 1e-10)
   }
 }
+
+// MARK: - formatResult エッジケース
+
+@Suite("CalculatorEngine - Format Result Edge Cases")
+struct CalculatorEngineFormatResultEdgeCaseTests {
+  let engine = CalculatorEngine()
+
+  @Test("ゼロのフォーマット")
+  func formatZero() {
+    let result = engine.formatResult(0.0, locale: Locale(identifier: "en_US"))
+    #expect(result == "0")
+  }
+
+  @Test("負の数のフォーマット")
+  func formatNegative() {
+    let result = engine.formatResult(-42.5, locale: Locale(identifier: "en_US"))
+    #expect(result == "-42.5")
+  }
+
+  @Test("非常に小さい正の数のフォーマット")
+  func formatVerySmallPositive() {
+    let result = engine.formatResult(0.0000001, locale: Locale(identifier: "en_US"))
+    #expect(result == "0.0000001")
+  }
+
+  @Test("整数値の小数点以下が省略される")
+  func formatIntegerValueDropsDecimal() {
+    let result = engine.formatResult(100.0, locale: Locale(identifier: "en_US"))
+    #expect(result == "100")
+  }
+
+  @Test("en_US ロケールでのカンマ区切り")
+  func formatWithUSLocale() {
+    let result = engine.formatResult(1_000_000, locale: Locale(identifier: "en_US"))
+    #expect(result == "1,000,000")
+  }
+
+  @Test("de_DE ロケールでのピリオド区切り")
+  func formatWithGermanLocale() {
+    let result = engine.formatResult(1_234.5, locale: Locale(identifier: "de_DE"))
+    // ドイツ語ロケールではカンマが小数点、ピリオドが桁区切り
+    #expect(result.contains("1.234") || result.contains("1234"))
+  }
+}

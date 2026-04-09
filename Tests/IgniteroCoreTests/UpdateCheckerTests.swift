@@ -217,6 +217,23 @@ struct VersionComparisonTests {
     #expect(VersionComparator.isNewer("1", than: "1.0.0") == false)
     #expect(VersionComparator.isNewer("2", than: "1.0.0") == true)
   }
+
+  @Test func bothEmptyVersions() {
+    // 両方とも空文字列 → 両方空配列 → maxLength 0 → 同じ → false
+    #expect(VersionComparator.isNewer("", than: "") == false)
+  }
+
+  @Test func emptyVsNonEmpty() {
+    // "" → [] vs "1.0.0" → [1,0,0] → 0 < 1 → false
+    #expect(VersionComparator.isNewer("", than: "1.0.0") == false)
+    // "1.0.0" → [1,0,0] vs "" → [] → 1 > 0 → true
+    #expect(VersionComparator.isNewer("1.0.0", than: "") == true)
+  }
+
+  @Test func onlyDotsVersion() {
+    // "..." → split で空のセグメント → compactMap(Int) で空配列
+    #expect(VersionComparator.isNewer("...", than: "1.0.0") == false)
+  }
 }
 
 // MARK: - UpdateChecker 新バージョン検出テスト

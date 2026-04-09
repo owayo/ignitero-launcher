@@ -797,3 +797,55 @@ struct LauncherViewModelCommandKeyTests {
     #expect(action == .showEditorPicker)
   }
 }
+
+// MARK: - LauncherViewModel 計算式検出エッジケース
+
+@Suite("LauncherViewModel Calculator Expression Edge Cases")
+struct LauncherViewModelCalculatorExpressionEdgeCaseTests {
+
+  @MainActor
+  @Test("演算子を含むが不正な式は計算結果 nil を返す")
+  func invalidExpressionWithOperatorReturnsNil() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "abc+def"
+    vm.checkForCalculatorExpression()
+    #expect(vm.calculatorResult == nil)
+  }
+
+  @MainActor
+  @Test("演算子を含まない数値のみは計算式とみなさない")
+  func numericOnlyIsNotCalculator() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "12345"
+    vm.checkForCalculatorExpression()
+    #expect(vm.calculatorResult == nil)
+  }
+
+  @MainActor
+  @Test("負の数のみ（単項マイナス）は演算子として検出される")
+  func unaryMinusDetectedAsOperator() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "-5"
+    vm.checkForCalculatorExpression()
+    // "-" が演算子として検出され、evaluate("-5") は -5.0 を返す
+    #expect(vm.calculatorResult != nil)
+  }
+
+  @MainActor
+  @Test("空白のみのクエリは計算結果 nil を返す")
+  func whitespaceOnlyReturnsNil() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "   "
+    vm.checkForCalculatorExpression()
+    #expect(vm.calculatorResult == nil)
+  }
+
+  @MainActor
+  @Test("剰余演算子を含む式が正しく評価される")
+  func moduloExpressionEvaluated() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "10%3"
+    vm.checkForCalculatorExpression()
+    #expect(vm.calculatorResult == "1")
+  }
+}

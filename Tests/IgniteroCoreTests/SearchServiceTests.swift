@@ -35,6 +35,24 @@ struct SearchServiceNormalizationTests {
   @Test func whitespaceTrim() {
     #expect(SearchQueryNormalizer.normalize("  safari  ") == "safari")
   }
+
+  @Test func fullwidthSymbolsPassthrough() {
+    // 全角記号は変換対象外（英数字のみ変換）
+    #expect(SearchQueryNormalizer.normalize("＃タグ") == "＃タグ")
+  }
+
+  @Test func mixedFullwidthHalfwidthNumbers() {
+    #expect(SearchQueryNormalizer.normalize("App１２３test") == "app123test")
+  }
+
+  @Test func fullwidthUppercaseLowered() {
+    // 全角大文字 → 半角小文字に変換される
+    #expect(SearchQueryNormalizer.normalize("ＡＰＰＬＥ") == "apple")
+  }
+
+  @Test func emojiPassthrough() {
+    #expect(SearchQueryNormalizer.normalize("🔥fire") == "🔥fire")
+  }
 }
 
 // MARK: - 検索結果
