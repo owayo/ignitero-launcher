@@ -2,6 +2,13 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-04-13 時点の更新内容:
+
+- テスト数を 848 → 869 に増加（UpdateChecker ネットワークエラー時 downloadURL 保持テスト、LaunchService AppleScript エスケープ境界テスト、commandScript 境界テスト、ワークスペースグロブ Unicode テスト、PerformanceMonitor エッジケーステストを追加）
+- 各ターミナルの AppleScript 対応状況を 2026-04-13 時点で再調査（変更なし: Warp/cmux は引き続き非対応）
+- コードベース全体レビュー実施、以下のバグを修正:
+  - UpdateChecker: ネットワークエラー時に `buildResult` へ `downloadURL: nil` を渡していたのを `cache?.downloadURL` に修正（キャッシュ済み downloadURL の喪失を防止）
+
 2026-04-09 時点の更新内容:
 
 - テスト数を 822 → 829 に増加（AppCoordinator エディタピッカー観測タスク管理テスト、LaunchService Ghostty フォールバック・commandScript 全ターミナルテストを追加）

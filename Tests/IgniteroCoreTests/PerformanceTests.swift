@@ -139,3 +139,74 @@ struct LauncherPanelPerformanceTests {
     #expect(ms < 100)  // Panel creation under 100ms
   }
 }
+
+// MARK: - PerformanceMonitor エッジケーステスト
+
+@Suite("PerformanceMonitor Edge Cases")
+struct PerformanceMonitorEdgeCaseTests {
+
+  @Test("ゼロ時間のブロック計測は非負の値を返す")
+  func measureZeroDurationBlock() {
+    let ms = PerformanceMonitor.measure("zero-block") {
+      // 即時完了
+    }
+    #expect(ms >= 0)
+  }
+
+  @Test("非同期ゼロ時間のブロック計測は非負の値を返す")
+  func measureAsyncZeroDurationBlock() async {
+    let ms = await PerformanceMonitor.measureAsync("zero-async-block") {
+      // 即時完了
+    }
+    #expect(ms >= 0)
+  }
+
+  @Test("例外をスローするブロックの計測は例外を透過する")
+  func measureBlockRethrowsError() {
+    struct TestError: Error {}
+    #expect(throws: TestError.self) {
+      try PerformanceMonitor.measure("throwing-block") {
+        throw TestError()
+      }
+    }
+  }
+
+  @Test("例外をスローする非同期ブロックの計測は例外を透過する")
+  func measureAsyncBlockRethrowsError() async {
+    struct TestError: Error {}
+    do {
+      try await PerformanceMonitor.measureAsync("throwing-async-block") {
+        throw TestError()
+      }
+      Issue.record("例外がスローされるべき")
+    } catch is TestError {
+      // 期待通り
+    } catch {
+      Issue.record("予期しない例外: \(error)")
+    }
+  }
+
+  @Test("複数の計測を連続実行しても干渉しない")
+  func sequentialMeasurementsAreIndependent() {
+    let ms1 = PerformanceMonitor.measure("first") {
+      // 即時完了
+    }
+    let ms2 = PerformanceMonitor.measure("second") {
+      var sum = 0
+      for i in 0..<10000 {
+        sum += i
+      }
+      _ = sum
+    }
+    #expect(ms1 >= 0)
+    #expect(ms2 >= 0)
+  }
+
+  @Test("signpost の begin/end を繰り返しても安定動作する")
+  func repeatedSignpostIntervals() {
+    for _ in 0..<100 {
+      let state = PerformanceMonitor.beginInterval("repeated-test")
+      PerformanceMonitor.endInterval("repeated-test", state)
+    }
+  }
+}

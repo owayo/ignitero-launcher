@@ -738,3 +738,104 @@ struct UpdateCheckerCacheUpdateTests {
     #expect(mockSession.requestedURL == nil)
   }
 }
+
+// MARK: - ネットワークエラー時の downloadURL 保持テスト
+
+@Suite("UpdateChecker Network Error DownloadURL")
+@MainActor
+struct UpdateCheckerNetworkErrorDownloadURLTests {
+
+  @Test("ネットワークエラー時にキャッシュの downloadURL を保持する")
+  func networkErrorPreservesCachedDownloadURL() async {
+    let mockSession = MockURLSession()
+    mockSession.errorToThrow = URLError(.notConnectedToInternet)
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    settingsManager.settings.updateCache = UpdateCache(
+      latestVersion: "3.0.0",
+      checkedAt: Date().addingTimeInterval(-24 * 3600),
+      downloadURL: "https://github.com/test/releases/tag/v3.0.0"
+    )
+
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    let result = await checker.checkForUpdate(currentVersion: "1.0.0")
+
+    #expect(result != nil)
+    #expect(result?.latestVersion == "3.0.0")
+    #expect(result?.downloadURL == "https://github.com/test/releases/tag/v3.0.0")
+  }
+
+  @Test("ネットワークエラー時にキャッシュに downloadURL がなければ空文字を返す")
+  func networkErrorWithNoCachedDownloadURLReturnsEmpty() async {
+    let mockSession = MockURLSession()
+    mockSession.errorToThrow = URLError(.timedOut)
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    settingsManager.settings.updateCache = UpdateCache(
+      latestVersion: "2.0.0",
+      checkedAt: Date().addingTimeInterval(-24 * 3600)
+    )
+
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    let result = await checker.checkForUpdate(currentVersion: "1.0.0")
+
+    #expect(result != nil)
+    #expect(result?.latestVersion == "2.0.0")
+    #expect(result?.downloadURL == "")
+  }
+
+  @Test("ネットワークエラー時にキャッシュが存在しなければ nil を返す")
+  func networkErrorWithNoCacheReturnsNil() async {
+    let mockSession = MockURLSession()
+    mockSession.errorToThrow = URLError(.cannotConnectToHost)
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    // キャッシュなし
+
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    let result = await checker.checkForUpdate(currentVersion: "1.0.0")
+    #expect(result == nil)
+  }
+
+  @Test("ネットワークエラー時に非表示済みバージョンのキャッシュは nil を返す")
+  func networkErrorWithDismissedCachedVersionReturnsNil() async {
+    let mockSession = MockURLSession()
+    mockSession.errorToThrow = URLError(.networkConnectionLost)
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    settingsManager.settings.updateCache = UpdateCache(
+      latestVersion: "4.0.0",
+      checkedAt: Date().addingTimeInterval(-24 * 3600),
+      dismissedVersion: "4.0.0",
+      downloadURL: "https://github.com/test/releases/tag/v4.0.0"
+    )
+
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    let result = await checker.checkForUpdate(currentVersion: "1.0.0")
+    #expect(result == nil)
+  }
+}

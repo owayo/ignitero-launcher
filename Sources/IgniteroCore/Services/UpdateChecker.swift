@@ -181,12 +181,12 @@ public struct UpdateChecker: Sendable {
       return result
     } catch {
       Self.logger.warning("Update check failed: \(error.localizedDescription)")
-      // ネットワークエラー時はキャッシュ値を使用
+      // ネットワークエラー時はキャッシュ値を使用（downloadURLもキャッシュから復元）
       return buildResult(
         cachedVersion: cache?.latestVersion,
         currentVersion: currentVersion,
         dismissedVersion: dismissedVersion,
-        downloadURL: nil
+        downloadURL: cache?.downloadURL
       )
     }
   }

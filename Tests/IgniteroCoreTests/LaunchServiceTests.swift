@@ -873,3 +873,134 @@ struct LaunchServiceCommandScriptAllTerminalsTests {
     #expect(script.contains("/Users/test/日本語パス"))
   }
 }
+
+// MARK: - AppleScript エスケープ境界テスト
+
+@Suite("LaunchService AppleScript Escaping Boundary")
+struct LaunchServiceAppleScriptEscapingBoundaryTests {
+
+  @Test("タブ文字を含むコマンドで AppleScript が生成される")
+  func appleScriptWithTabCharacter() {
+    let script = LaunchService.appleScript(
+      for: .terminal,
+      command: "make\tbuild",
+      workingDirectory: nil
+    )
+    // タブ文字は AppleScript 文字列リテラル内で有効
+    #expect(script.contains("make\tbuild"))
+  }
+
+  @Test("バックスラッシュと引用符の複合エスケープ")
+  func appleScriptWithMixedEscapeCharacters() {
+    let script = LaunchService.appleScript(
+      for: .terminal,
+      command: "echo \"hello\\nworld\"",
+      workingDirectory: nil
+    )
+    // バックスラッシュがエスケープされている
+    #expect(script.contains("\\\\"))
+    // ダブルクォートがエスケープされている
+    #expect(script.contains("\\\""))
+  }
+
+  @Test("空のコマンドで AppleScript が生成される")
+  func appleScriptWithEmptyCommandAllTerminals() {
+    for terminal in TerminalType.allCases {
+      let script = LaunchService.appleScript(
+        for: terminal,
+        command: "",
+        workingDirectory: nil
+      )
+      // warp と cmux は空文字列を返す
+      if terminal == .warp || terminal == .cmux {
+        #expect(script.isEmpty)
+      } else {
+        #expect(!script.isEmpty)
+      }
+    }
+  }
+
+  @Test("作業ディレクトリにスペースとシングルクォートが混在")
+  func appleScriptWorkingDirectoryWithSpacesAndQuotes() {
+    let script = LaunchService.appleScript(
+      for: .iterm2,
+      command: "ls",
+      workingDirectory: "/Users/test/My Project's Folder"
+    )
+    // シングルクォートがシェルエスケープされ、さらに AppleScript エスケープされている
+    // shellEscaped: ' → '"'"' → appleScriptEscaped: " → \" → '\"'\"'
+    #expect(script.contains("'\\\"'\\\"'"))
+    #expect(script.contains("My Project"))
+  }
+
+  @Test("非常に長いコマンド文字列")
+  func appleScriptWithVeryLongCommand() {
+    let longCommand = String(repeating: "a", count: 10000)
+    let script = LaunchService.appleScript(
+      for: .terminal,
+      command: longCommand,
+      workingDirectory: nil
+    )
+    #expect(script.contains(longCommand))
+  }
+}
+
+// MARK: - commandScript 境界テスト
+
+@Suite("LaunchService CommandScript Boundary")
+struct LaunchServiceCommandScriptBoundaryTests {
+
+  @Test("作業ディレクトリがルートパスの場合")
+  func commandScriptWithRootWorkingDirectory() {
+    let script = LaunchService.commandScript(
+      command: "ls",
+      workingDirectory: "/"
+    )
+    #expect(script.contains("cd '/'"))
+  }
+
+  @Test("コマンドに改行を含む場合")
+  func commandScriptWithNewlines() {
+    let script = LaunchService.commandScript(
+      command: "echo hello\necho world",
+      workingDirectory: nil
+    )
+    let lines = script.split(separator: "\n", omittingEmptySubsequences: false)
+    // #!/bin/bash, echo hello, echo world, exit, 末尾空行
+    #expect(lines.count >= 4)
+    #expect(lines[0] == "#!/bin/bash")
+  }
+
+  @Test("作業ディレクトリにバックスラッシュを含む場合")
+  func commandScriptWithBackslashInPath() {
+    let script = LaunchService.commandScript(
+      command: "ls",
+      workingDirectory: "/Users/test/path\\with\\backslash"
+    )
+    #expect(script.contains("/Users/test/path\\with\\backslash"))
+  }
+}
+
+// MARK: - ワークスペースファイル検索テスト
+
+@Suite("LaunchService Workspace Glob Edge Cases")
+struct LaunchServiceWorkspaceGlobEdgeCaseTests {
+
+  @Test("Unicode パスのワークスペースグロブ")
+  func workspaceGlobPatternWithUnicodePath() {
+    let pattern = LaunchService.workspaceGlobPattern(for: "/Users/テスト/プロジェクト")
+    #expect(pattern == "/Users/テスト/プロジェクト/*.code-workspace")
+  }
+
+  @Test("スペースを含むパスのワークスペースグロブ")
+  func workspaceGlobPatternWithSpaces() {
+    let pattern = LaunchService.workspaceGlobPattern(for: "/Users/test/My Project")
+    #expect(pattern == "/Users/test/My Project/*.code-workspace")
+  }
+
+  @Test("空のパスのワークスペースグロブ")
+  func workspaceGlobPatternWithEmptyPath() {
+    let pattern = LaunchService.workspaceGlobPattern(for: "")
+    #expect(pattern == "*.code-workspace")
+  }
+}
