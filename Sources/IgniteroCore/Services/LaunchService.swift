@@ -154,16 +154,26 @@ public struct LaunchService: Launching, Sendable {
         end tell
         """
     case .ghostty:
-      // Ghostty 1.3.0 以降の公式 AppleScript API を使用
+      // Ghostty 1.3.1 で確認した AppleScript API を使用する。
       return """
         tell application "Ghostty"
           activate
-          set w to make new window
+          set w to new window
           set term to focused terminal of selected tab of w
           input text "\(scriptCommand)\\n" to term
         end tell
         """
-    default:
+    case .cmux:
+      // cmux 0.63.2 で確認した AppleScript API を使用する。
+      return """
+        tell application "cmux"
+          activate
+          set w to new window
+          set term to focused terminal of selected tab of w
+          input text "\(scriptCommand)\\n" to term
+        end tell
+        """
+    case .warp:
       return ""
     }
   }
@@ -323,7 +333,7 @@ public struct LaunchService: Launching, Sendable {
     terminal: TerminalType
   ) async throws {
     switch terminal {
-    case .terminal, .iterm2, .ghostty:
+    case .terminal, .iterm2, .ghostty, .cmux:
       let script = Self.appleScript(
         for: terminal,
         command: command,
@@ -332,8 +342,9 @@ public struct LaunchService: Launching, Sendable {
       do {
         try Self.executeAppleScript(script, terminal: terminal)
       } catch {
-        // Ghostty は設定やバージョン差分で AppleScript が無効な場合があるため .command 方式にフォールバックする。
-        if terminal == .ghostty {
+        switch terminal {
+        case .ghostty:
+          // Ghostty は設定やバージョン差分で AppleScript が無効な場合があるため .command 方式にフォールバックする。
           Self.logger.debug(
             "Ghostty AppleScript failed. Falling back to command script: \(error.localizedDescription, privacy: .public)"
           )
@@ -342,17 +353,19 @@ public struct LaunchService: Launching, Sendable {
             workingDirectory: workingDirectory,
             terminal: terminal
           )
-        } else {
+        case .cmux:
+          // cmux は古いバージョンや設定差分を考慮し、既存の CLI 実行へフォールバックする。
+          Self.logger.debug(
+            "cmux AppleScript failed. Falling back to CLI: \(error.localizedDescription, privacy: .public)"
+          )
+          try await Self.executeCommandViaCmuxCLI(
+            command,
+            workingDirectory: workingDirectory
+          )
+        default:
           throw error
         }
       }
-
-    case .cmux:
-      // cmux は AppleScript 辞書を持たないため、直接 CLI で実行する。
-      try await Self.executeCommandViaCmuxCLI(
-        command,
-        workingDirectory: workingDirectory
-      )
 
     case .warp:
       try await Self.executeCommandViaCommandScript(
@@ -461,7 +474,7 @@ public struct LaunchService: Launching, Sendable {
     }
 
     // cmux CLI の ping で疎通確認（CLI がソケットパスを自動検出する）
-    // cooperative thread pool をブロックしないよう Task.sleep を使用する。
+    // 協調スレッドプールをブロックしないよう Task.sleep を使用する。
     let deadline = Date().addingTimeInterval(cmuxSocketTimeout)
     while Date() < deadline {
       let process = Process()

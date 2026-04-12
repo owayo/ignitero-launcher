@@ -234,14 +234,16 @@ struct LaunchServiceAppleScriptTests {
     #expect(script.contains("focused terminal of selected tab of w"))
   }
 
-  @Test func cmuxAppleScriptReturnsEmpty() {
-    // cmux は AppleScript 辞書を持たないため、空文字列を返す
+  @Test func cmuxAppleScriptWithWorkingDirectory() {
     let script = LaunchService.appleScript(
       for: .cmux,
       command: "npm run dev",
       workingDirectory: "/Users/test/app"
     )
-    #expect(script.isEmpty)
+    #expect(script.contains("tell application \"cmux\""))
+    #expect(script.contains("set w to new window"))
+    #expect(script.contains("input text \"cd '/Users/test/app' && npm run dev\\n\""))
+    #expect(script.contains("focused terminal of selected tab of w"))
   }
 
   @Test func appleScriptEscapesDoubleQuotesInCommand() {
@@ -270,6 +272,15 @@ struct LaunchServiceAppleScriptTests {
     )
     #expect(script.contains("cd '/Users/test/O'\\\"'\\\"'Neil Project' && pwd"))
   }
+
+  @Test func cmuxAppleScriptEscapesWorkingDirectoryWithSingleQuote() {
+    let script = LaunchService.appleScript(
+      for: .cmux,
+      command: "pwd",
+      workingDirectory: "/Users/test/O'Neil Project"
+    )
+    #expect(script.contains("cd '/Users/test/O'\\\"'\\\"'Neil Project' && pwd\\n"))
+  }
 }
 
 // MARK: - AppleScript エスケープ複合パターン
@@ -278,13 +289,13 @@ struct LaunchServiceAppleScriptTests {
 struct LaunchServiceAppleScriptEscapingEdgeCaseTests {
 
   @Test func appleScriptEscapesBackslashQuoteCombination() {
-    // 入力: echo \"hello\"（バックスラッシュ + ダブルクォート）
+    // 入力: echo \"hello\"（バックスラッシュとダブルクォートの組み合わせ）
     let script = LaunchService.appleScript(
       for: .terminal,
       command: "echo \\\"hello\\\"",
       workingDirectory: nil
     )
-    // バックスラッシュ（\ → \\）を先に、その後でダブルクォート（" → \"）をエスケープする
+    // バックスラッシュを先に、その後でダブルクォートをエスケープする。
     #expect(script.contains("do script \"echo \\\\\\\"hello\\\\\\\"\""))
   }
 
@@ -330,6 +341,7 @@ struct LaunchServiceAppleScriptEscapingEdgeCaseTests {
       workingDirectory: nil
     )
     #expect(script.contains("tell application \"Ghostty\""))
+    #expect(script.contains("set w to new window"))
     #expect(script.contains("input text \"echo test\\n\""))
     #expect(script.contains("focused terminal of selected tab of w"))
   }
@@ -343,14 +355,16 @@ struct LaunchServiceAppleScriptEscapingEdgeCaseTests {
     #expect(script.isEmpty)
   }
 
-  @Test func cmuxAppleScriptReturnsEmpty() {
-    // cmux は AppleScript 辞書を持たないため、空文字列を返す
+  @Test func cmuxAppleScript() {
     let script = LaunchService.appleScript(
       for: .cmux,
       command: "echo test",
       workingDirectory: nil
     )
-    #expect(script.isEmpty)
+    #expect(script.contains("tell application \"cmux\""))
+    #expect(script.contains("set w to new window"))
+    #expect(script.contains("input text \"echo test\\n\""))
+    #expect(script.contains("focused terminal of selected tab of w"))
   }
 }
 
@@ -582,7 +596,7 @@ struct LaunchServiceTempScriptCleanupTests {
 struct LaunchServiceAppleScriptCoverageTests {
 
   @Test func allTerminalTypesHandled() {
-    // 全ターミナルタイプで appleScript が呼び出し可能であることを確認（クラッシュしない）
+    // 全ターミナルタイプで appleScript が呼び出し可能であることを確認する。
     for terminal in TerminalType.allCases {
       let script = LaunchService.appleScript(
         for: terminal,
@@ -590,27 +604,38 @@ struct LaunchServiceAppleScriptCoverageTests {
         workingDirectory: nil
       )
       switch terminal {
-      case .terminal, .iterm2, .ghostty:
-        // AppleScript 対応ターミナルは非空
-        #expect(!script.isEmpty, "Expected non-empty script for \(terminal)")
-      case .warp, .cmux:
-        // AppleScript 非対応ターミナルは空文字列
-        #expect(script.isEmpty, "Expected empty script for \(terminal)")
+      case .terminal, .iterm2, .ghostty, .cmux:
+        // AppleScript 対応ターミナルは非空を期待する。
+        #expect(!script.isEmpty, "\(terminal) は空でない AppleScript を返すべき")
+      case .warp:
+        // AppleScript 非対応ターミナルは空文字列を返す。
+        #expect(script.isEmpty, "\(terminal) は空文字列を返すべき")
       }
     }
   }
 
   @Test func appleScriptTerminalsContainActivate() {
-    // AppleScript 対応ターミナルはすべて activate を含む
-    let appleScriptTerminals: [TerminalType] = [.terminal, .iterm2, .ghostty]
+    // AppleScript 対応ターミナルはすべて activate を含む。
+    let appleScriptTerminals: [TerminalType] = [.terminal, .iterm2, .ghostty, .cmux]
     for terminal in appleScriptTerminals {
       let script = LaunchService.appleScript(
         for: terminal,
         command: "echo test",
         workingDirectory: nil
       )
-      #expect(script.contains("activate"), "\(terminal) script should contain activate")
+      #expect(script.contains("activate"), "\(terminal) の AppleScript には activate が必要")
     }
+  }
+
+  @Test func warpIsOnlyTerminalWithoutAppleScript() {
+    let unsupported = TerminalType.allCases.filter { terminal in
+      LaunchService.appleScript(
+        for: terminal,
+        command: "echo test",
+        workingDirectory: nil
+      ).isEmpty
+    }
+    #expect(unsupported == [.warp])
   }
 }
 
@@ -810,14 +835,14 @@ struct CustomCommandTests {
 @Suite("LaunchService Ghostty Fallback")
 struct LaunchServiceGhosttyFallbackTests {
 
-  @Test("Ghostty の AppleScript にはウィンドウ作成コマンドが含まれる")
-  func ghosttyAppleScriptContainsMakeNewWindow() {
+  @Test("Ghostty の AppleScript には new window コマンドが含まれる")
+  func ghosttyAppleScriptContainsNewWindow() {
     let script = LaunchService.appleScript(
       for: .ghostty,
       command: "ls",
       workingDirectory: nil
     )
-    #expect(script.contains("make new window"))
+    #expect(script.contains("set w to new window"))
     #expect(script.contains("input text"))
   }
 
@@ -911,8 +936,8 @@ struct LaunchServiceAppleScriptEscapingBoundaryTests {
         command: "",
         workingDirectory: nil
       )
-      // warp と cmux は空文字列を返す
-      if terminal == .warp || terminal == .cmux {
+      // Warp のみ空文字列を返す。
+      if terminal == .warp {
         #expect(script.isEmpty)
       } else {
         #expect(!script.isEmpty)
@@ -927,8 +952,7 @@ struct LaunchServiceAppleScriptEscapingBoundaryTests {
       command: "ls",
       workingDirectory: "/Users/test/My Project's Folder"
     )
-    // シングルクォートがシェルエスケープされ、さらに AppleScript エスケープされている
-    // shellEscaped: ' → '"'"' → appleScriptEscaped: " → \" → '\"'\"'
+    // シングルクォートがシェル向けにエスケープされ、さらに AppleScript 用にダブルクォートがエスケープされる。
     #expect(script.contains("'\\\"'\\\"'"))
     #expect(script.contains("My Project"))
   }

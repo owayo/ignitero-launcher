@@ -4,10 +4,14 @@
 
 2026-04-13 時点の更新内容:
 
-- テスト数を 848 → 869 に増加（UpdateChecker ネットワークエラー時 downloadURL 保持テスト、LaunchService AppleScript エスケープ境界テスト、commandScript 境界テスト、ワークスペースグロブ Unicode テスト、PerformanceMonitor エッジケーステストを追加）
-- 各ターミナルの AppleScript 対応状況を 2026-04-13 時点で再調査（変更なし: Warp/cmux は引き続き非対応）
+- テスト数を 869 → 871 に増加（LaunchService の cmux AppleScript サポート行列とシングルクォート作業ディレクトリエスケープの回帰テストを追加）
+- 各ターミナルの AppleScript 対応状況を 2026-04-13 時点で再調査
+  - Ghostty 1.3.1: AppleScript の `new window` と `input text` を確認
+  - cmux 0.63.2: AppleScript 辞書と `input text` を確認。カスタムコマンド実行を AppleScript へ切り替え
+  - Warp 0.2026.04.01.08.39.02: 公式ドキュメントは URI Scheme / Launch Configurations を案内し、AppleScript 辞書は確認できず `.command` 方式を維持
 - コードベース全体レビュー実施、以下のバグを修正:
-  - UpdateChecker: ネットワークエラー時に `buildResult` へ `downloadURL: nil` を渡していたのを `cache?.downloadURL` に修正（キャッシュ済み downloadURL の喪失を防止）
+  - LaunchService: Ghostty の AppleScript 生成で `make new window` を使っていたのを、現行辞書に合わせて `new window` に修正
+  - LaunchService: cmux のカスタムコマンド実行を AppleScript 優先に変更し、失敗時は既存の CLI 実行へフォールバックするよう修正
 
 2026-04-09 時点の更新内容:
 
