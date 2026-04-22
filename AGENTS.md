@@ -29,7 +29,7 @@ Sources/
   IgniteroLauncher/         # 実行可能ターゲット (@main エントリ)
     IgniteroApp.swift
 Tests/
-  IgniteroCoreTests/        # 871テスト (Swift Testing)
+  IgniteroCoreTests/        # 876テスト (Swift Testing)
 .backup/                    # Tauri v2 旧実装 (参照用)
 ```
 

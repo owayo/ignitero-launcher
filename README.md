@@ -68,11 +68,11 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-04-13確認）
+#### ターミナル自動化方式（2026-04-23確認）
 
 - macOSターミナル: AppleScript（`do script`）
 - iTerm2: AppleScript（`create window` + `write text`）
-- Warp: 公式ドキュメントは URI Scheme / Launch Configurations を案内。AppleScript 辞書を確認できないため `.command` ファイル方式
+- Warp: 2026-04-23 時点の公式ドキュメントは URI Scheme / Launch Configurations を案内。Warp 0.2026.04.08.08.36.05 でも AppleScript 辞書を確認できないため `.command` ファイル方式
 - Ghostty: AppleScript（Ghostty 1.3.1 で確認: `new window` + `input text "...\n"`）。AppleScript が無効な環境では `.command` ファイル方式へフォールバック
 - cmux: AppleScript（cmux 0.63.2 で確認: `new window` + `input text "...\n"`）でカスタムコマンドを実行。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用
   - **注意**: ディレクトリを cmux で開く場合は Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります

@@ -89,25 +89,30 @@ private struct Parser {
   private mutating func parseFactor() -> Double? {
     skipWhitespace()
 
-    // 単項マイナス
-    if peek() == "-" {
+    // 単項マイナスは連続しても再帰させずループで処理（長い `---...` 入力でもスタック消費を O(1) に抑える）
+    var negate = false
+    while peek() == "-" {
+      negate.toggle()
       advance()
-      guard let value = parseFactor() else { return nil }
-      return -value
+      skipWhitespace()
     }
 
+    let value: Double?
     // 括弧
     if peek() == "(" {
       advance()  // consume '('
-      guard let value = parseExpression() else { return nil }
+      guard let inner = parseExpression() else { return nil }
       skipWhitespace()
       guard peek() == ")" else { return nil }
       advance()  // consume ')'
-      return value
+      value = inner
+    } else {
+      // 数値
+      value = parseNumber()
     }
 
-    // 数値
-    return parseNumber()
+    guard let v = value else { return nil }
+    return negate ? -v : v
   }
 
   // MARK: - Lexer helpers

@@ -2,6 +2,19 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-04-23 時点の更新内容:
+
+- EmojiKit を 2.3.5 → 2.4.0 に更新
+- テスト数を 871 → 876 に増加（CalculatorEngine の連続単項マイナスと括弧付き式の回帰テストを追加）
+- 各ターミナルの AppleScript 対応状況を 2026-04-23 時点で再調査
+  - Terminal.app: AppleScript 辞書の `do script` を確認
+  - iTerm2 3.6.10: AppleScript の `create window with default profile` を確認
+  - Ghostty 1.3.1: AppleScript 辞書の `new window` / `input text` を確認
+  - cmux 0.63.2: AppleScript 辞書の `new window` / `input text` を確認。カスタムコマンド実行は引き続き AppleScript 優先
+  - Warp 0.2026.04.08.08.36.05: 公式ドキュメントは URI Scheme / Launch Configurations を案内し、AppleScript 辞書は確認できず `.command` 方式を維持
+- コードベース全体レビュー実施。ビルドと 876 テストは通過し、今回の確実な修正は CalculatorEngine の連続単項マイナスで深い再帰が発生する経路のみ
+  - CalculatorEngine: 単項マイナスを再帰からループ処理へ変更し、長い `---...` 入力でもスタック消費を一定に抑制
+
 2026-04-13 時点の更新内容:
 
 - テスト数を 869 → 871 に増加（LaunchService の cmux AppleScript サポート行列とシングルクォート作業ディレクトリエスケープの回帰テストを追加）

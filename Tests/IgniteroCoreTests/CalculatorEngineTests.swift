@@ -270,6 +270,43 @@ struct CalculatorEngineSpecialPatternTests {
     #expect(engine.evaluate("---5") == -5.0)
   }
 
+  @Test("大量連続単項マイナス（偶数）でクラッシュしない")
+  func massiveConsecutiveNegationsEven() {
+    // 過去の再帰下降パーサー実装では単項マイナスを再帰的に処理していたため、
+    // 10000 個連続するとスタックオーバーフローでクラッシュしていた。
+    // ループ処理化の回帰防止テスト。偶数個のマイナスは正の値として評価されるはず。
+    let expr = String(repeating: "-", count: 10_000) + "7"
+    #expect(engine.evaluate(expr) == 7.0)
+  }
+
+  @Test("大量連続単項マイナス（奇数）でクラッシュしない")
+  func massiveConsecutiveNegationsOdd() {
+    // 奇数個のマイナスは負の値として評価されるはず。
+    let expr = String(repeating: "-", count: 10_001) + "7"
+    #expect(engine.evaluate(expr) == -7.0)
+  }
+
+  @Test("大量の連続マイナスと空白混在")
+  func consecutiveNegationsWithWhitespace() {
+    // `- - - - 5` のように空白が混じっても正しく処理される
+    let expr = "- - - - 5"
+    #expect(engine.evaluate(expr) == 5.0)
+  }
+
+  @Test("連続単項マイナスが括弧付き式にも適用される")
+  func consecutiveNegationsWithParenthesizedExpression() {
+    // parseFactor は数値だけでなく括弧付き式も因子として扱うため、
+    // 単項マイナスのループ化後も `--(2+3)` が正しく 5 になる必要がある。
+    #expect(engine.evaluate("--(2+3)") == 5.0)
+    #expect(engine.evaluate("---(2+3)") == -5.0)
+  }
+
+  @Test("空白を含む連続単項マイナスと括弧付き式")
+  func consecutiveNegationsWithWhitespaceAndParenthesizedExpression() {
+    let expr = "- - ( 2 + 3 )"
+    #expect(engine.evaluate(expr) == 5.0)
+  }
+
   @Test func decimalOnlyOperands() {
     #expect(engine.evaluate("0.1+0.2") != nil)
     let result = engine.evaluate("0.1+0.2")!
