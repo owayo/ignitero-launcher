@@ -64,13 +64,20 @@ public struct AppScanner: AppScannerProtocol, Sendable {
         guard !seenPaths.contains(bundlePath) else { continue }
         seenPaths.insert(bundlePath)
 
-        // 除外アプリフィルタ
-        guard !excludedSet.contains(bundlePath) else {
+        // 除外アプリフィルタ（既存設定のパス指定もここで扱う）
+        guard !isExcluded(bundlePath: bundlePath, appItem: nil, excludedSet: excludedSet) else {
           Self.logger.debug("Excluded app: \(bundlePath)")
           continue
         }
 
         if var appItem = extractAppInfo(from: bundlePath) {
+          // 設定画面は表示名を保存するため、AppItem 生成後にも除外判定する。
+          guard !isExcluded(bundlePath: bundlePath, appItem: appItem, excludedSet: excludedSet)
+          else {
+            Self.logger.debug("Excluded app: \(bundlePath)")
+            continue
+          }
+
           // アイコンキャッシュ生成
           if let iconSrc = iconFilePath(for: bundlePath) {
             do {
@@ -95,6 +102,43 @@ public struct AppScanner: AppScannerProtocol, Sendable {
     // 名前でソート
     results.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     return results
+  }
+
+  private func isExcluded(
+    bundlePath: String,
+    appItem: AppItem?,
+    excludedSet: Set<String>
+  ) -> Bool {
+    guard !excludedSet.isEmpty else { return false }
+
+    let bundleFileName = (bundlePath as NSString).lastPathComponent
+    let bundleName = fileNameWithoutExtension(bundlePath)
+    if excludedSet.contains(bundlePath)
+      || excludedSet.contains(bundleFileName)
+      || excludedSet.contains(bundleName)
+    {
+      return true
+    }
+
+    guard let appItem else {
+      let names = plistNames(for: bundlePath)
+      if let displayName = names.displayName, excludedSet.contains(displayName) {
+        return true
+      }
+      if let bundleName = names.bundleName, excludedSet.contains(bundleName) {
+        return true
+      }
+      return false
+    }
+
+    if excludedSet.contains(appItem.name) {
+      return true
+    }
+    if let originalName = appItem.originalName, excludedSet.contains(originalName) {
+      return true
+    }
+
+    return false
   }
 
   // MARK: - Bundle Discovery

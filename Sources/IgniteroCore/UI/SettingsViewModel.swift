@@ -213,7 +213,7 @@ public final class SettingsViewModel {
   /// アプリの除外状態をトグルする。
   ///
   /// 除外リストに含まれている場合は削除し、含まれていない場合は追加する。
-  /// - Parameter appName: アプリ名（例: "Safari.app"）
+  /// - Parameter appName: アプリ表示名またはバンドル名（例: "Safari" / "Safari.app"）
   /// - Throws: 設定の保存に失敗した場合
   public func toggleExcludedApp(_ appName: String) throws {
     if let index = settingsManager.settings.excludedApps.firstIndex(of: appName) {
@@ -226,7 +226,7 @@ public final class SettingsViewModel {
 
   /// アプリが除外リストに含まれているかどうかを返す。
   ///
-  /// - Parameter appName: アプリ名（例: "Safari.app"）
+  /// - Parameter appName: アプリ表示名またはバンドル名（例: "Safari" / "Safari.app"）
   /// - Returns: 除外リストに含まれている場合は `true`
   public func isAppExcluded(_ appName: String) -> Bool {
     settingsManager.settings.excludedApps.contains(appName)

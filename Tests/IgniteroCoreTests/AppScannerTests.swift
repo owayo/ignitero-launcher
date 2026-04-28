@@ -521,6 +521,49 @@ struct AppScannerExcludedAppsTests {
     #expect(results.contains { $0.path.hasSuffix("AlsoKeep.app") })
   }
 
+  @Test func filtersExcludedAppsByDisplayName() throws {
+    let tmpDir = try makeTempDir()
+    defer { cleanup(tmpDir) }
+
+    _ = try createFakeApp(at: tmpDir, name: "Keep.app", displayName: "Keep")
+    let excludedPath = try createFakeApp(
+      at: tmpDir,
+      name: "Exclude.app",
+      displayName: "Exclude Display",
+      bundleName: "ExcludeBundle"
+    )
+
+    let scanner = AppScanner(
+      scanTargets: [AppScanner.ScanTarget(path: tmpDir, maxDepth: 1)]
+    )
+    let results = try scanner.scanApplications(excludedApps: ["Exclude Display"])
+
+    #expect(results.count == 1)
+    #expect(!results.contains { $0.path == excludedPath })
+    #expect(results.contains { $0.path.hasSuffix("Keep.app") })
+  }
+
+  @Test func filtersExcludedAppsByBundleFileName() throws {
+    let tmpDir = try makeTempDir()
+    defer { cleanup(tmpDir) }
+
+    _ = try createFakeApp(at: tmpDir, name: "Keep.app", bundleName: "Keep")
+    let excludedPath = try createFakeApp(
+      at: tmpDir,
+      name: "Exclude.app",
+      bundleName: "Exclude"
+    )
+
+    let scanner = AppScanner(
+      scanTargets: [AppScanner.ScanTarget(path: tmpDir, maxDepth: 1)]
+    )
+    let results = try scanner.scanApplications(excludedApps: ["Exclude.app"])
+
+    #expect(results.count == 1)
+    #expect(!results.contains { $0.path == excludedPath })
+    #expect(results.contains { $0.path.hasSuffix("Keep.app") })
+  }
+
   @Test func emptyExcludedAppsKeepsAll() throws {
     let tmpDir = try makeTempDir()
     defer { cleanup(tmpDir) }

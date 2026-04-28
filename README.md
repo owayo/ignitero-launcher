@@ -45,7 +45,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - 🖱️ **ドラッグ移動**: ウィンドウを自由に移動でき、位置を記憶
 - 🔄 **自動キャッシュ更新**: 起動時・定期的な自動更新に対応
 - 📌 **メニューバー常駐**: バックグラウンドで常に利用可能
-- 🚫 **アプリ除外機能**: 不要なアプリを検索結果から除外
+- 🚫 **アプリ除外機能**: 不要なアプリを表示名・バンドル名・パスで検索結果から除外
 
 ## 主な機能
 
@@ -68,11 +68,11 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-04-23確認）
+#### ターミナル自動化方式（2026-04-29確認）
 
 - macOSターミナル: AppleScript（`do script`）
-- iTerm2: AppleScript（`create window` + `write text`）
-- Warp: 2026-04-23 時点の公式ドキュメントは URI Scheme / Launch Configurations を案内。Warp 0.2026.04.08.08.36.05 でも AppleScript 辞書を確認できないため `.command` ファイル方式
+- iTerm2: AppleScript（`create window` + `write text`。現行ドキュメントでは AppleScript は Deprecated 扱いだが辞書は利用可能）
+- Warp: 2026-04-29 時点の公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内。Warp.app の AppleScript 辞書を取得できないため `.command` ファイル方式
 - Ghostty: AppleScript（Ghostty 1.3.1 で確認: `new window` + `input text "...\n"`）。AppleScript が無効な環境では `.command` ファイル方式へフォールバック
 - cmux: AppleScript（cmux 0.63.2 で確認: `new window` + `input text "...\n"`）でカスタムコマンドを実行。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用
   - **注意**: ディレクトリを cmux で開く場合は Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
@@ -89,14 +89,14 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - 登録ディレクトリ配下の`.app`ファイルも検索対象に追加可能
 - ファジーマッチングによる柔軟な検索
 - **自動IME制御**: ウィンドウ表示時に自動的に英字入力モードへ切り替え
-- **アプリ除外機能**: 設定画面から不要なアプリを検索結果から除外可能
+- **アプリ除外機能**: 設定画面から不要なアプリを検索結果から除外可能（表示名・バンドル名・パスの既存設定に対応）
 
 ### ディレクトリ管理
 - **柔軟な設定**:
   - ディレクトリ自身の開き方を選択（表示しない / Finder / エディタ）
   - 配下のディレクトリの開き方を選択（表示しない / Finder / エディタ）
   - ディレクトリごとに異なるエディタを設定可能
-  - カスタム検索キーワードで見つけやすく
+  - 親ディレクトリにカスタム検索キーワードを設定可能
   - 末尾スラッシュ付きパスやルートディレクトリ`/`も正規化して扱う
 - **エディタ自動検出**: インストール済みエディタを自動検出
   - 対応エディタ: Antigravity、Cursor、VS Code、Windsurf、Zed

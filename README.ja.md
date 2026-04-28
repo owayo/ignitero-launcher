@@ -2,6 +2,20 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-04-29 時点の更新内容:
+
+- `depup --install` を実行し、依存パッケージ更新なし（4件すべて最新）を確認
+- テスト数を 876 → 880 に増加（DirectoryScanner の親検索キーワード、AppScanner の除外アプリ照合の回帰テストを追加）
+- 各ターミナルの AppleScript 対応状況を 2026-04-29 時点で再調査
+  - Terminal.app: AppleScript 辞書の `do script` を確認
+  - iTerm2: AppleScript 辞書の `create window with default profile` / `write` を確認。現行ドキュメントでは AppleScript は Deprecated 扱いだが利用可能
+  - Ghostty 1.3.1: 公式 AppleScript ドキュメントとローカル辞書で `new window` / `input text` を確認
+  - cmux 0.63.2: ローカル辞書で `new window` / `input text` を確認。公式 changelog でも AppleScript 関連修正を確認
+  - Warp: 公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内。ローカルの Warp.app は AppleScript 辞書を取得できず `.command` 方式を維持
+- コードベース全体レビュー実施、以下の確実なバグを修正:
+  - DirectoryScanner: `parent_search_keyword` が読み書きされるだけで検索名に反映されず、親ディレクトリをカスタムキーワードで検索できない問題を修正
+  - AppScanner: 設定画面が除外アプリを表示名で保存する一方、スキャン時はパスだけで照合していたため、UIから除外したアプリが検索結果に残る問題を修正
+
 2026-04-23 時点の更新内容:
 
 - EmojiKit を 2.3.5 → 2.4.0 に更新

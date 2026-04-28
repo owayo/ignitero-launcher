@@ -570,6 +570,52 @@ struct DirectoryScannerParentNameTests {
     #expect(parent?.name == "my-projects")
   }
 
+  @Test func parentDirectoryUsesCustomSearchKeyword() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/my-projects"
+    fs.directoryContents[basePath] = []
+    fs.directoryFlags = [basePath]
+    fs.existingPaths = [basePath]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .editor,
+      parentEditor: "cursor",
+      parentSearchKeyword: "work",
+      subdirsOpenMode: .editor,
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    let parent = result.directories.first { $0.path == basePath }
+    #expect(parent?.name == "work")
+  }
+
+  @Test func emptyParentSearchKeywordFallsBackToLastPathComponent() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/my-projects"
+    fs.directoryContents[basePath] = []
+    fs.directoryFlags = [basePath]
+    fs.existingPaths = [basePath]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .editor,
+      parentEditor: "cursor",
+      parentSearchKeyword: "  \n  ",
+      subdirsOpenMode: .editor,
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    let parent = result.directories.first { $0.path == basePath }
+    #expect(parent?.name == "my-projects")
+  }
+
   @Test func parentDirectoryHandlesTrailingSlash() throws {
     var fs = MockFileSystemProvider()
     let basePath = "/Users/dev/my-projects"

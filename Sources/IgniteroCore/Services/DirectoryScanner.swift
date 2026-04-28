@@ -84,7 +84,10 @@ public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
 
       // 親ディレクトリを DirectoryItem として追加（mode が .none ならスキップ）
       if registered.parentOpenMode != .none {
-        let parentName = lastPathComponent(of: normalizedPath)
+        let parentName = parentDirectoryName(
+          for: registered,
+          normalizedPath: normalizedPath
+        )
         let parentEditor = editorForOpenMode(
           registered.parentOpenMode, editor: registered.parentEditor)
         allDirectories.append(
@@ -134,6 +137,19 @@ public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
 
   private func lastPathComponent(of path: String) -> String {
     (path as NSString).lastPathComponent
+  }
+
+  private func parentDirectoryName(
+    for registered: RegisteredDirectory,
+    normalizedPath: String
+  ) -> String {
+    if let keyword = registered.parentSearchKeyword?
+      .trimmingCharacters(in: .whitespacesAndNewlines),
+      !keyword.isEmpty
+    {
+      return keyword
+    }
+    return lastPathComponent(of: normalizedPath)
   }
 
   private func editorForOpenMode(_ mode: OpenMode, editor: String?) -> String? {
