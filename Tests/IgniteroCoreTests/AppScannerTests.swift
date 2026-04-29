@@ -427,6 +427,119 @@ struct AppScannerLocalizedNameTests {
 
     #expect(localizedName == nil)
   }
+
+  @Test("InfoPlist.strings に CFBundleName のみある場合はその値を返す")
+  func bundleNameOnlyInLprojIsReturned() throws {
+    let tmpDir = try makeTempDir()
+    defer { cleanup(tmpDir) }
+
+    let appPath = try createFakeApp(
+      at: tmpDir, name: "BundleNameOnly.app", bundleName: "BundleNameOnly")
+    let lprojPath =
+      ((appPath as NSString).appendingPathComponent("Contents/Resources/ja.lproj"))
+    try FileManager.default.createDirectory(
+      atPath: lprojPath, withIntermediateDirectories: true)
+    let stringsContent = """
+      "CFBundleName" = "バンドル名のみ";
+      """
+    let stringsPath = (lprojPath as NSString).appendingPathComponent("InfoPlist.strings")
+    try stringsContent.write(toFile: stringsPath, atomically: true, encoding: .utf8)
+
+    let scanner = AppScanner()
+    let localizedName = scanner.localizedNameFromLproj(for: appPath, locale: "ja")
+
+    #expect(localizedName == "バンドル名のみ")
+  }
+
+  @Test("InfoPlist.strings に CFBundleDisplayName が優先される")
+  func displayNamePreferredOverBundleNameInLproj() throws {
+    let tmpDir = try makeTempDir()
+    defer { cleanup(tmpDir) }
+
+    let appPath = try createFakeApp(
+      at: tmpDir, name: "BothNames.app", bundleName: "BothNames")
+    let lprojPath =
+      ((appPath as NSString).appendingPathComponent("Contents/Resources/ja.lproj"))
+    try FileManager.default.createDirectory(
+      atPath: lprojPath, withIntermediateDirectories: true)
+    let stringsContent = """
+      "CFBundleDisplayName" = "表示名";
+      "CFBundleName" = "バンドル名";
+      """
+    let stringsPath = (lprojPath as NSString).appendingPathComponent("InfoPlist.strings")
+    try stringsContent.write(toFile: stringsPath, atomically: true, encoding: .utf8)
+
+    let scanner = AppScanner()
+    let localizedName = scanner.localizedNameFromLproj(for: appPath, locale: "ja")
+
+    #expect(localizedName == "表示名")
+  }
+
+  @Test("InfoPlist.strings の対象キーがない場合は nil")
+  func unrelatedKeysOnlyReturnsNil() throws {
+    let tmpDir = try makeTempDir()
+    defer { cleanup(tmpDir) }
+
+    let appPath = try createFakeApp(
+      at: tmpDir, name: "UnrelatedKeys.app", bundleName: "UnrelatedKeys")
+    let lprojPath =
+      ((appPath as NSString).appendingPathComponent("Contents/Resources/ja.lproj"))
+    try FileManager.default.createDirectory(
+      atPath: lprojPath, withIntermediateDirectories: true)
+    let stringsContent = """
+      "CFBundleHelpBookName" = "ヘルプ";
+      "NSHumanReadableCopyright" = "© 2026";
+      """
+    let stringsPath = (lprojPath as NSString).appendingPathComponent("InfoPlist.strings")
+    try stringsContent.write(toFile: stringsPath, atomically: true, encoding: .utf8)
+
+    let scanner = AppScanner()
+    let localizedName = scanner.localizedNameFromLproj(for: appPath, locale: "ja")
+
+    #expect(localizedName == nil)
+  }
+
+  @Test("InfoPlist.strings がバイナリ plist 形式でも読み取れる")
+  func binaryPlistFormatIsRead() throws {
+    let tmpDir = try makeTempDir()
+    defer { cleanup(tmpDir) }
+
+    let appPath = try createFakeApp(
+      at: tmpDir, name: "BinaryPlist.app", bundleName: "BinaryPlist")
+    let lprojPath =
+      ((appPath as NSString).appendingPathComponent("Contents/Resources/ja.lproj"))
+    try FileManager.default.createDirectory(
+      atPath: lprojPath, withIntermediateDirectories: true)
+    let dict: [String: String] = [
+      "CFBundleDisplayName": "バイナリ表示名",
+      "CFBundleName": "バイナリバンドル名",
+    ]
+    let plistData = try PropertyListSerialization.data(
+      fromPropertyList: dict, format: .binary, options: 0)
+    let stringsPath = (lprojPath as NSString).appendingPathComponent("InfoPlist.strings")
+    try plistData.write(to: URL(fileURLWithPath: stringsPath))
+
+    let scanner = AppScanner()
+    let localizedName = scanner.localizedNameFromLproj(for: appPath, locale: "ja")
+
+    #expect(localizedName == "バイナリ表示名")
+  }
+
+  @Test("指定ロケールの lproj が無くても InfoPlist.strings 自体が無いと nil")
+  func unknownLocaleReturnsNil() throws {
+    let tmpDir = try makeTempDir()
+    defer { cleanup(tmpDir) }
+
+    let appPath = try createLocalizedApp(
+      at: tmpDir, name: "JaOnly.app", bundleName: "JaOnly",
+      localizedName: "日本語アプリ", locale: "ja")
+
+    let scanner = AppScanner()
+    // 存在しないロケールを指定すると、優先順位リストにそれしかないため nil
+    let localizedName = scanner.localizedNameFromLproj(for: appPath, locale: "fr")
+
+    #expect(localizedName == nil)
+  }
 }
 
 // MARK: - App 情報抽出テスト

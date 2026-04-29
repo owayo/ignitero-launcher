@@ -2,7 +2,21 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
-2026-04-29 時点の更新内容:
+2026-04-29 時点の更新内容（追加分）:
+
+- `depup --install` を実行し、依存パッケージ更新なし（4件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（結論変更なし）
+  - Warp: 公式 GitHub Issue #3364 で AppleScript 非対応を確認。URI Scheme `warp://launch/<name>` ではコマンド実行が無視される既知のバグ（Issue #9007）あり。`.command` 方式が引き続き最適
+  - 他のターミナル（Terminal.app / iTerm2 / Ghostty / cmux）は AppleScript 対応で実装済み
+- テスト数を 880 → 893 に増加
+  - SearchService: 履歴ブーストのエッジケース（クエリと無関係な履歴・空クエリで該当パスなし・最大件数クランプ）を追加
+  - CalculatorEngine: `formatResult` に NaN / 正負の Infinity を渡してもクラッシュしないことを確認するテスト追加
+  - UpdateChecker: キャッシュ境界値（12時間ちょうどは失効、11時間59分59秒はキャッシュ採用）テスト追加
+  - AppScanner: `InfoPlist.strings` のローカライズ名解決（CFBundleName のみ・displayName 優先・対象キーなし・バイナリ plist 形式・未知ロケール）テスト追加
+- コメントの日本語化（CalculatorEngine の英語コメント `consume operator` などを日本語へ置き換え）
+- コードベース全体レビュー実施、確実なバグは検出されず（前回までのコミットで既に修正済み）
+
+2026-04-29 時点の更新内容（初回分）:
 
 - `depup --install` を実行し、依存パッケージ更新なし（4件すべて最新）を確認
 - テスト数を 876 → 880 に増加（DirectoryScanner の親検索キーワード、AppScanner の除外アプリ照合の回帰テストを追加）

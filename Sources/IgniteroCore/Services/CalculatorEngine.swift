@@ -56,7 +56,7 @@ private struct Parser {
     guard var result = parseTerm() else { return nil }
 
     while let op = peekOperator(), op == "+" || op == "-" {
-      advance()  // consume operator
+      advance()  // 演算子を消費
       guard let right = parseTerm() else { return nil }
       if op == "+" {
         result += right
@@ -71,7 +71,7 @@ private struct Parser {
     guard var result = parseFactor() else { return nil }
 
     while let op = peekOperator(), op == "*" || op == "/" || op == "%" {
-      advance()  // consume operator
+      advance()  // 演算子を消費
       guard let right = parseFactor() else { return nil }
       if op == "*" {
         result *= right
@@ -100,11 +100,11 @@ private struct Parser {
     let value: Double?
     // 括弧
     if peek() == "(" {
-      advance()  // consume '('
+      advance()  // '(' を消費
       guard let inner = parseExpression() else { return nil }
       skipWhitespace()
       guard peek() == ")" else { return nil }
-      advance()  // consume ')'
+      advance()  // ')' を消費
       value = inner
     } else {
       // 数値

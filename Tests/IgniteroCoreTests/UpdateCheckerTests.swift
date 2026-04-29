@@ -457,6 +457,60 @@ struct UpdateCheckerCacheTests {
     _ = await checker.checkForUpdate(currentVersion: "1.0.0")
     #expect(mockSession.requestedURL != nil)
   }
+
+  @Test("キャッシュが12時間ちょうどであれば API 再取得（境界値: 期限以上は失効）")
+  func exactlyTwelveHoursTriggersAPICall() async {
+    let mockSession = MockURLSession()
+    mockSession.dataToReturn = makeReleasesJSON([
+      makeRelease(tagName: "v3.0.0")
+    ])
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    // キャッシュ期限と同じ (12時間ちょうど) のタイムスタンプ
+    settingsManager.settings.updateCache = UpdateCache(
+      latestVersion: "2.0.0",
+      checkedAt: Date().addingTimeInterval(-12 * 3600)
+    )
+
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    let result = await checker.checkForUpdate(currentVersion: "1.0.0")
+    // 12時間ちょうど経過は失効とみなして API を呼ぶ
+    #expect(mockSession.requestedURL != nil)
+    #expect(result?.latestVersion == "3.0.0")
+  }
+
+  @Test("キャッシュが12時間未満なら API を呼ばない（境界値: 11時間59分59秒）")
+  func justUnderTwelveHoursUsesCache() async {
+    let mockSession = MockURLSession()
+    mockSession.dataToReturn = makeReleasesJSON([
+      makeRelease(tagName: "v9.9.9")
+    ])
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    // 12時間 - 1秒
+    settingsManager.settings.updateCache = UpdateCache(
+      latestVersion: "2.0.0",
+      checkedAt: Date().addingTimeInterval(-12 * 3600 + 1)
+    )
+
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    let result = await checker.checkForUpdate(currentVersion: "1.0.0")
+    // キャッシュ有効: API は呼ばれない
+    #expect(mockSession.requestedURL == nil)
+    #expect(result?.latestVersion == "2.0.0")
+  }
 }
 
 // MARK: - UpdateChecker 非表示バージョンテスト

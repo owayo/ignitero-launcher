@@ -608,3 +608,61 @@ struct SearchServiceHistoryAggregationTests {
     #expect(results[1].name == "Zulu")
   }
 }
+
+// MARK: - 履歴ブーストの細かな挙動
+
+@Suite("SearchService History Boost Edge Cases")
+struct SearchServiceHistoryBoostEdgeCaseTests {
+
+  @Test("クエリが履歴 keyword の prefix にも該当しない場合はブーストされない")
+  func unrelatedHistoryDoesNotBoost() async {
+    let apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app"),
+      AppItem(name: "Slack", path: "/Applications/Slack.app"),
+    ]
+    // 履歴の keyword はクエリと無関係。selectedPath だけ Slack を指す。
+    let history = [
+      SelectionHistoryEntry(
+        keyword: "messenger", selectedPath: "/Applications/Slack.app", count: 100)
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "saf", apps: apps, directories: [], commands: [], history: history)
+    #expect(!results.isEmpty)
+    // クエリ "saf" は履歴 keyword "messenger" の prefix ではないため
+    // ブーストされず、Safari がそのまま先頭になる。
+    #expect(results[0].path == "/Applications/Safari.app")
+  }
+
+  @Test("空クエリでも該当する有効パスがない場合は結果が空になる")
+  func emptyQueryWithNoMatchingValidPathsReturnsEmpty() async {
+    // 履歴は持っているが、現在のアプリ・ディレクトリ・コマンドに対応するものがない
+    let history = [
+      SelectionHistoryEntry(
+        keyword: "removed", selectedPath: "/Applications/RemovedApp.app", count: 5)
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "", apps: [], directories: [], commands: [], history: history)
+    #expect(results.isEmpty)
+  }
+
+  @Test("空クエリ時の履歴結果も最大20件にクランプされる")
+  func emptyQueryHistoryRespectsMaxResults() async {
+    var apps: [AppItem] = []
+    var history: [SelectionHistoryEntry] = []
+    for i in 0..<30 {
+      let path = "/Applications/App\(i).app"
+      apps.append(AppItem(name: "App\(i)", path: path))
+      history.append(
+        SelectionHistoryEntry(
+          keyword: "k\(i)", selectedPath: path, count: 30 - i,
+          lastUsed: Date(timeIntervalSince1970: 1_700_000_000 + Double(i)))
+      )
+    }
+    let service = SearchService()
+    let results = service.search(
+      query: "", apps: apps, directories: [], commands: [], history: history)
+    #expect(results.count == 20)
+  }
+}

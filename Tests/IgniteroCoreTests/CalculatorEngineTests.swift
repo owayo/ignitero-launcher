@@ -538,4 +538,23 @@ struct CalculatorEngineFormatResultEdgeCaseTests {
     // ドイツ語ロケールではカンマが小数点、ピリオドが桁区切り
     #expect(result.contains("1.234") || result.contains("1234"))
   }
+
+  @Test("NaN を渡してもクラッシュせず文字列を返す")
+  func formatNaNDoesNotCrash() {
+    // evaluate で NaN は弾かれるが、formatResult 自体に NaN が渡された場合の保険テスト。
+    let result = engine.formatResult(.nan, locale: Locale(identifier: "en_US"))
+    #expect(!result.isEmpty)
+  }
+
+  @Test("Infinity を渡してもクラッシュせず文字列を返す")
+  func formatInfinityDoesNotCrash() {
+    let result = engine.formatResult(.infinity, locale: Locale(identifier: "en_US"))
+    #expect(!result.isEmpty)
+  }
+
+  @Test("負の Infinity を渡してもクラッシュしない")
+  func formatNegativeInfinityDoesNotCrash() {
+    let result = engine.formatResult(-.infinity, locale: Locale(identifier: "en_US"))
+    #expect(!result.isEmpty)
+  }
 }
