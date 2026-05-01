@@ -2,6 +2,23 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-05-02 時点の更新内容:
+
+- `depup --install` を実行し、依存パッケージ更新なし（4件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（結論変更なし）
+  - Terminal.app: AppleScript 辞書の `do script` を確認
+  - iTerm2 3.6.10: 公式ドキュメントとローカル辞書で `create window with default profile` / `write text` を確認
+  - Ghostty 1.3.1: 公式 AppleScript ドキュメントとローカル辞書で `new window` / `input text` を確認
+  - cmux 0.63.2: ローカル辞書で `new window` / `input text` を確認。公式ドキュメントは引き続き CLI / Socket API も自動化経路として案内
+  - Warp 0.2026.04.27.15.32.03: 公式ドキュメントは URI Scheme を案内し、ローカルの Warp.app は AppleScript 辞書を取得できないため `.command` 方式を維持
+- コードベース全体レビュー実施、以下の確実なバグを修正:
+  - LaunchService: cmux CLI の ping で `Process.run()` に失敗した後に `terminationStatus` を参照し、Foundation 例外でクラッシュする経路を修正
+  - LaunchService: cmux の最前面化 AppleScript でも `Process.run()` 成功時だけ `waitUntilExit()` するよう修正
+  - emoji キーワード更新スクリプト: Python の既定 CA パスが存在しない macOS 環境でも、システムまたは Homebrew の CA バンドルで HTTPS 検証を継続するよう修正
+- `emoji_keywords_ja.json` を最新データで再生成
+- テスト数を 893 → 895 に増加（cmux CLI パスなし・実行権限なしの回帰テストを追加）
+- CodeRabbit CLI は認証済みだが、組織の時間上限により今回の差分レビューは開始できず
+
 2026-04-29 時点の更新内容（追加分）:
 
 - `depup --install` を実行し、依存パッケージ更新なし（4件すべて最新）を確認

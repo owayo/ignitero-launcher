@@ -457,6 +457,10 @@ public struct LaunchService: Launching, Sendable {
   /// cmux が起動していなければ起動し、CLI の ping で疎通確認する。
   /// ソケットパスは cmux CLI が自動検出するため、パスのハードコードは不要。
   private static func ensureCmuxRunning() async throws {
+    guard FileManager.default.isExecutableFile(atPath: cmuxCLIPath) else {
+      throw LaunchError.terminalNotFound(.cmux)
+    }
+
     let isRunning = !NSRunningApplication.runningApplications(
       withBundleIdentifier: cmuxBundleID
     ).isEmpty
@@ -477,14 +481,7 @@ public struct LaunchService: Launching, Sendable {
     // 協調スレッドプールをブロックしないよう Task.sleep を使用する。
     let deadline = Date().addingTimeInterval(cmuxSocketTimeout)
     while Date() < deadline {
-      let process = Process()
-      process.executableURL = URL(fileURLWithPath: cmuxCLIPath)
-      process.arguments = ["ping"]
-      process.standardOutput = FileHandle.nullDevice
-      process.standardError = FileHandle.nullDevice
-      try? process.run()
-      process.waitUntilExit()
-      if process.terminationStatus == 0 {
+      if runCmuxPing() {
         return
       }
       try? await Task.sleep(nanoseconds: UInt64(cmuxSocketPollInterval) * 1000)
@@ -492,6 +489,32 @@ public struct LaunchService: Launching, Sendable {
     throw LaunchError.scriptExecutionFailed(
       "cmux socket did not become available within \(Int(cmuxSocketTimeout))s"
     )
+  }
+
+  /// cmux CLI の ping を安全に実行する。
+  ///
+  /// `Process.run()` に失敗したタスクで `waitUntilExit()` や `terminationStatus` を呼ぶと
+  /// Foundation の例外でプロセスが終了するため、起動成功時だけ終了状態を確認する。
+  static func runCmuxPing(cliPath: String = cmuxCLIPath) -> Bool {
+    guard FileManager.default.isExecutableFile(atPath: cliPath) else {
+      return false
+    }
+
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: cliPath)
+    process.arguments = ["ping"]
+    process.standardOutput = FileHandle.nullDevice
+    process.standardError = FileHandle.nullDevice
+
+    do {
+      try process.run()
+    } catch {
+      logger.debug("cmux ping failed to launch: \(error.localizedDescription, privacy: .public)")
+      return false
+    }
+
+    process.waitUntilExit()
+    return process.terminationStatus == 0
   }
 
   /// cmux CLI コマンドを実行し、stdout を返す。事前に ensureCmuxRunning() を呼ぶこと。
@@ -553,14 +576,7 @@ public struct LaunchService: Launching, Sendable {
     if let wsID = parseWorkspaceID(from: output) {
       _ = try? executeCmuxCLI(["select-workspace", "--workspace", wsID])
     }
-    // AppleScript でアプリを最前面化（最小化解除含む）
-    let activateProcess = Process()
-    activateProcess.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-    activateProcess.arguments = ["-e", "tell application \"cmux\" to activate"]
-    activateProcess.standardOutput = FileHandle.nullDevice
-    activateProcess.standardError = FileHandle.nullDevice
-    try? activateProcess.run()
-    activateProcess.waitUntilExit()
+    activateCmux()
   }
 
   /// cmux でワークスペースを作成し、選択して最前面にする。
@@ -570,13 +586,25 @@ public struct LaunchService: Launching, Sendable {
     if let wsID = parseWorkspaceID(from: output) {
       _ = try? executeCmuxCLI(["select-workspace", "--workspace", wsID])
     }
-    // AppleScript でアプリを最前面化（最小化解除含む）
+    activateCmux()
+  }
+
+  /// AppleScript で cmux を最前面化する（最小化解除含む）。
+  private static func activateCmux() {
     let activateProcess = Process()
     activateProcess.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
     activateProcess.arguments = ["-e", "tell application \"cmux\" to activate"]
     activateProcess.standardOutput = FileHandle.nullDevice
     activateProcess.standardError = FileHandle.nullDevice
-    try? activateProcess.run()
+
+    do {
+      try activateProcess.run()
+    } catch {
+      logger.debug(
+        "cmux activation failed to launch: \(error.localizedDescription, privacy: .public)")
+      return
+    }
+
     activateProcess.waitUntilExit()
   }
 

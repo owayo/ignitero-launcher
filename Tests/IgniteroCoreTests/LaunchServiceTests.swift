@@ -672,6 +672,29 @@ struct LaunchServiceTerminalPathTests {
   }
 }
 
+// MARK: - cmux CLI ping テスト
+
+@Suite("LaunchService cmux CLI Ping")
+struct LaunchServiceCmuxCLIPingTests {
+
+  @Test("存在しない CLI パスでは false を返し、Process の例外でクラッシュしない")
+  func missingCLIPathReturnsFalse() {
+    let missingPath = "/tmp/ignitero-missing-cmux-\(UUID().uuidString)"
+    #expect(LaunchService.runCmuxPing(cliPath: missingPath) == false)
+  }
+
+  @Test("実行権限のない CLI パスでは false を返す")
+  func nonExecutableCLIPathReturnsFalse() throws {
+    let fileURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("ignitero-cmux-non-executable-\(UUID().uuidString)")
+    try "not executable".write(to: fileURL, atomically: true, encoding: .utf8)
+    defer { try? FileManager.default.removeItem(at: fileURL) }
+    try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: fileURL.path)
+
+    #expect(LaunchService.runCmuxPing(cliPath: fileURL.path) == false)
+  }
+}
+
 // MARK: - プロトコル準拠テスト
 
 @Suite("LaunchService Protocol")

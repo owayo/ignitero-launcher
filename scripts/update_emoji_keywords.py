@@ -9,18 +9,19 @@
   5. emojibase shortcodes/github.json — GitHub shortcode
   6. emojibase shortcodes/cldr-native — 日本語ネイティブ shortcode
 
-Usage:
+使い方:
     python3 scripts/update_emoji_keywords.py
 """
 
 from __future__ import annotations
 
 import json
+import ssl
 import sys
 import urllib.request
 from pathlib import Path
 
-# --- Data Source URLs ---
+# --- データソース URL ---
 
 EMOJIBASE_JA_URL = "https://cdn.jsdelivr.net/npm/emojibase-data@latest/ja/data.json"
 EMOJIBASE_EN_URL = "https://cdn.jsdelivr.net/npm/emojibase-data@latest/en/data.json"
@@ -44,22 +45,44 @@ OUTPUT_PATH = (
 )
 
 
+def create_ssl_context() -> ssl.SSLContext:
+    """利用可能な CA バンドルを使って HTTPS 検証用コンテキストを作成する。
+
+    macOS の Python 環境によっては OpenSSL の既定 CA パスが存在しないため、
+    システムまたは Homebrew の CA バンドルを明示して検証を継続する。
+    """
+    default_paths = ssl.get_default_verify_paths()
+    candidates = [
+        default_paths.cafile,
+        "/etc/ssl/cert.pem",
+        "/opt/homebrew/etc/openssl@3/cert.pem",
+        "/usr/local/etc/openssl@3/cert.pem",
+    ]
+    for candidate in candidates:
+        if candidate and Path(candidate).is_file():
+            return ssl.create_default_context(cafile=candidate)
+    return ssl.create_default_context()
+
+
+SSL_CONTEXT = create_ssl_context()
+
+
 def fetch_json(url: str) -> dict | list:
     """URL から JSON をダウンロードする。
 
-    Returns:
+    戻り値:
         パースされた JSON データ。
     """
     print(f"  Downloading {url.split('/')[-1]} ...")
     req = urllib.request.Request(url, headers={"User-Agent": "ignitero-launcher/1.0"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
+    with urllib.request.urlopen(req, timeout=30, context=SSL_CONTEXT) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
 def _remove_vs(s: str) -> str:
     """Variation Selector (U+FE0F, U+FE0E) を除去する。
 
-    Returns:
+    戻り値:
         VS を除去した文字列。
     """
     return s.replace("\ufe0f", "").replace("\ufe0e", "")
@@ -68,7 +91,7 @@ def _remove_vs(s: str) -> str:
 def merge_variation_selectors(data: dict[str, list[str]]) -> dict[str, list[str]]:
     """VS あり/なしのエントリを VS なしの正規形にマージする。
 
-    Returns:
+    戻り値:
         VS なしキーのみの辞書。キーワードは重複排除済み。
     """
     merged: dict[str, list[str]] = {}
@@ -122,7 +145,7 @@ def shortcode_to_keywords(code: str) -> list[str]:
          "thumbsup" -> ["thumbsup"]
          "+1" -> ["+1"]
 
-    Returns:
+    戻り値:
         抽出されたキーワードのリスト。
     """
     result = [code.replace("_", " ")] if "_" in code else []
@@ -204,29 +227,6 @@ def process_emojilib(data: dict, result: dict[str, list[str]]) -> None:
     print(f"  -> merged {count} entries")
 
 
-def process_shortcodes(
-    data: dict, result: dict[str, list[str]], label: str, index: int
-) -> None:
-    """shortcode データからキーワードを抽出して統合する。
-
-    emojibase の shortcode JSON は hexcode -> shortcode(s) のマッピング。
-    hexcode から絵文字文字列を引くために、result の既存エントリと
-    emojibase データの hexcode → emoji マッピングを利用する。
-    """
-    print(f"[{index}/6] {label}")
-    # data は hexcode -> shortcode or [shortcodes] のマッピング
-    # hexcode → emoji の逆引きが必要なので、後で hex_to_emoji を渡す
-    count = 0
-    for _hexcode, codes in data.items():
-        if isinstance(codes, str):
-            codes = [codes]
-        for code in codes:
-            kw = shortcode_to_keywords(code)
-            if kw:
-                count += len(kw)
-    print(f"  -> {count} shortcode keywords extracted")
-
-
 def process_shortcodes_with_hex_map(
     data: dict,
     hex_to_emoji: dict[str, str],
@@ -292,7 +292,7 @@ def main() -> None:
     # VS あり/なしのキーワードをマージする。出力は VS なしの正規形のみ。
     result = merge_variation_selectors(result)
 
-    # Compact JSON
+    # 空白なしの JSON として出力
     output = json.dumps(result, ensure_ascii=False, separators=(",", ":"))
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
