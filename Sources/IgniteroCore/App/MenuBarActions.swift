@@ -41,11 +41,8 @@ public final class MenuBarActions {
   /// 設定の永続化管理
   public let settingsManager: SettingsManager
 
-  /// アプリケーションスキャナー
-  private let appScanner: any AppScannerProtocol
-
-  /// ディレクトリスキャナー
-  private let directoryScanner: any DirectoryScannerProtocol
+  /// キャッシュ再構築の実体処理（AppCoordinator が注入し、スキャン結果を DB に保存・ビューモデルへ反映する）。
+  public var onRebuildCache: (@MainActor @Sendable () async -> Void)?
 
   // MARK: - State
 
@@ -62,18 +59,12 @@ public final class MenuBarActions {
   /// - Parameters:
   ///   - windowManager: ランチャーウィンドウの表示制御
   ///   - settingsManager: 設定の永続化管理
-  ///   - appScanner: アプリケーションスキャナー
-  ///   - directoryScanner: ディレクトリスキャナー
   public init(
     windowManager: WindowManager,
-    settingsManager: SettingsManager,
-    appScanner: any AppScannerProtocol,
-    directoryScanner: any DirectoryScannerProtocol
+    settingsManager: SettingsManager
   ) {
     self.windowManager = windowManager
     self.settingsManager = settingsManager
-    self.appScanner = appScanner
-    self.directoryScanner = directoryScanner
   }
 
   // MARK: - Menu Items
@@ -111,33 +102,19 @@ public final class MenuBarActions {
 
   /// キャッシュを再構築する。
   ///
-  /// バックグラウンドタスクとしてアプリスキャンとディレクトリスキャンを再実行する。
-  /// スキャン中は `isRebuildingCache` が `true` になる。
-  /// エラーが発生しても `isRebuildingCache` は `false` に戻る。
+  /// 実体処理は `onRebuildCache` で注入された `AppCoordinator` のフローに委譲する。
+  /// スキャン結果を DB に保存し、ビューモデルへ再読み込みするまでが含まれる。
+  /// スキャン中は `isRebuildingCache` が `true` になり、終了時（エラー時も含め）に `false` に戻る。
   public func rebuildCache() async {
     isRebuildingCache = true
     defer { isRebuildingCache = false }
 
     Self.logger.info("Starting cache rebuild")
 
-    // アプリスキャン
-    do {
-      let excludedApps = settingsManager.settings.excludedApps
-      let apps = try appScanner.scanApplications(excludedApps: excludedApps)
-      Self.logger.info("App scan completed: \(apps.count) apps found")
-    } catch {
-      Self.logger.error("App scan failed: \(error.localizedDescription)")
-    }
-
-    // ディレクトリスキャン
-    do {
-      let directories = settingsManager.settings.registeredDirectories
-      let result = try directoryScanner.scan(directories: directories)
-      Self.logger.info(
-        "Directory scan completed: \(result.directories.count) directories, \(result.apps.count) apps"
-      )
-    } catch {
-      Self.logger.error("Directory scan failed: \(error.localizedDescription)")
+    if let onRebuildCache {
+      await onRebuildCache()
+    } else {
+      Self.logger.error("onRebuildCache is not configured; cache rebuild skipped")
     }
 
     Self.logger.info("Cache rebuild completed")

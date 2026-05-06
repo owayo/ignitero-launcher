@@ -174,7 +174,9 @@ public struct UpdateChecker: Sendable {
       }
 
       // 非表示済みバージョンのチェック
-      if let result, let dismissedVersion, result.latestVersion == dismissedVersion {
+      // await 中にユーザーがバナーを閉じる可能性があるため、判定直前に最新値を再取得する
+      let currentDismissedVersion = settingsManager.settings.updateCache?.dismissedVersion
+      if let result, let currentDismissedVersion, result.latestVersion == currentDismissedVersion {
         return nil
       }
 
@@ -182,10 +184,12 @@ public struct UpdateChecker: Sendable {
     } catch {
       Self.logger.warning("Update check failed: \(error.localizedDescription)")
       // ネットワークエラー時はキャッシュ値を使用（downloadURLもキャッシュから復元）
+      // await 中にユーザーがバナーを閉じている可能性があるため、最新値を再取得する
+      let currentDismissedVersion = settingsManager.settings.updateCache?.dismissedVersion
       return buildResult(
         cachedVersion: cache?.latestVersion,
         currentVersion: currentVersion,
-        dismissedVersion: dismissedVersion,
+        dismissedVersion: currentDismissedVersion,
         downloadURL: cache?.downloadURL
       )
     }

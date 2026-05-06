@@ -21,15 +21,15 @@ Makefile                    # ビルド・インストール
 Resources/                  # Info.plist, AppIcon.icns, entitlements
 Sources/
   IgniteroCore/             # コアモジュール (テスト可能なライブラリ)
-    App/                    # AppCoordinator, AppDelegate, GlobalShortcutManager, MenuBarActions, CacheBootstrap, PerformanceMonitor
+    App/                    # AppCoordinator, AppDelegate, GlobalShortcutManager, MenuBarActions（キャッシュ再構築は onRebuildCache コールバックで AppCoordinator.rebuildCacheAndReload に委譲し、スキャン結果のDB保存とビューモデル再読込を確実に行う）, CacheBootstrap, PerformanceMonitor
     Data/                   # CacheDatabase (GRDB), SettingsManager, SelectionHistory（設定JSON破損時はバックアップ復旧、I/Oエラーは呼び出し側へ伝播）
     Models/                 # AppItem, DirectoryItem, EditorType, TerminalType, EditorInfo, TerminalInfo
-    Services/               # SearchService, LaunchService（空クエリ履歴は使用回数+最終利用日時で優先。カスタムコマンド履歴は command://UUID 識別子で管理。実行ディレクトリはシェルエスケープし、Terminal/iTerm2/Ghostty/cmuxはAppleScript。Ghostty 1.3.1 / cmux 0.63.2 で `new window` + `input text + \\n` を確認。GhosttyでAppleScript失敗時は.commandへフォールバック。cmux はカスタムコマンド実行を AppleScript 優先、失敗時とディレクトリオープンは CLI / Socket API を使用（stdout/stderr並列読み取りでデッドロック防止、CLI ping は実行ファイルの存在と実行権限を確認してから待機）。Warpは.command、Terminal.appは/Systemパス優先）, AppScanner（除外アプリはパス・表示名・バンドル名で照合）, DirectoryScanner（親ディレクトリは parent_search_keyword を検索名に反映）, UpdateChecker（GitHub Releases: owayo/ignitero-launcher）, IMEController（TIS APIはメインスレッド実行）, CalculatorEngine, IconCacheManager, EmojiKeywordSearch, HapticService
+    Services/               # SearchService, LaunchService（空クエリ履歴は使用回数+最終利用日時で優先。カスタムコマンド履歴は command://UUID 識別子で管理。実行ディレクトリはシェルエスケープし、Terminal/iTerm2/Ghostty/cmuxはAppleScript。Ghostty 1.3.1 / cmux 0.63.2 で `new window` + `input text + \\n` を確認。GhosttyでAppleScript失敗時は.commandへフォールバック。cmux はカスタムコマンド実行を AppleScript 優先、失敗時とディレクトリオープンは CLI / Socket API を使用（stdout/stderr並列読み取りでデッドロック防止、CLI ping は実行ファイルの存在と実行権限を確認してから待機）。Warpは.command（Warp は AppleScript 非対応のため URL Scheme/Launch Configuration 方式を採る）、Terminal.appは/Systemパス優先）, AppScanner（除外アプリはパス・表示名・バンドル名で照合）, DirectoryScanner（親ディレクトリは parent_search_keyword を検索名に反映）, UpdateChecker（GitHub Releases: owayo/ignitero-launcher。await 中の dismissedVersion 変更を反映するため判定直前に最新値を再取得）, IMEController（TIS APIはメインスレッド実行）, CalculatorEngine, IconCacheManager（自動更新と手動再構築の並行書き込みからファイル破損を守るため `.atomic` で書き込み）, EmojiKeywordSearch, HapticService
     UI/                     # LauncherPanel, LauncherView, LauncherViewModel, WindowManager, SettingsView, SettingsViewModel, EditorPickerPanel, TerminalPickerPanel, RadialPickerView, EmojiPickerPanel
   IgniteroLauncher/         # 実行可能ターゲット (@main エントリ)
     IgniteroApp.swift
 Tests/
-  IgniteroCoreTests/        # 895テスト (Swift Testing)
+  IgniteroCoreTests/        # 898テスト (Swift Testing)
 .backup/                    # Tauri v2 旧実装 (参照用)
 ```
 
@@ -65,4 +65,4 @@ make clean        # ビルドキャッシュ削除
 - **@MainActor**: SettingsManager, WindowManager 等の状態管理クラスはメインアクター隔離で保護
 
 # currentDate
-Today's date is 2026-05-02.
+Today's date is 2026-05-06.

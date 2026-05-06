@@ -4,34 +4,6 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - Mock AppScanner for MenuBarActions
-
-private struct MenuBarMockAppScanner: AppScannerProtocol, @unchecked Sendable {
-  var appsToReturn: [AppItem] = []
-  var shouldThrow = false
-
-  func scanApplications(excludedApps: [String]) throws -> [AppItem] {
-    if shouldThrow {
-      throw AppScannerError.scanFailed("Mock scan failed")
-    }
-    return appsToReturn
-  }
-}
-
-// MARK: - Mock DirectoryScanner for MenuBarActions
-
-private struct MenuBarMockDirectoryScanner: DirectoryScannerProtocol, @unchecked Sendable {
-  var resultToReturn: ScanResult = ScanResult(directories: [], apps: [])
-  var shouldThrow = false
-
-  func scan(directories: [RegisteredDirectory]) throws -> ScanResult {
-    if shouldThrow {
-      throw FileSystemError.directoryNotFound("Mock directory not found")
-    }
-    return resultToReturn
-  }
-}
-
 // MARK: - Initial State Tests
 
 @Suite("MenuBarActions Initial State")
@@ -42,9 +14,7 @@ struct MenuBarActionsInitialStateTests {
   @Test func initialIsRebuildingCacheIsFalse() {
     let actions = MenuBarActions(
       windowManager: WindowManager(userDefaults: .makeTempDefaults()),
-      settingsManager: SettingsManager(configDirectory: makeTempConfigDir()),
-      appScanner: MenuBarMockAppScanner(),
-      directoryScanner: MenuBarMockDirectoryScanner()
+      settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
     #expect(actions.isRebuildingCache == false)
   }
@@ -53,11 +23,18 @@ struct MenuBarActionsInitialStateTests {
   @Test func initialIsSettingsOpenIsFalse() {
     let actions = MenuBarActions(
       windowManager: WindowManager(userDefaults: .makeTempDefaults()),
-      settingsManager: SettingsManager(configDirectory: makeTempConfigDir()),
-      appScanner: MenuBarMockAppScanner(),
-      directoryScanner: MenuBarMockDirectoryScanner()
+      settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
     #expect(actions.isSettingsOpen == false)
+  }
+
+  @MainActor
+  @Test func initialOnRebuildCacheIsNil() {
+    let actions = MenuBarActions(
+      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
+      settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
+    )
+    #expect(actions.onRebuildCache == nil)
   }
 }
 
@@ -72,9 +49,7 @@ struct MenuBarActionsShowWindowTests {
     let windowManager = WindowManager(userDefaults: .makeTempDefaults())
     let actions = MenuBarActions(
       windowManager: windowManager,
-      settingsManager: SettingsManager(configDirectory: makeTempConfigDir()),
-      appScanner: MenuBarMockAppScanner(),
-      directoryScanner: MenuBarMockDirectoryScanner()
+      settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
     #expect(windowManager.isLauncherVisible == false)
@@ -87,9 +62,7 @@ struct MenuBarActionsShowWindowTests {
     let windowManager = WindowManager(userDefaults: .makeTempDefaults())
     let actions = MenuBarActions(
       windowManager: windowManager,
-      settingsManager: SettingsManager(configDirectory: makeTempConfigDir()),
-      appScanner: MenuBarMockAppScanner(),
-      directoryScanner: MenuBarMockDirectoryScanner()
+      settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
     actions.showWindow()
@@ -105,67 +78,68 @@ struct MenuBarActionsShowWindowTests {
 struct MenuBarActionsRebuildCacheTests {
 
   @MainActor
-  @Test func rebuildCacheSetsIsRebuildingCacheTrue() async {
+  @Test func rebuildCacheWithoutCallbackCompletesAndResetsFlag() async {
     let actions = MenuBarActions(
       windowManager: WindowManager(userDefaults: .makeTempDefaults()),
-      settingsManager: SettingsManager(configDirectory: makeTempConfigDir()),
-      appScanner: MenuBarMockAppScanner(),
-      directoryScanner: MenuBarMockDirectoryScanner()
+      settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
-    // rebuildCache は async で実行し、完了後に isRebuildingCache は false に戻る
-    await actions.rebuildCache()
-    // 完了後は false
-    #expect(actions.isRebuildingCache == false)
-  }
-
-  @MainActor
-  @Test func rebuildCacheCompletesWithoutError() async {
-    let mockAppScanner = MenuBarMockAppScanner(
-      appsToReturn: [AppItem(name: "TestApp", path: "/Applications/TestApp.app")]
-    )
-    let mockDirectoryScanner = MenuBarMockDirectoryScanner(
-      resultToReturn: ScanResult(
-        directories: [DirectoryItem(name: "Projects", path: "/Users/test/Projects")],
-        apps: []
-      )
-    )
-
-    let actions = MenuBarActions(
-      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
-      settingsManager: SettingsManager(configDirectory: makeTempConfigDir()),
-      appScanner: mockAppScanner,
-      directoryScanner: mockDirectoryScanner
-    )
-
+    // onRebuildCache 未設定でも処理は完了し、isRebuildingCache は false に戻る
     await actions.rebuildCache()
     #expect(actions.isRebuildingCache == false)
   }
 
   @MainActor
-  @Test func rebuildCacheHandlesAppScannerError() async {
-    let mockAppScanner = MenuBarMockAppScanner(shouldThrow: true)
+  @Test func rebuildCacheInvokesCallback() async {
     let actions = MenuBarActions(
       windowManager: WindowManager(userDefaults: .makeTempDefaults()),
-      settingsManager: SettingsManager(configDirectory: makeTempConfigDir()),
-      appScanner: mockAppScanner,
-      directoryScanner: MenuBarMockDirectoryScanner()
+      settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
-    // エラーが発生しても isRebuildingCache は false に戻る
+    let callCounter = CallCounter()
+    actions.onRebuildCache = { @MainActor in
+      callCounter.increment()
+    }
+
     await actions.rebuildCache()
+    #expect(callCounter.value == 1)
     #expect(actions.isRebuildingCache == false)
   }
 
   @MainActor
-  @Test func rebuildCacheHandlesDirectoryScannerError() async {
-    let mockDirectoryScanner = MenuBarMockDirectoryScanner(shouldThrow: true)
+  @Test func rebuildCacheSetsIsRebuildingCacheDuringExecution() async {
     let actions = MenuBarActions(
       windowManager: WindowManager(userDefaults: .makeTempDefaults()),
-      settingsManager: SettingsManager(configDirectory: makeTempConfigDir()),
-      appScanner: MenuBarMockAppScanner(),
-      directoryScanner: mockDirectoryScanner
+      settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
+
+    let observed = ObservedFlag()
+    actions.onRebuildCache = { @MainActor [actions] in
+      observed.value = actions.isRebuildingCache
+    }
+
+    await actions.rebuildCache()
+    // コールバック実行中は isRebuildingCache が true で観測されるべき
+    #expect(observed.value == true)
+    // 完了後は false に戻る
+    #expect(actions.isRebuildingCache == false)
+  }
+
+  @MainActor
+  @Test func rebuildCacheResetsFlagEvenIfCallbackThrowsLogically() async {
+    // コールバック内で論理エラーが起きても defer で isRebuildingCache が必ず戻ることを確認する。
+    // Swift の async クロージャは throws で宣言されていないため、
+    // クロージャ内で throw 表現は使えないが、Task.cancel() などの非同期境界を経由しても
+    // defer はメソッド終了時に実行される。
+    let actions = MenuBarActions(
+      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
+      settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
+    )
+
+    actions.onRebuildCache = { @MainActor in
+      // 何らかの内部処理が早期リターンするケースを想定
+      return
+    }
 
     await actions.rebuildCache()
     #expect(actions.isRebuildingCache == false)
@@ -182,9 +156,7 @@ struct MenuBarActionsOpenSettingsTests {
   @Test func openSettingsSetsIsSettingsOpenTrue() {
     let actions = MenuBarActions(
       windowManager: WindowManager(userDefaults: .makeTempDefaults()),
-      settingsManager: SettingsManager(configDirectory: makeTempConfigDir()),
-      appScanner: MenuBarMockAppScanner(),
-      directoryScanner: MenuBarMockDirectoryScanner()
+      settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
     actions.openSettings()
@@ -195,9 +167,7 @@ struct MenuBarActionsOpenSettingsTests {
   @Test func openSettingsIdempotent() {
     let actions = MenuBarActions(
       windowManager: WindowManager(userDefaults: .makeTempDefaults()),
-      settingsManager: SettingsManager(configDirectory: makeTempConfigDir()),
-      appScanner: MenuBarMockAppScanner(),
-      directoryScanner: MenuBarMockDirectoryScanner()
+      settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
     actions.openSettings()
@@ -209,9 +179,7 @@ struct MenuBarActionsOpenSettingsTests {
   @Test func closeSettingsSetsIsSettingsOpenFalse() {
     let actions = MenuBarActions(
       windowManager: WindowManager(userDefaults: .makeTempDefaults()),
-      settingsManager: SettingsManager(configDirectory: makeTempConfigDir()),
-      appScanner: MenuBarMockAppScanner(),
-      directoryScanner: MenuBarMockDirectoryScanner()
+      settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
     actions.openSettings()
@@ -231,9 +199,7 @@ struct MenuBarActionsQuitTests {
   @Test func quitMethodExists() {
     let actions = MenuBarActions(
       windowManager: WindowManager(userDefaults: .makeTempDefaults()),
-      settingsManager: SettingsManager(configDirectory: makeTempConfigDir()),
-      appScanner: MenuBarMockAppScanner(),
-      directoryScanner: MenuBarMockDirectoryScanner()
+      settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
     // quit() メソッドが存在することを確認（コンパイル時チェック）
@@ -254,9 +220,7 @@ struct MenuBarActionsDependenciesTests {
     let windowManager = WindowManager(userDefaults: .makeTempDefaults())
     let actions = MenuBarActions(
       windowManager: windowManager,
-      settingsManager: SettingsManager(configDirectory: makeTempConfigDir()),
-      appScanner: MenuBarMockAppScanner(),
-      directoryScanner: MenuBarMockDirectoryScanner()
+      settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
     #expect(actions.windowManager === windowManager)
@@ -267,9 +231,7 @@ struct MenuBarActionsDependenciesTests {
     let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
     let actions = MenuBarActions(
       windowManager: WindowManager(userDefaults: .makeTempDefaults()),
-      settingsManager: settingsManager,
-      appScanner: MenuBarMockAppScanner(),
-      directoryScanner: MenuBarMockDirectoryScanner()
+      settingsManager: settingsManager
     )
 
     #expect(actions.settingsManager === settingsManager)
@@ -286,9 +248,7 @@ struct MenuBarActionsMenuItemsTests {
   @Test func menuItemsReturnsExpectedItems() {
     let actions = MenuBarActions(
       windowManager: WindowManager(userDefaults: .makeTempDefaults()),
-      settingsManager: SettingsManager(configDirectory: makeTempConfigDir()),
-      appScanner: MenuBarMockAppScanner(),
-      directoryScanner: MenuBarMockDirectoryScanner()
+      settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
     let items = actions.menuItems
@@ -303,9 +263,7 @@ struct MenuBarActionsMenuItemsTests {
   @Test func menuItemsShowRebuildingStateWhenCacheRebuilding() async {
     let actions = MenuBarActions(
       windowManager: WindowManager(userDefaults: .makeTempDefaults()),
-      settingsManager: SettingsManager(configDirectory: makeTempConfigDir()),
-      appScanner: MenuBarMockAppScanner(),
-      directoryScanner: MenuBarMockDirectoryScanner()
+      settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
     // rebuildCache 完了後はリビルド中でない
@@ -320,4 +278,17 @@ struct MenuBarActionsMenuItemsTests {
 private func makeTempConfigDir() -> URL {
   FileManager.default.temporaryDirectory
     .appendingPathComponent("ignitero-menubar-test-\(UUID().uuidString)")
+}
+
+/// テスト用のスレッドセーフなカウンタ。
+@MainActor
+private final class CallCounter {
+  private(set) var value: Int = 0
+  func increment() { value += 1 }
+}
+
+/// コールバック実行中のフラグ観測用ヘルパー。
+@MainActor
+private final class ObservedFlag {
+  var value: Bool = false
 }

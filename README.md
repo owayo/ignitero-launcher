@@ -69,11 +69,11 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-05-02確認）
+#### ターミナル自動化方式（2026-05-06確認）
 
 - macOSターミナル: AppleScript（`do script`）
 - iTerm2 3.6.10: AppleScript（`create window` + `write text`。現行ドキュメントでは AppleScript は Deprecated 扱いだが辞書は利用可能）
-- Warp 0.2026.04.27.15.32.03: 公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内。Warp.app の AppleScript 辞書を取得できないため `.command` ファイル方式
+- Warp 0.2026.04.27.15.32.03: 公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内。Warp.app の AppleScript 辞書を取得できず、2026年5月時点の最新版でも公式 Issue #3364 で AppleScript 非対応が継続しているため `.command` ファイル方式
 - Ghostty: AppleScript（Ghostty 1.3.1 で確認: `new window` + `input text "...\n"`）。AppleScript が無効な環境では `.command` ファイル方式へフォールバック
 - cmux: AppleScript（cmux 0.63.2 で確認: `new window` + `input text "...\n"`）でカスタムコマンドを実行。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュを防止
   - **注意**: ディレクトリを cmux で開く場合は Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
@@ -81,6 +81,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 ### アップデート通知
 - GitHub Releases（`owayo/ignitero-launcher`）を確認し、新バージョンがあれば起動後に通知
 - 結果は12時間キャッシュし、非表示にしたバージョンは再通知しない
+- API フェッチ中にユーザーがバナーを「非表示」にした場合も、判定直前に最新の `dismissedVersion` を再取得して反映する
 
 ### アプリケーション検索・起動
 - `/Applications`、`/System/Applications`、`~/Applications`配下のアプリケーションを自動スキャン
@@ -118,6 +119,8 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
   - 起動時に更新
   - 自動更新（1〜24時間間隔で設定可能）
   - 手動更新（ステータスバーまたは設定画面から）
+- ステータスバーの「キャッシュを再構築」もスキャン結果を確実に DB へ保存し、ビューモデルへ再読込
+- アイコンキャッシュは自動更新と手動再構築が並行しても破損しないよう原子的書き込み（`Data.write(options: .atomic)`）で保護
 
 ### UI/UX
 - シンプルで直感的な検索インターフェース
@@ -347,7 +350,7 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 - **データ**: GRDB.swift (SQLite), JSON 永続化
 - **検索**: Fuse-Swift（ファジー検索）
 - **ショートカット**: KeyboardShortcuts (`Option` + `Space`)
-- **テスト**: Swift Testing (895テスト)
+- **テスト**: Swift Testing (898テスト)
 - **パッケージ**: Swift Package Manager
 - **最小OS**: macOS 26
 

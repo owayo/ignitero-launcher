@@ -2,6 +2,21 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-05-06 時点の更新内容:
+
+- `depup --install` を実行し、依存パッケージ更新なし（4件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（結論変更なし）
+  - Terminal.app / iTerm2 / Ghostty 1.3.x / cmux 0.63.x: AppleScript 経由で実装済み
+  - Warp: 2026年5月時点でも AppleScript 非対応が続くことを公式 Issue #3364 で確認。`.command` 方式を維持
+- コードベース全体レビュー実施、以下の確実なバグを修正:
+  - MenuBarActions: メニューバー経由の「キャッシュを再構築」がスキャン結果をログ出力するだけで保存していなかった経路を修正。`AppCoordinator.rebuildCacheAndReload` をコールバック (`onRebuildCache`) で呼び出すパターンに切り替え、スキャン結果の DB 保存とビューモデル再読込まで確実に行うようにした
+  - UpdateChecker: GitHub API フェッチの `await` 中にユーザーがバナーを「非表示」にしても、ローカル変数で判定していたため反映されない問題を修正。判定直前および catch 経路でも `settingsManager.settings.updateCache?.dismissedVersion` を再取得するようにした
+  - IconCacheManager: 自動更新スキャンと手動再構築が同じ出力パスに並行書き込みした場合にファイル破損が発生し得る問題を修正。`Data.write(to:options: .atomic)` で一時ファイル+リネームによる原子的書き込みに変更
+- テスト数を 895 → 898 に増加
+  - MenuBarActions: `onRebuildCache` コールバックの呼び出しと `isRebuildingCache` の遷移テストを追加
+  - UpdateChecker: `await` 中に `dismissedVersion` が更新された場合、判定で最新値が反映されることを検証する回帰テストを追加
+  - IconCacheManager: 8並列の `cacheIcon` 呼び出し後も PNG マジックナンバーを満たす破損のないファイルが残ることを検証するテストを追加
+
 2026-05-02 時点の更新内容:
 
 - `depup --install` を実行し、依存パッケージ更新なし（4件すべて最新）を確認

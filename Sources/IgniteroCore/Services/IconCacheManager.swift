@@ -73,7 +73,9 @@ public struct IconCacheManager: Sendable {
       throw IconCacheError.failedToConvertToPNG(icnsPath)
     }
 
-    try pngData.write(to: URL(fileURLWithPath: outputPath))
+    // 自動更新スキャンと手動再構築が重なった場合に同じパスへ並行書き込みが発生し得るため、
+    // 一時ファイル + リネームで原子的に書き込み、中途半端な PNG が残らないようにする。
+    try pngData.write(to: URL(fileURLWithPath: outputPath), options: .atomic)
     return outputPath
   }
 }

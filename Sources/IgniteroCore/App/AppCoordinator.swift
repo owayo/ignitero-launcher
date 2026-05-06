@@ -166,9 +166,7 @@ public final class AppCoordinator {
     // メニューバー操作を初期化する
     self.menuBarActions = MenuBarActions(
       windowManager: wm,
-      settingsManager: settings,
-      appScanner: scanner,
-      directoryScanner: dirScanner
+      settingsManager: settings
     )
 
     // キャッシュ更新制御を初期化する
@@ -213,6 +211,12 @@ public final class AppCoordinator {
     // 設定変更時にランチャーのデータを再読み込み
     settingsViewModel.onSettingsChanged = { [weak self] in
       self?.reloadDataFromSettings()
+    }
+
+    // メニューバーからのキャッシュ再構築要求は AppCoordinator の再構築フローに委譲する
+    // （これによりスキャン結果が DB に保存され、ビューモデルへ再反映される）
+    menuBarActions.onRebuildCache = { [weak self] in
+      await self?.rebuildCacheAndReload()
     }
 
     wm.onShowLauncher = { [weak self] in

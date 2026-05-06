@@ -568,6 +568,41 @@ struct UpdateCheckerDismissedVersionTests {
     #expect(result != nil)
     #expect(result?.latestVersion == "3.0.0")
   }
+
+  @Test("await 中に dismissedVersion が新規設定された場合、フェッチ後に再取得して反映する")
+  func reflectsDismissedVersionUpdatedDuringAwait() async {
+    let mockSession = MockURLSession()
+    mockSession.dataToReturn = makeReleasesJSON([
+      makeRelease(tagName: "v2.0.0")
+    ])
+    // フェッチ完了までに数百ミリ秒の余裕を作り、その間に dismissedVersion を更新する
+    mockSession.delaySeconds = 0.3
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    // 初期状態では非表示バージョン未設定
+    settingsManager.settings.updateCache = nil
+
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    // checkForUpdate を起動し、フェッチ中（await 中）に v2.0.0 を非表示に設定する
+    async let resultTask = checker.checkForUpdate(currentVersion: "1.0.0")
+    try? await Task.sleep(for: .milliseconds(150))
+    settingsManager.settings.updateCache = UpdateCache(
+      latestVersion: nil,
+      checkedAt: nil,
+      dismissedVersion: "2.0.0",
+      downloadURL: nil
+    )
+
+    let result = await resultTask
+    // await 後の判定で最新の dismissedVersion を再取得しているため、結果は nil になるべき
+    #expect(result == nil)
+  }
 }
 
 // MARK: - UpdateChecker エラーハンドリングテスト
