@@ -63,19 +63,20 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - 実行ディレクトリを指定可能（オプション）
 - 実行ディレクトリはシェルエスケープして処理（スペースや`'`を含むパスに対応）
 - 空クエリでは最近使ったカスタムコマンドも履歴候補として再表示
+- カスタムコマンド履歴は `command://UUID` 識別子で管理し、現在登録されているコマンドだけ起動時クリーンアップで保持
 - AppleScript実行失敗時はエラーを検出し、Ghostty は `.command` 方式、cmux は CLI 方式へ自動フォールバック
 - cmux CLI は実行ファイルの存在と実行権限を確認してから ping し、CLI 起動失敗時もアプリ本体がクラッシュしないように処理
 - デフォルトターミナル（macOSターミナル / iTerm2 / Warp / Ghostty / cmux）で実行
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-05-06確認）
+#### ターミナル自動化方式（2026-05-09確認）
 
 - macOSターミナル: AppleScript（`do script`）
 - iTerm2 3.6.10: AppleScript（`create window` + `write text`。現行ドキュメントでは AppleScript は Deprecated 扱いだが辞書は利用可能）
-- Warp 0.2026.04.27.15.32.03: 公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内。Warp.app の AppleScript 辞書を取得できず、2026年5月時点の最新版でも公式 Issue #3364 で AppleScript 非対応が継続しているため `.command` ファイル方式
+- Warp 0.2026.04.27.15.32.03（ローカル確認）: 公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内。ローカルの Warp.app は AppleScript 辞書を取得できないため `.command` ファイル方式
 - Ghostty: AppleScript（Ghostty 1.3.1 で確認: `new window` + `input text "...\n"`）。AppleScript が無効な環境では `.command` ファイル方式へフォールバック
-- cmux: AppleScript（cmux 0.63.2 で確認: `new window` + `input text "...\n"`）でカスタムコマンドを実行。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュを防止
+- cmux: AppleScript（cmux 0.64.3 で確認: `new window` + `input text "...\n"`）でカスタムコマンドを実行。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュを防止
   - **注意**: ディレクトリを cmux で開く場合は Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
 
 ### アップデート通知

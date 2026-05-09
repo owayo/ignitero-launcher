@@ -405,10 +405,10 @@ struct SelectionHistoryTests {
     #expect(history.entries(for: "cmd").count == 1)
   }
 
-  // MARK: - command:// 識別子の purge 保持
+  // MARK: - command:// 識別子の purge
 
-  @Test("command:// パスのエントリは purge で削除されない")
-  func purgeKeepsCommandProtocolEntries() throws {
+  @Test("validPaths に含まれない command:// パスのエントリは purge で削除される")
+  func purgeRemovesCommandProtocolEntriesMissingFromValidPaths() throws {
     let path = makeTempFilePath()
     defer { cleanup(path) }
 
@@ -419,14 +419,28 @@ struct SelectionHistoryTests {
 
     history.purgeInvalidPaths([])
 
-    // command:// は空パスではないが、実際のファイルパスでもない
-    // 実装上は空パスのみ保持されるため、command:// は削除される
-    // → この挙動をテストで確認する
+    // command:// は空パスではないため、現在のカスタムコマンド一覧に含まれないものは削除する。
     let commandEntries = history.entries(for: "deploy")
     let buildEntries = history.entries(for: "build")
-    // command:// パスは validPaths に含まれないため削除される
     #expect(commandEntries.isEmpty)
     #expect(buildEntries.isEmpty)
+  }
+
+  @Test("validPaths に含まれる command:// パスだけ purge で保持される")
+  func purgeKeepsOnlyValidCommandProtocolEntries() throws {
+    let path = makeTempFilePath()
+    defer { cleanup(path) }
+
+    let history = SelectionHistory(filePath: path)
+    history.record(keyword: "deploy", path: "command://abc-123")
+    history.record(keyword: "build", path: "command://def-456")
+    history.record(keyword: "app", path: "/Applications/App.app")
+
+    history.purgeInvalidPaths(["command://abc-123"])
+
+    #expect(history.entries(for: "deploy").count == 1)
+    #expect(history.entries(for: "build").isEmpty)
+    #expect(history.entries(for: "app").isEmpty)
   }
 
   // MARK: - 複数の空パスエントリの purge 保持

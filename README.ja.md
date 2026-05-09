@@ -2,6 +2,19 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-05-09 時点の更新内容:
+
+- `depup --install` を実行し、依存パッケージ更新なし（4件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app: AppleScript 辞書の `do script` を確認
+  - iTerm2 3.6.10: 公式ドキュメントとローカル辞書で `create window with default profile` / `write text` を確認
+  - Ghostty 1.3.1: 公式 AppleScript ドキュメントとローカル辞書で `new window` / `input text` を確認
+  - cmux 0.64.3: ローカル辞書で `new window` / `input text` を確認。公式ドキュメントは CLI / Socket API も自動化経路として案内
+  - Warp 0.2026.04.27.15.32.03: 公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内し、ローカルの Warp.app は AppleScript 辞書を取得できないため `.command` 方式を維持
+- コードベース全体レビュー実施、実装挙動を変える確実なバグは検出されず
+- `SelectionHistory` の `command://UUID` 履歴クリーンアップ仕様をコメントとテストで明確化
+- テスト数を 898 → 899 に増加（`validPaths` に含まれる `command://UUID` だけ保持し、削除済みカスタムコマンド履歴は purge されることを検証）
+
 2026-05-06 時点の更新内容:
 
 - `depup --install` を実行し、依存パッケージ更新なし（4件すべて最新）を確認

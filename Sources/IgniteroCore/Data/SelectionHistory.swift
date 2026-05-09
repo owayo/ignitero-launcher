@@ -83,8 +83,9 @@ public final class SelectionHistory: Sendable {
 
   /// 存在しないパスの履歴エントリを削除する。
   ///
-  /// キャッシュ読み込み後に呼び出して、削除済みアプリやディレクトリの履歴をクリーンアップする。
-  /// 空パスのエントリ（カスタムコマンド等）は削除対象外。
+  /// キャッシュ読み込み後に呼び出して、削除済みアプリ、ディレクトリ、カスタムコマンドの履歴をクリーンアップする。
+  /// 空パスのエントリはファイルシステム上の実体を持たない履歴として削除対象外にする。
+  /// カスタムコマンドは `command://UUID` 形式のため、呼び出し側が validPaths に含めたものだけ保持する。
   /// - Parameter validPaths: 有効なパスの集合
   public func purgeInvalidPaths(_ validPaths: Set<String>) {
     storage.withLock { entries in
