@@ -4,7 +4,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - LauncherViewModel Initial State
+// MARK: - LauncherViewModel 初期状態
 
 @Suite("LauncherViewModel Initial State")
 struct LauncherViewModelInitialStateTests {
@@ -46,7 +46,7 @@ struct LauncherViewModelInitialStateTests {
   }
 }
 
-// MARK: - LauncherViewModel Search
+// MARK: - LauncherViewModel 検索
 
 @Suite("LauncherViewModel Search")
 struct LauncherViewModelSearchTests {
@@ -83,7 +83,7 @@ struct LauncherViewModelSearchTests {
     vm.searchQuery = "safari"
     vm.updateSearch()
     vm.moveSelectionDown()
-    // Now change query, selectedIndex should reset
+    // クエリ変更時に selectedIndex がリセットされることを確認する。
     vm.searchQuery = "finder"
     vm.updateSearch()
     #expect(vm.selectedIndex == 0)
@@ -114,7 +114,7 @@ struct LauncherViewModelSearchTests {
   }
 }
 
-// MARK: - LauncherViewModel Calculator
+// MARK: - LauncherViewModel 計算機
 
 @Suite("LauncherViewModel Calculator")
 struct LauncherViewModelCalculatorTests {
@@ -143,7 +143,7 @@ struct LauncherViewModelCalculatorTests {
     vm.searchQuery = "10 / 3"
     vm.updateSearch()
     #expect(vm.calculatorResult != nil)
-    // Result should be a decimal representation
+    // 小数表現の結果になることを確認する。
     #expect(vm.calculatorResult?.contains("3.3") == true)
   }
 
@@ -160,13 +160,12 @@ struct LauncherViewModelCalculatorTests {
     let vm = LauncherViewModel()
     vm.searchQuery = "42"
     vm.updateSearch()
-    // A single number without operators is not a calculator expression
-    // because there's no operation to perform
+    // 演算対象がないため、演算子を含まない単一数値は計算式として扱わない。
     #expect(vm.calculatorResult == nil)
   }
 }
 
-// MARK: - LauncherViewModel Selection Navigation
+// MARK: - LauncherViewModel 選択移動
 
 @Suite("LauncherViewModel Selection Navigation")
 struct LauncherViewModelSelectionTests {
@@ -181,7 +180,7 @@ struct LauncherViewModelSelectionTests {
     ]
     vm.searchQuery = "app"
     vm.updateSearch()
-    // Ensure we have results
+    // 移動対象の検索結果があることを確認する。
     guard vm.searchResults.count >= 2 else {
       Issue.record("Expected at least 2 results but got \(vm.searchResults.count)")
       return
@@ -259,7 +258,7 @@ struct LauncherViewModelSelectionTests {
   }
 }
 
-// MARK: - LauncherViewModel Confirm Selection
+// MARK: - LauncherViewModel 選択確定
 
 @Suite("LauncherViewModel Confirm Selection")
 struct LauncherViewModelConfirmSelectionTests {
@@ -311,7 +310,7 @@ struct LauncherViewModelConfirmSelectionTests {
   }
 }
 
-// MARK: - LauncherViewModel Special Key Handling
+// MARK: - LauncherViewModel 特殊キー処理
 
 @Suite("LauncherViewModel Special Key Handling")
 struct LauncherViewModelSpecialKeyTests {
@@ -444,7 +443,7 @@ struct LauncherViewModelSpecialKeyTests {
   }
 }
 
-// MARK: - LauncherViewModel Clear Search
+// MARK: - LauncherViewModel 検索クリア
 
 @Suite("LauncherViewModel Clear Search")
 struct LauncherViewModelClearSearchTests {
@@ -496,7 +495,7 @@ struct LauncherViewModelClearSearchTests {
   }
 }
 
-// MARK: - LauncherViewModel Update Banner
+// MARK: - LauncherViewModel アップデートバナー
 
 @Suite("LauncherViewModel Update Banner")
 struct LauncherViewModelUpdateBannerTests {
@@ -522,7 +521,7 @@ struct LauncherViewModelUpdateBannerTests {
     let vm = LauncherViewModel()
     vm.updateBannerVersion = "2.0.0"
     vm.dismissUpdateBanner(version: "1.0.0")
-    // Dismissing a different version should not affect current banner
+    // 別バージョンの非表示要求は現在のバナーへ影響しない。
     #expect(vm.isUpdateBannerDismissed == false)
   }
 
@@ -532,7 +531,7 @@ struct LauncherViewModelUpdateBannerTests {
     vm.updateBannerVersion = "2.0.0"
     vm.dismissUpdateBanner(version: "2.0.0")
     #expect(vm.isUpdateBannerDismissed == true)
-    // Setting a new version resets the dismissed flag
+    // 新しいバージョン表示時に非表示フラグがリセットされる。
     vm.showUpdateBanner(version: "3.0.0")
     #expect(vm.updateBannerVersion == "3.0.0")
     #expect(vm.isUpdateBannerDismissed == false)
@@ -541,18 +540,18 @@ struct LauncherViewModelUpdateBannerTests {
   @MainActor
   @Test func shouldShowUpdateBanner() {
     let vm = LauncherViewModel()
-    // No banner version set
+    // バナーバージョン未設定時。
     #expect(vm.shouldShowUpdateBanner == false)
-    // Set banner version
+    // バナーバージョンを設定する。
     vm.updateBannerVersion = "2.0.0"
     #expect(vm.shouldShowUpdateBanner == true)
-    // Dismiss it
+    // バナーを非表示にする。
     vm.dismissUpdateBanner(version: "2.0.0")
     #expect(vm.shouldShowUpdateBanner == false)
   }
 }
 
-// MARK: - LauncherViewModel Copy Calculator Result
+// MARK: - LauncherViewModel 計算結果コピー
 
 @Suite("LauncherViewModel Copy Calculator")
 struct LauncherViewModelCopyCalculatorTests {
@@ -574,12 +573,12 @@ struct LauncherViewModelCopyCalculatorTests {
     vm.searchQuery = "safari"
     vm.updateSearch()
     #expect(vm.calculatorResult == nil)
-    // Should not crash
+    // nil の場合もクラッシュしないことを確認する。
     vm.copyCalculatorResult()
   }
 }
 
-// MARK: - LauncherViewModel Special Actions
+// MARK: - LauncherViewModel 特殊アクション
 
 @Suite("LauncherViewModel Special Actions")
 struct LauncherViewModelSpecialActionsTests {
@@ -692,9 +691,35 @@ struct LauncherViewModelSpecialActionsTests {
       webResults[0].path.contains("x%20swift") || webResults[0].path.contains("x+swift")
         || webResults[0].path.contains("x swift"))
   }
+
+  @MainActor
+  @Test func googleSearchEncodesQuerySeparatorsAsValue() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "g a&b=c+d"
+    vm.updateSearch()
+    let webResults = vm.searchResults.filter { $0.kind == .webSearch }
+    #expect(webResults.count == 1)
+    #expect(webResults[0].path == "https://www.google.com/search?q=a%26b%3Dc%2Bd")
+    #expect(Self.queryValue(from: webResults[0].path) == "a&b=c+d")
+  }
+
+  @MainActor
+  @Test func xSearchEncodesQuerySeparatorsAsValue() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "x a&b=c+d"
+    vm.updateSearch()
+    let webResults = vm.searchResults.filter { $0.kind == .webSearch }
+    #expect(webResults.count == 1)
+    #expect(webResults[0].path == "https://x.com/search?q=a%26b%3Dc%2Bd")
+    #expect(Self.queryValue(from: webResults[0].path) == "a&b=c+d")
+  }
+
+  private static func queryValue(from urlString: String) -> String? {
+    URLComponents(string: urlString)?.queryItems?.first { $0.name == "q" }?.value
+  }
 }
 
-// MARK: - LauncherViewModel Confirm Selection Edge Cases
+// MARK: - LauncherViewModel 選択確定エッジケース
 
 @Suite("LauncherViewModel Confirm Selection Edge Cases")
 struct LauncherViewModelConfirmEdgeCaseTests {

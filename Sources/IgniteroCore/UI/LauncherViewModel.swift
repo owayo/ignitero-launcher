@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 
-// MARK: - Special Key Types
+// MARK: - 特殊キー種別
 
 /// ランチャーで処理する特殊キーの種別
 public enum SpecialKey: Sendable {
@@ -27,7 +27,7 @@ public enum SpecialKeyAction: Sendable, Equatable {
   case copyCalculator
 }
 
-// MARK: - LauncherViewModel
+// MARK: - ランチャービューモデル
 
 /// ランチャービューのビューモデル。
 ///
@@ -37,7 +37,7 @@ public enum SpecialKeyAction: Sendable, Equatable {
 @Observable
 public final class LauncherViewModel {
 
-  // MARK: - Published State
+  // MARK: - 公開状態
 
   /// キャッシュスキャン中かどうか
   public var isScanning: Bool = false
@@ -60,7 +60,7 @@ public final class LauncherViewModel {
   /// 現在のバージョンのアップデートバナーが非表示にされたか
   public private(set) var isUpdateBannerDismissed: Bool = false
 
-  // MARK: - Data Sources
+  // MARK: - データソース
 
   /// 検索対象のアプリケーション一覧
   public var apps: [AppItem] = []
@@ -86,7 +86,7 @@ public final class LauncherViewModel {
   /// 検索フィールドへのフォーカス要求トリガー（インクリメントで発火）
   public var focusTrigger: Int = 0
 
-  // MARK: - Dependencies
+  // MARK: - 依存関係
 
   private let searchService: SearchService
   private let calculatorEngine: CalculatorEngine
@@ -94,14 +94,14 @@ public final class LauncherViewModel {
   /// clearSearch() 実行中に onChange が updateSearch() を呼ばないようにする抑制フラグ
   private var isClearingSearch = false
 
-  // MARK: - Computed Properties
+  // MARK: - 計算プロパティ
 
   /// アップデートバナーを表示すべきかどうか
   public var shouldShowUpdateBanner: Bool {
     updateBannerVersion != nil && !isUpdateBannerDismissed
   }
 
-  // MARK: - Initialization
+  // MARK: - 初期化
 
   /// LauncherViewModel を初期化する。
   ///
@@ -116,7 +116,7 @@ public final class LauncherViewModel {
     self.calculatorEngine = calculatorEngine
   }
 
-  // MARK: - Search
+  // MARK: - 検索
 
   /// 検索クエリに基づいて検索を実行し、結果と計算式評価を更新する。
   ///
@@ -144,7 +144,7 @@ public final class LauncherViewModel {
     checkForCalculatorExpression()
   }
 
-  // MARK: - Selection Navigation
+  // MARK: - 選択移動
 
   /// 選択を 1 つ上に移動する。先頭の場合は移動しない。
   public func moveSelectionUp() {
@@ -160,7 +160,7 @@ public final class LauncherViewModel {
     selectedIndex += 1
   }
 
-  // MARK: - Confirm Selection
+  // MARK: - 選択確定
 
   /// 現在選択中の検索結果を返す。結果がない場合は nil。
   ///
@@ -173,7 +173,7 @@ public final class LauncherViewModel {
     return searchResults[selectedIndex]
   }
 
-  // MARK: - Clipboard
+  // MARK: - クリップボード
 
   /// 計算結果をクリップボードにコピーする。計算結果がない場合は何もしない。
   public func copyCalculatorResult() {
@@ -183,7 +183,7 @@ public final class LauncherViewModel {
     pasteboard.setString(result, forType: .string)
   }
 
-  // MARK: - Special Key Handling
+  // MARK: - 特殊キー処理
 
   /// 特殊キー入力を処理し、対応するアクションを返す。
   ///
@@ -225,7 +225,7 @@ public final class LauncherViewModel {
     }
   }
 
-  // MARK: - Clear
+  // MARK: - クリア
 
   /// 検索状態をすべてリセットする。フォーカス喪失時に呼び出す。
   public func clearSearch() {
@@ -237,7 +237,7 @@ public final class LauncherViewModel {
     isClearingSearch = false
   }
 
-  // MARK: - Update Banner
+  // MARK: - アップデートバナー
 
   /// 新バージョンのアップデートバナーを表示する。
   ///
@@ -257,7 +257,7 @@ public final class LauncherViewModel {
     isUpdateBannerDismissed = true
   }
 
-  // MARK: - Special Actions
+  // MARK: - 特殊アクション
 
   /// 検索クエリに応じた特殊アクション（Web検索、カラーピッカー、Emoji）を結果先頭に挿入する。
   private func insertSpecialActions() {
@@ -267,10 +267,7 @@ public final class LauncherViewModel {
     // Web検索: g <keyword>
     if normalized.hasPrefix("g ") {
       let keyword = String(normalized.dropFirst(2)).trimmingCharacters(in: .whitespaces)
-      if !keyword.isEmpty,
-        let encoded = keyword.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-      {
-        let url = "https://www.google.com/search?q=\(encoded)"
+      if !keyword.isEmpty, let url = Self.webSearchURL(host: "www.google.com", keyword: keyword) {
         searchResults.insert(
           SearchResult(name: "Google で「\(keyword)」を検索", kind: .webSearch, score: -10, path: url),
           at: 0
@@ -281,10 +278,7 @@ public final class LauncherViewModel {
     // Web検索: x <keyword>
     else if normalized.hasPrefix("x ") {
       let keyword = String(normalized.dropFirst(2)).trimmingCharacters(in: .whitespaces)
-      if !keyword.isEmpty,
-        let encoded = keyword.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-      {
-        let url = "https://x.com/search?q=\(encoded)"
+      if !keyword.isEmpty, let url = Self.webSearchURL(host: "x.com", keyword: keyword) {
         searchResults.insert(
           SearchResult(name: "X で「\(keyword)」を検索", kind: .webSearch, score: -10, path: url),
           at: 0
@@ -309,7 +303,17 @@ public final class LauncherViewModel {
     }
   }
 
-  // MARK: - Calculator Expression Detection
+  /// URL クエリ値として安全な検索 URL を組み立てる。
+  private static func webSearchURL(host: String, keyword: String) -> String? {
+    var allowed = CharacterSet.urlQueryAllowed
+    allowed.remove(charactersIn: "&=+?#")
+    guard let encoded = keyword.addingPercentEncoding(withAllowedCharacters: allowed) else {
+      return nil
+    }
+    return "https://\(host)/search?q=\(encoded)"
+  }
+
+  // MARK: - 計算式判定
 
   /// 検索クエリが算術式かどうかを判定し、計算結果を更新する。
   ///
