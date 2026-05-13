@@ -312,6 +312,23 @@ struct CalculatorEngineSpecialPatternTests {
     let result = engine.evaluate("0.1+0.2")!
     #expect(abs(result - 0.3) < 1e-10)
   }
+
+  @Test("大量の加算式でクラッシュしない (parseExpression のループ化回帰防止)")
+  func massiveAdditionExpression() {
+    // parseExpression を再帰実装に変えた場合、長い式でスタックオーバーフローする。
+    // 現行のループ実装ではスタック消費が O(1) のため、10000 項の加算でも安全に評価できる。
+    let n = 10_000
+    let expr = Array(repeating: "1", count: n).joined(separator: "+")
+    #expect(engine.evaluate(expr) == Double(n))
+  }
+
+  @Test("大量の乗算式でクラッシュしない (parseTerm のループ化回帰防止)")
+  func massiveMultiplicationExpression() {
+    // parseTerm をループで処理することで、長い乗算式もスタックオーバーフローを回避する。
+    let n = 10_000
+    let expr = Array(repeating: "1", count: n).joined(separator: "*")
+    #expect(engine.evaluate(expr) == 1.0)
+  }
 }
 
 // MARK: - NaN / Infinity 検出
