@@ -164,7 +164,7 @@ public struct LaunchService: Launching, Sendable {
         end tell
         """
     case .cmux:
-      // cmux 0.63.2 で確認した AppleScript API を使用する。
+      // cmux 0.64.6 で確認した AppleScript API を使用する。
       return """
         tell application "cmux"
           activate

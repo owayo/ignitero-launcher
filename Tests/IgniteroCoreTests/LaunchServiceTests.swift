@@ -693,6 +693,28 @@ struct LaunchServiceCmuxCLIPingTests {
 
     #expect(LaunchService.runCmuxPing(cliPath: fileURL.path) == false)
   }
+
+  @Test("CLI ping が正常終了したら true を返す")
+  func executableCLIPathReturningZeroReturnsTrue() throws {
+    let fileURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("ignitero-cmux-success-\(UUID().uuidString)")
+    try "#!/bin/sh\nexit 0\n".write(to: fileURL, atomically: true, encoding: .utf8)
+    defer { try? FileManager.default.removeItem(at: fileURL) }
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fileURL.path)
+
+    #expect(LaunchService.runCmuxPing(cliPath: fileURL.path) == true)
+  }
+
+  @Test("CLI ping が異常終了したら false を返す")
+  func executableCLIPathReturningNonZeroReturnsFalse() throws {
+    let fileURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("ignitero-cmux-failure-\(UUID().uuidString)")
+    try "#!/bin/sh\nexit 42\n".write(to: fileURL, atomically: true, encoding: .utf8)
+    defer { try? FileManager.default.removeItem(at: fileURL) }
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fileURL.path)
+
+    #expect(LaunchService.runCmuxPing(cliPath: fileURL.path) == false)
+  }
 }
 
 // MARK: - プロトコル準拠テスト
