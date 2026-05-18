@@ -55,6 +55,22 @@ struct TerminalTypeAllCasesTests {
     #expect(cases.contains(.warp))
     #expect(cases.contains(.cmux))
   }
+
+  @Test func rawValues() {
+    #expect(TerminalType.terminal.rawValue == "terminal")
+    #expect(TerminalType.iterm2.rawValue == "iterm2")
+    #expect(TerminalType.ghostty.rawValue == "ghostty")
+    #expect(TerminalType.warp.rawValue == "warp")
+    #expect(TerminalType.cmux.rawValue == "cmux")
+  }
+
+  @Test func codable() throws {
+    for terminal in TerminalType.allCases {
+      let data = try JSONEncoder().encode(terminal)
+      let decoded = try JSONDecoder().decode(TerminalType.self, from: data)
+      #expect(decoded == terminal)
+    }
+  }
 }
 
 // MARK: - EditorInfo テスト
