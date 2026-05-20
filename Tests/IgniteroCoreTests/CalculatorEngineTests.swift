@@ -575,3 +575,38 @@ struct CalculatorEngineFormatResultEdgeCaseTests {
     #expect(!result.isEmpty)
   }
 }
+
+// MARK: - 単項マイナスと括弧の組み合わせ
+
+@Suite("CalculatorEngine - Unary Minus With Parentheses")
+struct CalculatorEngineUnaryMinusParensTests {
+  let engine = CalculatorEngine()
+
+  @Test("単項マイナスは括弧付き式に直接適用される")
+  func unaryMinusAppliesToParenthesizedExpression() {
+    #expect(engine.evaluate("-(1+2)") == -3.0)
+  }
+
+  @Test("二項減算の右辺で括弧付き式に単項マイナスを適用")
+  func subtractParenthesizedExpression() {
+    // 10 - (-(3-1)) = 10 - (-2) = 12
+    #expect(engine.evaluate("10-(-(3-1))") == 12.0)
+  }
+
+  @Test("乗算の左辺で単項マイナス付き括弧式が使える")
+  func multiplyWithLeadingNegatedParenthesized() {
+    // -(2+3) * 4 = -5 * 4 = -20
+    #expect(engine.evaluate("-(2+3)*4") == -20.0)
+  }
+
+  @Test("単項マイナスは括弧の中身が単独でも適用される")
+  func unaryMinusAppliesToParenthesizedSingleNumber() {
+    #expect(engine.evaluate("-(42)") == -42.0)
+  }
+
+  @Test("ネスト括弧と単項マイナス")
+  func unaryMinusWithNestedParens() {
+    // -((1+2)*3) = -9
+    #expect(engine.evaluate("-((1+2)*3)") == -9.0)
+  }
+}

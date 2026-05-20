@@ -1066,6 +1066,60 @@ struct LaunchServiceCommandScriptBoundaryTests {
   }
 }
 
+// MARK: - AppleScript 対応ターミナルの追加属性検証
+
+@Suite("LaunchService AppleScript Properties")
+struct LaunchServiceAppleScriptPropertiesTests {
+
+  @Test("AppleScript 対応ターミナルはコマンドが空でも非空文字列を返す")
+  func appleScriptIsNonEmptyForSupportedTerminals() {
+    let supported: [TerminalType] = [.terminal, .iterm2, .ghostty, .cmux]
+    for terminal in supported {
+      let script = LaunchService.appleScript(
+        for: terminal,
+        command: "",
+        workingDirectory: nil
+      )
+      #expect(!script.isEmpty, "\(terminal) は空コマンドでも非空文字列を返すべき")
+    }
+  }
+
+  @Test("Warp 以外のすべての AppleScript はターミナル名を tell する")
+  func appleScriptTellsTerminalApplication() {
+    let mapping: [TerminalType: String] = [
+      .terminal: "Terminal",
+      .iterm2: "iTerm",
+      .ghostty: "Ghostty",
+      .cmux: "cmux",
+    ]
+    for (terminal, expectedAppName) in mapping {
+      let script = LaunchService.appleScript(
+        for: terminal,
+        command: "echo test",
+        workingDirectory: nil
+      )
+      #expect(
+        script.contains("tell application \"\(expectedAppName)\""),
+        "\(terminal) は `tell application \"\(expectedAppName)\"` を含むべき"
+      )
+    }
+  }
+
+  @Test("AppleScript 対応ターミナルは作業ディレクトリ付与時に cd が含まれる")
+  func appleScriptIncludesCdWhenWorkingDirectorySupplied() {
+    let supported: [TerminalType] = [.terminal, .iterm2, .ghostty, .cmux]
+    for terminal in supported {
+      let script = LaunchService.appleScript(
+        for: terminal,
+        command: "echo done",
+        workingDirectory: "/tmp/work"
+      )
+      #expect(script.contains("cd '/tmp/work'"), "\(terminal) は cd 句を含むべき")
+      #expect(script.contains("echo done"), "\(terminal) は本体コマンドを含むべき")
+    }
+  }
+}
+
 // MARK: - ワークスペースファイル検索テスト
 
 @Suite("LaunchService Workspace Glob Edge Cases")

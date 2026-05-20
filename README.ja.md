@@ -2,6 +2,18 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-05-20 時点の更新内容:
+
+- `depup --install` を実行し、依存パッケージ更新なし（4件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app / iTerm2 3.6.10 / Ghostty 1.3.1 / cmux 0.64.6: AppleScript 経由のコマンド実行を維持（公式ドキュメントとローカル辞書を再確認）
+  - Warp: 2026-05 時点でも AppleScript 非対応。`warp://action/new_window` / `warp://launch/<name>` の URL Scheme は提供されているがコマンド実行は不可のため、`.command` 方式を維持
+- コードベース全体レビュー実施、実装挙動を変える確実なバグは検出されず
+- テスト数を 907 → 917 に増加
+  - UpdateChecker: API 取得成功で新バージョンなしの場合に `currentVersion` がキャッシュされ、期限内は API 再呼び出しが抑制されることを検証
+  - CalculatorEngine: 単項マイナスが括弧付き式に直接適用されるパターン（`-(1+2)`, `-((1+2)*3)` など）を 5 件追加
+  - LaunchService: AppleScript 対応ターミナルが空コマンドでも非空スクリプトを返すこと、`tell application` のアプリ名と作業ディレクトリ付与時の `cd` 含有を確認する横断テストを 3 件追加
+
 2026-05-19 時点の更新内容:
 
 - `depup --install` を実行し、依存パッケージ更新なし（4件すべて最新）を確認

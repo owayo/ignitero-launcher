@@ -928,3 +928,63 @@ struct UpdateCheckerNetworkErrorDownloadURLTests {
     #expect(result == nil)
   }
 }
+
+// MARK: - 新バージョンなし時のキャッシュ更新挙動
+
+@Suite("UpdateChecker Cache Update No-Update Case")
+@MainActor
+struct UpdateCheckerCacheUpdateNoUpdateTests {
+
+  @Test("API 取得成功で新バージョンなしの場合、キャッシュには currentVersion が記録される")
+  func cacheStoresCurrentVersionWhenNoNewVersion() async {
+    let mockSession = MockURLSession()
+    // 現在バージョンと同じバージョンを返す
+    mockSession.dataToReturn = makeReleasesJSON([
+      makeRelease(tagName: "v1.0.0")
+    ])
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    let result = await checker.checkForUpdate(currentVersion: "1.0.0")
+    // 新バージョンなし → result は nil
+    #expect(result == nil)
+    // キャッシュは currentVersion で更新される（次回の判定で再度 nil を返せるようにする）
+    #expect(settingsManager.settings.updateCache?.latestVersion == "1.0.0")
+    #expect(settingsManager.settings.updateCache?.checkedAt != nil)
+  }
+
+  @Test("新バージョンなしのキャッシュがある場合、12時間以内は API を再呼び出ししない")
+  func noUpdateCacheSkipsAPIWithinExpiry() async {
+    let mockSession = MockURLSession()
+    // 万一 API が呼ばれたら検出できるよう、新バージョンを返すデータを用意
+    mockSession.dataToReturn = makeReleasesJSON([
+      makeRelease(tagName: "v9.9.9")
+    ])
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    // 1時間前に「新バージョンなし」と判定されたキャッシュ
+    settingsManager.settings.updateCache = UpdateCache(
+      latestVersion: "1.0.0",
+      checkedAt: Date().addingTimeInterval(-1 * 3600)
+    )
+
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    let result = await checker.checkForUpdate(currentVersion: "1.0.0")
+    // 期限内はキャッシュを使う → result は nil（cachedVersion == currentVersion）
+    #expect(result == nil)
+    // API は呼ばれない
+    #expect(mockSession.requestedURL == nil)
+  }
+}
