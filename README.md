@@ -76,17 +76,18 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-05-19確認）
+#### ターミナル自動化方式（2026-05-22確認）
 
 - macOSターミナル: AppleScript（`do script`）
 - iTerm2 3.6.10: AppleScript（`create window` + `write text`。現行ドキュメントでは AppleScript は Deprecated 扱いだが辞書は利用可能）
-- Warp 0.2026.05.13.09.15.03（ローカル確認）: 公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内。ローカルの Warp.app は AppleScript 辞書を取得できないため `.command` ファイル方式
+- Warp 0.2026.05.20.09.21.02（ローカル確認）: 公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内。ローカルの Warp.app は AppleScript 辞書を取得できないため `.command` ファイル方式
 - Ghostty: AppleScript（Ghostty 1.3.1 で確認: `new window` + `input text "...\n"`）。AppleScript が無効な環境では `.command` ファイル方式へフォールバック
-- cmux: AppleScript（cmux 0.64.6 で確認: `new window` + `input text "...\n"`）でカスタムコマンドを実行。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュを防ぎ、正常終了のみ成功扱い
+- cmux: AppleScript（cmux 0.64.7 で確認: `new window` + `input text "...\n"`）でカスタムコマンドを実行。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュを防ぎ、正常終了のみ成功扱い
   - **注意**: ディレクトリを cmux で開く場合は Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
 
 ### アップデート通知
 - GitHub Releases（`owayo/ignitero-launcher`）を確認し、新バージョンがあれば起動後に通知
+- 複数の安定版リリースが返った場合は、API の配列順ではなくセマンティックバージョン比較で最新を選択
 - 結果は12時間キャッシュし、非表示にしたバージョンは再通知しない
 - API フェッチ中にユーザーがバナーを「非表示」にした場合も、判定直前に最新の `dismissedVersion` を再取得して反映する
 

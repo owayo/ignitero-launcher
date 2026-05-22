@@ -347,6 +347,26 @@ struct UpdateCheckerPrereleaseTests {
     #expect(result != nil)
     #expect(result?.latestVersion == "2.0.0")
   }
+
+  @Test func selectsNewestStableVersionWhenAPIOrderIsNotSemantic() async {
+    let mockSession = MockURLSession()
+    mockSession.dataToReturn = makeReleasesJSON([
+      makeRelease(tagName: "v1.9.9", prerelease: false),
+      makeRelease(tagName: "v2.0.0", prerelease: false),
+    ])
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    let result = await checker.checkForUpdate(currentVersion: "1.0.0")
+    #expect(result != nil)
+    #expect(result?.latestVersion == "2.0.0")
+  }
 }
 
 // MARK: - UpdateChecker キャッシュテスト

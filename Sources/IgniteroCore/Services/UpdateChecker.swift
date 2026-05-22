@@ -216,7 +216,11 @@ public struct UpdateChecker: Sendable {
     // プレリリースをフィルタし、安定版のみを対象にする
     let stableReleases = releases.filter { !$0.prerelease }
 
-    guard let latestRelease = stableReleases.first else {
+    guard
+      let latestRelease = stableReleases.max(by: {
+        VersionComparator.isNewer(stripVPrefix($1.tagName), than: stripVPrefix($0.tagName))
+      })
+    else {
       Self.logger.debug("No stable releases found")
       return nil
     }

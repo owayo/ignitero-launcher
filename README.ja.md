@@ -2,6 +2,17 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-05-22 時点の更新内容:
+
+- `depup --install` を実行し、依存パッケージ更新なし（4件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app / iTerm2 3.6.10 / Ghostty 1.3.1 / cmux 0.64.7: AppleScript 経由のコマンド実行を維持（公式ドキュメントとローカル辞書を再確認）
+  - Warp 0.2026.05.20.09.21.02: 公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内し、ローカルの Warp.app は AppleScript 辞書を取得できないため `.command` 方式を維持
+- コードベース全体レビュー実施、以下の確実なバグを修正:
+  - UpdateChecker: GitHub Releases API の安定版配列がセマンティックバージョン順でない場合に、先頭の古い安定版を最新として扱う問題を修正。全安定版から `VersionComparator` で最大バージョンを選択するようにした
+- テスト数を 917 → 918 に増加
+  - UpdateChecker: API の返却順が `v1.9.9` → `v2.0.0` の場合でも `v2.0.0` を最新安定版として選択する回帰テストを追加
+
 2026-05-20 時点の更新内容:
 
 - `depup --install` を実行し、依存パッケージ更新なし（4件すべて最新）を確認
