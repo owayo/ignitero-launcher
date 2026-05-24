@@ -653,6 +653,37 @@ struct LaunchServiceAppleScriptCoverageTests {
     }
     #expect(unsupported == [.warp])
   }
+
+  @Test("Ghostty と cmux は入力系 AppleScript API を使う")
+  func ghosttyAndCmuxUseInputTextAppleScriptAPI() {
+    for terminal in [TerminalType.ghostty, .cmux] {
+      let script = LaunchService.appleScript(
+        for: terminal,
+        command: "echo automation",
+        workingDirectory: nil
+      )
+      #expect(script.contains("set w to new window"))
+      #expect(script.contains("focused terminal of selected tab of w"))
+      #expect(script.contains("input text \"echo automation\\n\""))
+    }
+  }
+
+  @Test("AppleScript 非対応ターミナルは .command フォールバックでコマンドを保持する")
+  func unsupportedAppleScriptTerminalKeepsCommandScriptFallback() {
+    let appleScript = LaunchService.appleScript(
+      for: .warp,
+      command: "echo fallback",
+      workingDirectory: "/tmp/work dir"
+    )
+    let commandScript = LaunchService.commandScript(
+      command: "echo fallback",
+      workingDirectory: "/tmp/work dir"
+    )
+
+    #expect(appleScript.isEmpty)
+    #expect(commandScript.contains("cd '/tmp/work dir'"))
+    #expect(commandScript.contains("echo fallback"))
+  }
 }
 
 // MARK: - エディタパステスト

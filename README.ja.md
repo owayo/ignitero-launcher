@@ -2,6 +2,20 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-05-25 時点の更新内容:
+
+- `depup --install` を実行し、依存パッケージ更新なし（4件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app: Apple Support の案内とローカル辞書で `do script` を確認
+  - iTerm2 3.6.10: 公式ドキュメントとローカル辞書で `create window with default profile` / `write` を確認
+  - Ghostty 1.3.1: 公式 AppleScript ドキュメントとローカル辞書で `new window` / `input text` を確認
+  - cmux 0.64.10: ローカル辞書で `new window` / `input text` を確認。公式ドキュメントは CLI / Socket API も自動化経路として案内
+  - Warp 0.2026.05.20.09.21.02: 公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内し、ローカルの Warp.app は AppleScript 辞書を取得できないため `.command` 方式を維持
+- コードベース全体レビュー実施、実装挙動を変える確実なバグは検出されず
+- テスト数を 918 → 920 に増加
+  - LaunchService: Ghostty/cmux が `new window` + `input text` の AppleScript API を使うことを横断検証
+  - LaunchService: AppleScript 非対応の Warp でも `.command` フォールバック用スクリプトが作業ディレクトリとコマンドを保持することを検証
+
 2026-05-22 時点の更新内容:
 
 - `depup --install` を実行し、依存パッケージ更新なし（4件すべて最新）を確認
