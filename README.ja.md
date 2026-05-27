@@ -2,6 +2,20 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-05-28 時点の更新内容:
+
+- `depup --install` を実行し、`EmojiKit` を 2.5.0 → 3.0.0 にメジャーバージョンアップ
+  - 3.0 はデプロイメントターゲットを iOS 18 / aligned OS バージョンへ引き上げる変更のみで、本プロジェクトの macOS 26 では破壊的変更なし
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app / iTerm2 3.6.10 / Ghostty 1.3.1 / cmux 0.64.10: AppleScript 経由のコマンド実行を維持
+  - Warp: 2026-05 時点でも AppleScript 非対応（GitHub issue #3364 が未対応）。`.command` 方式を維持
+- コードベース全体レビュー実施、以下の改善を行った:
+  - DirectoryScanner: 登録ディレクトリ内に `.app` 拡張子の通常ファイルが存在する場合に `AppItem` として登録されてしまい、起動時に `NSWorkspace.open` が失敗する不具合を修正。`AppScanner` と同様に `isDirectory` チェックを追加
+  - WindowManager: アプリ切替通知ハンドラを `MainActor.assumeIsolated` から `Task { @MainActor in }` に変更し、`OperationQueue.main` のクロージャから MainActor へ確実にディスパッチするように統一（clickMonitor 側と同じパターンで一貫性を確保）
+  - GlobalShortcutManager: Carbon ホットキー C コールバックとショートカット変更通知も同様に `Task { @MainActor in }` に統一
+- テスト数を 920 → 922 に増加
+  - DirectoryScanner: `.app` 拡張子の通常ファイルが `AppItem` として登録されないことを検証する Mock テストと実ファイルシステムテストを追加
+
 2026-05-25 時点の更新内容:
 
 - `depup --install` を実行し、依存パッケージ更新なし（4件すべて最新）を確認

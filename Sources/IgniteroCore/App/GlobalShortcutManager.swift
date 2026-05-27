@@ -40,10 +40,9 @@ private func carbonHotKeyEventHandler(
     return OSStatus(eventNotHandledErr)
   }
 
-  DispatchQueue.main.async {
-    MainActor.assumeIsolated {
-      GlobalShortcutManager.handleHotKeyEvent()
-    }
+  // MainActor のエグゼキュータへ確実にディスパッチする。
+  Task { @MainActor in
+    GlobalShortcutManager.handleHotKeyEvent()
   }
 
   return noErr
@@ -186,6 +185,8 @@ public final class GlobalShortcutManager {
     }
 
     // ショートカット変更通知を監視
+    // OperationQueue.main は MainActor のエグゼキュータと一致する保証がないため、
+    // Task で MainActor に確実にディスパッチする。
     shortcutChangeObserver = NotificationCenter.default.addObserver(
       forName: .init("KeyboardShortcuts_shortcutByNameDidChange"),
       object: nil,
@@ -195,7 +196,7 @@ public final class GlobalShortcutManager {
         let name = notification.userInfo?["name"] as? KeyboardShortcuts.Name,
         name == .toggleLauncher
       else { return }
-      MainActor.assumeIsolated {
+      Task { @MainActor in
         self?.reregister()
       }
     }

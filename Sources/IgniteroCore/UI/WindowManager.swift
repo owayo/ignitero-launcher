@@ -167,6 +167,8 @@ public final class WindowManager {
     }
 
     // Cmd+Tab 等で他アプリがアクティブになったことを検知
+    // OperationQueue.main は MainActor のエグゼキュータと一致する保証がないため、
+    // Task で MainActor に確実にディスパッチする（clickMonitor と同じパターン）。
     appSwitchObserver = NSWorkspace.shared.notificationCenter.addObserver(
       forName: NSWorkspace.didActivateApplicationNotification,
       object: nil,
@@ -177,7 +179,7 @@ public final class WindowManager {
           as? NSRunningApplication,
         app.bundleIdentifier != Bundle.main.bundleIdentifier
       else { return }
-      MainActor.assumeIsolated {
+      Task { @MainActor in
         self?.autoDismiss()
       }
     }

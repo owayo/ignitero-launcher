@@ -383,6 +383,46 @@ struct DirectoryScannerAppScanningTests {
     #expect(result.apps.isEmpty)
   }
 
+  /// `.app` 拡張子だが実体がディレクトリでない通常ファイルは AppItem に追加しない。
+  /// （誤って起動対象として登録すると NSWorkspace.open 時に失敗する）
+  @Test func appExtensionRegularFileIsNotRegisteredAsApp() throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/mixed"
+    fs.directoryContents[basePath] = [
+      "RealBundle.app",
+      "FakeFile.app",
+    ]
+    // RealBundle.app のみディレクトリ。FakeFile.app は通常ファイル扱い。
+    fs.directoryFlags = [
+      basePath,
+      "\(basePath)/RealBundle.app",
+    ]
+    fs.existingPaths = [
+      basePath,
+      "\(basePath)/RealBundle.app",
+      "\(basePath)/FakeFile.app",
+    ]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .finder,
+      subdirsOpenMode: .finder,
+      scanForApps: true
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try scanner.scan(directories: [registered])
+
+    // 実体がディレクトリの .app のみアプリとして検出する
+    #expect(result.apps.count == 1)
+    #expect(result.apps[0].name == "RealBundle")
+    #expect(result.apps[0].path == "\(basePath)/RealBundle.app")
+    // FakeFile.app は通常ファイルなので含めない
+    #expect(!result.apps.contains { $0.name == "FakeFile" })
+    // .app 拡張子の通常ファイルはディレクトリ結果にも含めない
+    #expect(!result.directories.contains { $0.path.contains("FakeFile.app") })
+  }
+
   @Test func appBundlesExcludedFromDirectoryItems() throws {
     var fs = MockFileSystemProvider()
     let basePath = "/Users/dev/mixed"
@@ -789,6 +829,40 @@ struct DirectoryScannerRealFileSystemTests {
     #expect(
       result.directories.contains { $0.path == subB.path && $0.editor == "vscode" })
     #expect(result.apps.isEmpty)
+  }
+
+  /// 実ファイルシステムで `.app` 拡張子の通常ファイルを混在させても、
+  /// 実体がディレクトリの .app バンドルのみが AppItem として検出されることを確認する。
+  @Test func scanIgnoresAppExtensionRegularFileOnDisk() throws {
+    let fm = FileManager.default
+    let tempBase = fm.temporaryDirectory.appendingPathComponent(
+      "ignitero-scanner-test-\(UUID().uuidString)")
+    try fm.createDirectory(at: tempBase, withIntermediateDirectories: true)
+    defer { try? fm.removeItem(at: tempBase) }
+
+    // 実体がディレクトリの .app バンドル
+    let realBundle = tempBase.appendingPathComponent("Real.app")
+    try fm.createDirectory(at: realBundle, withIntermediateDirectories: true)
+
+    // 実体が通常ファイルの .app 拡張子ファイル
+    let fakeApp = tempBase.appendingPathComponent("Fake.app")
+    try "not a bundle".write(to: fakeApp, atomically: true, encoding: .utf8)
+
+    let registered = RegisteredDirectory(
+      path: tempBase.path,
+      parentOpenMode: .finder,
+      subdirsOpenMode: .finder,
+      scanForApps: true
+    )
+
+    let scanner = DirectoryScanner()
+    let result = try scanner.scan(directories: [registered])
+
+    // Real.app のみ AppItem として検出される
+    #expect(result.apps.count == 1)
+    #expect(result.apps[0].name == "Real")
+    #expect(result.apps[0].path == realBundle.path)
+    #expect(!result.apps.contains { $0.name == "Fake" })
   }
 
   @Test func scanWithRealAppBundle() throws {

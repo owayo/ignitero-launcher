@@ -101,9 +101,9 @@ public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
 
         let childPath = (normalizedPath as NSString).appendingPathComponent(entry)
 
-        // .app バンドルかどうかを判定
+        // .app バンドルかどうかを判定（.app 拡張子の通常ファイルを誤って起動対象にしない）
         if entry.hasSuffix(".app") {
-          if registered.scanForApps {
+          if registered.scanForApps, fileSystemProvider.isDirectory(atPath: childPath) {
             let appName = String(entry.dropLast(4))  // ".app" サフィックスを除去
             allApps.append(AppItem(name: appName, path: childPath))
           }
