@@ -10,10 +10,14 @@ import Testing
 private final class MockCacheDB: CacheDatabaseProtocol, @unchecked Sendable {
   var isEmptyResult = true
   var saveAppsCalled = false
+  var loadAppsCalled = false
   var saveDirectoriesCalled = false
+  var loadDirectoriesCalled = false
   var clearCacheCalled = false
   var savedApps: [AppItem] = []
+  var loadedApps: [AppItem] = []
   var savedDirectories: [DirectoryItem] = []
+  var loadedDirectories: [DirectoryItem] = []
 
   init(isEmpty: Bool = true) {
     self.isEmptyResult = isEmpty
@@ -26,9 +30,19 @@ private final class MockCacheDB: CacheDatabaseProtocol, @unchecked Sendable {
     savedApps = apps
   }
 
+  func loadApps() async throws -> [AppItem] {
+    loadAppsCalled = true
+    return loadedApps
+  }
+
   func saveDirectories(_ dirs: [DirectoryItem]) throws {
     saveDirectoriesCalled = true
     savedDirectories = dirs
+  }
+
+  func loadDirectories() async throws -> [DirectoryItem] {
+    loadDirectoriesCalled = true
+    return loadedDirectories
   }
 
   func clearCache() throws {
@@ -297,6 +311,37 @@ struct AppCoordinatorLifecycleTests {
 
     #expect(coordinator.launcherViewModel.commands.count == 1)
     #expect(coordinator.launcherViewModel.commands[0].alias == "build")
+  }
+
+  @Test("start() loads cached apps and directories through CacheDatabaseProtocol")
+  @MainActor
+  func startLoadsCachedItemsThroughProtocol() async {
+    let settings = makeTempSettingsManager()
+    settings.settings.cacheUpdate = CacheUpdateSettings(
+      updateOnStartup: false,
+      autoUpdateEnabled: false,
+      autoUpdateIntervalHours: 6
+    )
+    try? settings.save()
+
+    let mockDB = MockCacheDB(isEmpty: false)
+    mockDB.loadedApps = [
+      AppItem(name: "CachedApp", path: "/Applications/CachedApp.app")
+    ]
+    mockDB.loadedDirectories = [
+      DirectoryItem(name: "cached-project", path: "/Users/dev/cached-project")
+    ]
+
+    let coordinator = makeCoordinator(
+      settingsManager: settings,
+      cacheDatabase: mockDB
+    )
+    await coordinator.start()
+
+    #expect(mockDB.loadAppsCalled == true)
+    #expect(mockDB.loadDirectoriesCalled == true)
+    #expect(coordinator.launcherViewModel.apps.map(\.name) == ["CachedApp"])
+    #expect(coordinator.launcherViewModel.directories.map(\.name) == ["cached-project"])
   }
 
   @Test("start() preserves command selection history")

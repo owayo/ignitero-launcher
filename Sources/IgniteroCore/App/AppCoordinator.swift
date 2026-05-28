@@ -674,15 +674,13 @@ public final class AppCoordinator {
 
   /// キャッシュデータをビューモデルに読み込む。
   private func loadCacheDataIntoViewModel() async {
-    if let db = cacheDatabase as? CacheDatabase {
-      do {
-        let apps = try await db.loadApps()
-        let directories = try await db.loadDirectories()
-        launcherViewModel.apps = apps
-        launcherViewModel.directories = directories
-      } catch {
-        Self.logger.error("Failed to load cache data: \(error.localizedDescription)")
-      }
+    do {
+      let apps = try await cacheDatabase.loadApps()
+      let directories = try await cacheDatabase.loadDirectories()
+      launcherViewModel.apps = apps
+      launcherViewModel.directories = directories
+    } catch {
+      Self.logger.error("Failed to load cache data: \(error.localizedDescription)")
     }
 
     // 設定からコマンドを読み込む

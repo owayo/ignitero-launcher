@@ -6,7 +6,9 @@ import GRDB
 public protocol CacheDatabaseProtocol: Sendable {
   func isEmpty() throws -> Bool
   func saveApps(_ apps: [AppItem]) throws
+  func loadApps() async throws -> [AppItem]
   func saveDirectories(_ dirs: [DirectoryItem]) throws
+  func loadDirectories() async throws -> [DirectoryItem]
   func clearCache() throws
 }
 

@@ -3,15 +3,19 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - Mock CacheDatabase
+// MARK: - モック CacheDatabase
 
 private final class CacheBootstrapMockDB: CacheDatabaseProtocol, @unchecked Sendable {
   var isEmptyResult: Bool
   var saveAppsCalled = false
+  var loadAppsCalled = false
   var saveDirectoriesCalled = false
+  var loadDirectoriesCalled = false
   var clearCacheCalled = false
   var savedApps: [AppItem] = []
+  var loadedApps: [AppItem] = []
   var savedDirectories: [DirectoryItem] = []
+  var loadedDirectories: [DirectoryItem] = []
 
   init(isEmpty: Bool = true) {
     self.isEmptyResult = isEmpty
@@ -26,9 +30,19 @@ private final class CacheBootstrapMockDB: CacheDatabaseProtocol, @unchecked Send
     savedApps = apps
   }
 
+  func loadApps() async throws -> [AppItem] {
+    loadAppsCalled = true
+    return loadedApps
+  }
+
   func saveDirectories(_ dirs: [DirectoryItem]) throws {
     saveDirectoriesCalled = true
     savedDirectories = dirs
+  }
+
+  func loadDirectories() async throws -> [DirectoryItem] {
+    loadDirectoriesCalled = true
+    return loadedDirectories
   }
 
   func clearCache() throws {
@@ -36,7 +50,7 @@ private final class CacheBootstrapMockDB: CacheDatabaseProtocol, @unchecked Send
   }
 }
 
-// MARK: - Mock AppScanner
+// MARK: - モック AppScanner
 
 private struct CacheBootstrapMockAppScanner: AppScannerProtocol {
   let apps: [AppItem]
@@ -50,7 +64,7 @@ private struct CacheBootstrapMockAppScanner: AppScannerProtocol {
   }
 }
 
-// MARK: - Mock DirectoryScanner
+// MARK: - モック DirectoryScanner
 
 private struct CacheBootstrapMockDirScanner: DirectoryScannerProtocol {
   let result: ScanResult
@@ -64,13 +78,13 @@ private struct CacheBootstrapMockDirScanner: DirectoryScannerProtocol {
   }
 }
 
-// MARK: - Tests
+// MARK: - テスト
 
 @Suite("CacheBootstrap")
 @MainActor
 struct CacheBootstrapTests {
 
-  // MARK: - Helpers
+  // MARK: - ヘルパー
 
   private func makeSettingsManager(
     updateOnStartup: Bool = true,
@@ -88,7 +102,7 @@ struct CacheBootstrapTests {
     return manager
   }
 
-  // MARK: - Initial Scan Tests
+  // MARK: - 初期スキャンテスト
 
   @Test("Initial scan runs when cache is empty")
   @MainActor
