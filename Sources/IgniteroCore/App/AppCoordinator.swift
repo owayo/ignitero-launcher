@@ -336,8 +336,10 @@ public final class AppCoordinator {
   /// - Parameter result: 実行する検索結果
   public func executeResult(_ result: SearchResult) {
     // 選択履歴を記録する
+    // 検索時の比較（applyHistoryBoost）と同じ正規化を施して保存する。
+    // 生クエリのまま保存すると "Xcode" と正規化済みクエリ "xcode" が一致せず履歴ブーストが効かない。
     selectionHistory.record(
-      keyword: launcherViewModel.searchQuery,
+      keyword: SearchQueryNormalizer.normalize(launcherViewModel.searchQuery),
       path: result.path
     )
 
@@ -502,12 +504,19 @@ public final class AppCoordinator {
 
   /// Emoji ピッカーを表示し、選択された絵文字をクリップボードにコピーする。
   private func showEmojiPicker() {
+    // 他ピッカー（Editor/Terminal）と同様に isPickerVisible を立てる。
+    // これを怠ると emoji 表示中の Option+Space で toggleLauncher が onCloseAllPickers を
+    // 呼ばず、emoji パネルが残ったままランチャーが二重表示される。
+    windowManager.showPicker()
     emojiPickerPanel.show { emoji in
       NSPasteboard.general.clearContents()
       NSPasteboard.general.setString(emoji, forType: .string)
       HapticService.confirmed()
     }
     emojiPickerPanel.onDismiss = { [weak self] in
+      // 選択確定・Escape・外部クローズのいずれも dismissPanel → onDismiss を通るため、
+      // ここで picker 状態を解除して isPickerVisible を false に戻す。
+      self?.windowManager.hidePicker()
       self?.emojiPickerPanel.onDismiss = nil
     }
   }

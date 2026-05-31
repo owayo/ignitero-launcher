@@ -77,7 +77,19 @@ public enum VersionComparator {
     if v.hasPrefix("v") || v.hasPrefix("V") {
       v = String(v.dropFirst())
     }
-    return v.split(separator: ".").compactMap { Int($0) }
+    // ビルドメタデータ(+...)とプレリリース(-...)を切り離し、コア部分のみを比較対象にする。
+    // compactMap だと "0-beta" のような不正セグメントが脱落して後続が繰り上がり、
+    // "1.2.0-beta.1" が [1, 2, 1]（=1.2.1）と誤認される。コア抽出後に 0 埋めでパースして防ぐ。
+    let withoutBuildMetadata =
+      v.split(separator: "+", maxSplits: 1, omittingEmptySubsequences: false).first ?? ""
+    let core =
+      withoutBuildMetadata
+      .split(separator: "-", maxSplits: 1, omittingEmptySubsequences: false)
+      .first ?? ""
+    return
+      core
+      .split(separator: ".", omittingEmptySubsequences: false)
+      .map { Int($0) ?? 0 }
   }
 }
 

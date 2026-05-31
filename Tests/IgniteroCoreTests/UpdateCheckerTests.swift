@@ -200,7 +200,7 @@ struct VersionComparisonTests {
   }
 
   @Test func nonNumericSegmentsAreDropped() {
-    // "v1.2.beta" → split は ["1", "2", "beta"]、compactMap(Int) で [1, 2]
+    // "v1.2.beta" の "beta" は数値化できず 0 埋めされ [1, 2, 0] となる
     // "v1.2.3" → [1, 2, 3]
     // 比較: 1==1, 2==2, 0 < 3 → false（candidate は新しくない）
     #expect(VersionComparator.isNewer("v1.2.beta", than: "v1.2.3") == false)
@@ -231,8 +231,27 @@ struct VersionComparisonTests {
   }
 
   @Test func onlyDotsVersion() {
-    // "..." → split で空のセグメント → compactMap(Int) で空配列
+    // "..." → 空セグメントはすべて 0 埋めされ [0, 0, 0, 0] となる
+    // [0,0,0,0] vs [1,0,0] → 先頭 0 < 1 → false
     #expect(VersionComparator.isNewer("...", than: "1.0.0") == false)
+  }
+
+  @Test func prereleaseSuffixDoesNotInflateVersion() {
+    // "1.2.0-beta.1" は旧実装(compactMap)では "0-beta" が脱落して [1,2,1]（=1.2.1）と
+    // 誤認されていたが、コア抽出により [1,2,0] となり 1.2.0 と同値（新しくない）になる。
+    #expect(VersionComparator.isNewer("1.2.0-beta.1", than: "1.2.0") == false)
+    #expect(VersionComparator.isNewer("v1.2.0-beta.1", than: "1.2.0") == false)
+  }
+
+  @Test func buildMetadataIsIgnored() {
+    // "1.2.0+build.1" のビルドメタデータ(+...)は比較対象から除外される。
+    #expect(VersionComparator.isNewer("1.2.0+build.1", than: "1.2.0") == false)
+    #expect(VersionComparator.isNewer("1.2.0", than: "1.2.0+build.1") == false)
+  }
+
+  @Test func prereleaseIsOlderThanNextPatch() {
+    // プレリリースのコアは元バージョンなので、次のパッチ版の方が新しい。
+    #expect(VersionComparator.isNewer("1.2.1", than: "1.2.0-beta.1") == true)
   }
 }
 

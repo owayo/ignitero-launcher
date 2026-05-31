@@ -256,14 +256,15 @@ public struct SearchService: Sendable {
       let path = results[i].path
 
       // 完全一致の履歴エントリ
+      // 旧バージョンが生クエリ（未正規化）で保存した履歴も救済するため、比較時にも keyword を正規化する。
       if let exactEntry = history.first(where: {
-        $0.keyword == query && $0.selectedPath == path
+        SearchQueryNormalizer.normalize($0.keyword) == query && $0.selectedPath == path
       }) {
         // 完全一致は最高優先度: スコアを大幅に下げる（負のスコアを許可）
         let countBoost = min(Double(exactEntry.count) * 0.01, 0.5)
         results[i].score -= 1.0 + countBoost
       } else if let prefixEntry = history.first(where: {
-        $0.keyword.hasPrefix(query) && $0.selectedPath == path
+        SearchQueryNormalizer.normalize($0.keyword).hasPrefix(query) && $0.selectedPath == path
       }) {
         // 前方一致は中程度の優先度
         let countBoost = min(Double(prefixEntry.count) * 0.005, 0.2)

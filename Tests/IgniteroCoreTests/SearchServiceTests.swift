@@ -249,6 +249,41 @@ struct SearchServiceHistoryTests {
     #expect(!results.isEmpty)
     #expect(results[0].path == "/Applications/Safari.app")
   }
+
+  @Test func historyBoostWorksWithUppercaseKeyword() async {
+    // 旧バージョンが大文字のまま保存した履歴 keyword="SAF" でも、比較時に正規化することで
+    // 大文字クエリ "SAF"（正規化後 "saf"）でブーストが効き Safeguard が先頭に来る。
+    let apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app"),
+      AppItem(name: "Safeguard", path: "/Applications/Safeguard.app"),
+    ]
+    let history = [
+      SelectionHistoryEntry(
+        keyword: "SAF", selectedPath: "/Applications/Safeguard.app", count: 10)
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "SAF", apps: apps, directories: [], commands: [], history: history)
+    #expect(!results.isEmpty)
+    #expect(results[0].path == "/Applications/Safeguard.app")
+  }
+
+  @Test func historyBoostWorksWithFullwidthKeyword() async {
+    // 全角で保存された履歴 keyword="ｓａｆ" でも正規化により半角クエリ "saf" でブーストが効く。
+    let apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app"),
+      AppItem(name: "Safeguard", path: "/Applications/Safeguard.app"),
+    ]
+    let history = [
+      SelectionHistoryEntry(
+        keyword: "ｓａｆ", selectedPath: "/Applications/Safeguard.app", count: 10)
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "saf", apps: apps, directories: [], commands: [], history: history)
+    #expect(!results.isEmpty)
+    #expect(results[0].path == "/Applications/Safeguard.app")
+  }
 }
 
 // MARK: - 複合ケース

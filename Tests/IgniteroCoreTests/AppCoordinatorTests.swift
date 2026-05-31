@@ -545,6 +545,31 @@ struct AppCoordinatorExecuteResultTests {
     #expect(history.allEntries[0].selectedPath == "/Applications/Safari.app")
   }
 
+  @Test("Execute result normalizes history keyword")
+  @MainActor
+  func executeResultNormalizesHistoryKeyword() async {
+    let history = makeTempSelectionHistory()
+    let coordinator = makeCoordinator(
+      launchService: MockLaunchService(),
+      selectionHistory: history
+    )
+
+    // 大文字・全角・前後空白を含む生クエリで実行する
+    coordinator.launcherViewModel.searchQuery = " Ｘｃｏｄｅ "
+
+    let result = SearchResult(
+      appItem: AppItem(name: "Xcode", path: "/Applications/Xcode.app"),
+      score: 0.0
+    )
+
+    coordinator.executeResult(result)
+
+    // 検索時の比較（applyHistoryBoost）と一致させるため、履歴 keyword は正規化済み "xcode" で保存される
+    #expect(history.allEntries.count == 1)
+    #expect(history.allEntries[0].keyword == "xcode")
+    #expect(history.allEntries[0].selectedPath == "/Applications/Xcode.app")
+  }
+
   @Test("Execute command result records command history identifier")
   @MainActor
   func executeCommandResultRecordsCommandHistoryIdentifier() async throws {
@@ -976,6 +1001,31 @@ struct AppCoordinatorPickerIntegrationTests {
     coordinator.showTerminalPicker(for: "/Users/dev/project")
 
     #expect(coordinator.windowManager.isPickerVisible == true)
+  }
+
+  @Test("Execute emoji result sets picker visible")
+  @MainActor
+  func executeEmojiResultSetsPickerVisible() {
+    let coordinator = makeCoordinator()
+
+    // emoji 特殊アクションの実行で Emoji ピッカーが表示され picker 状態が立つ。
+    // これを怠ると emoji 表示中の Option+Space で onCloseAllPickers が呼ばれず二重表示になる。
+    coordinator.executeResult(SearchResult(name: "Emoji ピッカー", kind: .emoji, score: -10))
+
+    #expect(coordinator.windowManager.isPickerVisible == true)
+  }
+
+  @Test("Emoji picker dismiss clears picker visible")
+  @MainActor
+  func emojiPickerDismissClearsPickerVisible() {
+    let coordinator = makeCoordinator()
+
+    coordinator.executeResult(SearchResult(name: "Emoji ピッカー", kind: .emoji, score: -10))
+    #expect(coordinator.windowManager.isPickerVisible == true)
+
+    // パネルを閉じると onDismiss 経由で picker 状態が解除される
+    coordinator.emojiPickerPanel.dismissPanel()
+    #expect(coordinator.windowManager.isPickerVisible == false)
   }
 }
 

@@ -2,6 +2,23 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-05-31 追加更新内容（同日2回目の定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、`main` が最新であることを確認
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（4件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app / iTerm2 3.6.10 / Ghostty 1.3.1 / cmux 0.64.10: AppleScript 経由のコマンド実行を維持
+  - Warp 0.2026.05.20.09.21.03: GitHub Issue #3364 が Open のままで AppleScript 非対応。`sdef` がエラー -10827、Info.plist に `NSAppleScriptEnabled` キーがないことをローカル確認し、`.command` 方式を維持
+- リファクタリング要否を astro-sight で確認（最大循環的複雑度 8、関数は適切に分割済みのため大規模リファクタリングは不要）
+- コードベース全体レビュー実施。codex(gpt-5.5) のセカンドオピニオンで 3 件とも確実なバグと確認し、以下を修正:
+  - UpdateChecker: `VersionComparator.parseVersion` が `compactMap` でプレリリース/ビルドメタ付きセグメントを脱落させ、`1.2.0-beta.1` を `[1, 2, 1]`（=1.2.1）と誤認していた問題を修正。コア部分（`-` / `+` より前）のみを `omittingEmptySubsequences: false` で 0 埋めパースするようにした
+  - SearchService / AppCoordinator: 選択履歴の keyword を生クエリのまま保存する一方、検索時は正規化済みクエリと比較していたため、大文字・全角・前後空白を含む検索語で履歴ブーストが効かない問題を修正。記録時に `SearchQueryNormalizer.normalize` を適用し、比較側でも正規化して既存履歴を救済
+  - AppCoordinator: `showEmojiPicker` が `windowManager.showPicker()` を呼ばず `isPickerVisible` を立てないため、Emoji ピッカー表示中に Option+Space を押すと `onCloseAllPickers` が機能せず Emoji パネルが残ったままランチャーが二重表示される問題を修正。Editor / Terminal ピッカーと同様に `showPicker()` / `hidePicker()` で状態管理するよう統一
+- テスト数を 924 → 932 に増加
+  - VersionComparator: プレリリース（`1.2.0-beta.1`）/ ビルドメタ（`1.2.0+build.1`）が次パッチ版と誤認されない回帰テストを 3 件追加
+  - SearchService: 大文字（`SAF`）・全角（`ｓａｆ`）の履歴 keyword でも正規化により履歴ブーストが効く回帰テストを 2 件追加
+  - AppCoordinator: 生クエリ ` Ｘｃｏｄｅ ` が履歴 keyword `xcode` として正規化保存されること、Emoji 実行で `isPickerVisible` が立ち dismiss で解除される回帰テストを 3 件追加
+
 2026-05-31 時点の更新内容:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、`main` が最新であることを確認
