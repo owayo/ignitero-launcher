@@ -90,4 +90,15 @@ struct EmojiPickerPanelTests {
     #expect(panel.isOpaque == false)
     #expect(panel.title == "Emoji")
   }
+
+  @Test("styleMask に .closable を含まない")
+  func styleMaskExcludesClosable() {
+    let panel = EmojiPickerPanel()
+    // .closable があるとタイトルバーの × ボタンで close() され、dismissPanel()
+    // (orderOut + onDismiss) を経由しないため onDismiss が呼ばれず、
+    // WindowManager.isPickerVisible が true のまま固着する。
+    // EditorPickerPanel / TerminalPickerPanel と同様に .closable を含めない。
+    #expect(!panel.styleMask.contains(.closable))
+    #expect(panel.styleMask.contains(.titled))
+  }
 }

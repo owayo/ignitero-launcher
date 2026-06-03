@@ -194,7 +194,12 @@ public final class EmojiPickerPanel: NSPanel {
   public init() {
     super.init(
       contentRect: NSRect(x: 0, y: 0, width: 380, height: 480),
-      styleMask: [.titled, .closable, .fullSizeContentView],
+      // EditorPickerPanel / TerminalPickerPanel と同様に .closable を含めない。
+      // .closable があるとタイトルバーの × ボタンで close() され、dismissPanel()
+      // (orderOut + onDismiss) を経由しないため onDismiss が呼ばれず、
+      // WindowManager.isPickerVisible が true のまま固着して以降の Option+Space で
+      // ランチャー表示が壊れる。閉じる操作は Escape / 絵文字選択 / Option+Space に統一する。
+      styleMask: [.titled, .fullSizeContentView],
       backing: .buffered,
       defer: true
     )
