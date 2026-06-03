@@ -114,6 +114,101 @@ struct LauncherViewModelSearchTests {
   }
 }
 
+// MARK: - LauncherViewModel 特殊アクション
+
+@Suite("LauncherViewModel Special Actions")
+struct LauncherViewModelSpecialActionTests {
+
+  @MainActor
+  @Test("g プレフィックスで Google 検索アクションが先頭に挿入される")
+  func googleSearchActionInserted() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "g hello"
+    vm.updateSearch()
+    #expect(vm.searchResults.first?.kind == .webSearch)
+    #expect(vm.searchResults.first?.name == "Google で「hello」を検索")
+    #expect(vm.searchResults.first?.path == "https://www.google.com/search?q=hello")
+  }
+
+  @MainActor
+  @Test("x プレフィックスで X 検索アクションが先頭に挿入される")
+  func xSearchActionInserted() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "x swift"
+    vm.updateSearch()
+    #expect(vm.searchResults.first?.kind == .webSearch)
+    #expect(vm.searchResults.first?.name == "X で「swift」を検索")
+    #expect(vm.searchResults.first?.path == "https://x.com/search?q=swift")
+  }
+
+  @MainActor
+  @Test("Web検索のクエリ値は & / = / + がパーセントエンコードされ URL 構造を壊さない")
+  func webSearchEncodesSpecialCharacters() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "g a&b=c+d"
+    vm.updateSearch()
+    #expect(vm.searchResults.first?.path == "https://www.google.com/search?q=a%26b%3Dc%2Bd")
+  }
+
+  @MainActor
+  @Test("g プレフィックスでキーワードが空なら Web検索は挿入されない")
+  func googleSearchWithEmptyKeywordNotInserted() {
+    let vm = LauncherViewModel()
+    vm.searchQuery = "g "
+    vm.updateSearch()
+    #expect(!vm.searchResults.contains { $0.kind == .webSearch })
+  }
+
+  @MainActor
+  @Test("color / colour / カラー でカラーピッカーアクションが挿入される")
+  func colorPickerActionInserted() {
+    for query in ["color", "colour", "カラー"] {
+      let vm = LauncherViewModel()
+      vm.searchQuery = query
+      vm.updateSearch()
+      #expect(vm.searchResults.first?.kind == .colorPicker)
+    }
+  }
+
+  @MainActor
+  @Test("emoji および emoji プレフィックスで Emoji ピッカーアクションが挿入される")
+  func emojiPickerActionInserted() {
+    let vm1 = LauncherViewModel()
+    vm1.searchQuery = "emoji"
+    vm1.updateSearch()
+    #expect(vm1.searchResults.first?.kind == .emoji)
+
+    let vm2 = LauncherViewModel()
+    vm2.searchQuery = "emoji smile"
+    vm2.updateSearch()
+    #expect(vm2.searchResults.contains { $0.kind == .emoji })
+  }
+
+  @MainActor
+  @Test("特殊アクションでない通常クエリには特殊アクションが挿入されない")
+  func normalQueryHasNoSpecialAction() {
+    let vm = LauncherViewModel()
+    vm.apps = [AppItem(name: "Safari", path: "/Applications/Safari.app")]
+    vm.searchQuery = "safari"
+    vm.updateSearch()
+    #expect(
+      !vm.searchResults.contains {
+        $0.kind == .webSearch || $0.kind == .colorPicker || $0.kind == .emoji
+      })
+  }
+
+  @MainActor
+  @Test("全角入力 Ｇ でも Web検索アクションが挿入される（正規化経由）")
+  func fullwidthPrefixTriggersWebSearch() {
+    let vm = LauncherViewModel()
+    // 全角 "Ｇ　ｈｅｌｌｏ" は normalize で半角小文字 "g hello" に変換される
+    vm.searchQuery = "Ｇ hello"
+    vm.updateSearch()
+    #expect(vm.searchResults.first?.kind == .webSearch)
+    #expect(vm.searchResults.first?.path == "https://www.google.com/search?q=hello")
+  }
+}
+
 // MARK: - LauncherViewModel 計算機
 
 @Suite("LauncherViewModel Calculator")

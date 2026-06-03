@@ -354,6 +354,33 @@ struct SettingsManagerTests {
     #expect(manager2.settings.registeredDirectories.count == 1)
   }
 
+  @Test func addDirectoryWithDuplicatePathReplacesExisting() throws {
+    let dir = try makeTempDir()
+    defer { cleanup(dir) }
+
+    let manager = SettingsManager(configDirectory: dir)
+    let first = RegisteredDirectory(
+      path: "/path/dup",
+      parentOpenMode: .none,
+      subdirsOpenMode: .none,
+      scanForApps: false
+    )
+    try manager.addDirectory(first)
+
+    // 同一 path を再登録すると重複追加されず、設定が置き換えられる
+    let second = RegisteredDirectory(
+      path: "/path/dup",
+      parentOpenMode: .editor,
+      subdirsOpenMode: .editor,
+      scanForApps: true
+    )
+    try manager.addDirectory(second)
+
+    #expect(manager.settings.registeredDirectories.count == 1)
+    #expect(manager.settings.registeredDirectories[0].parentOpenMode == .editor)
+    #expect(manager.settings.registeredDirectories[0].scanForApps == true)
+  }
+
   @Test func removeDirectory() throws {
     let dir = try makeTempDir()
     defer { cleanup(dir) }

@@ -270,7 +270,13 @@ public final class SettingsManager: @unchecked Sendable {
   }
 
   public func addDirectory(_ dir: RegisteredDirectory) throws {
-    settings.registeredDirectories.append(dir)
+    // path を一意キーとして扱う。SettingsView の一覧は id: \.path で行を識別するため、
+    // 同一 path の重複登録を防ぐ。既存エントリがあれば設定を置き換える。
+    if let index = settings.registeredDirectories.firstIndex(where: { $0.path == dir.path }) {
+      settings.registeredDirectories[index] = dir
+    } else {
+      settings.registeredDirectories.append(dir)
+    }
     try save()
   }
 

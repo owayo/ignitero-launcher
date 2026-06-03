@@ -2,6 +2,22 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-06-03 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、`main` が最新であることを確認
+- `depup --install --include-pinned` を実行し、GRDB.swift を 7.10.0 → 7.11.0（マイナー）へ更新。残り 3 件は最新。ビルドと全テスト通過を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app / iTerm2 / Ghostty 1.3.1 / cmux 0.64.10: AppleScript 経由のコマンド実行を維持
+  - Warp 0.2026.05.20.09.21.03: GitHub Issue #3364 が Open のままで AppleScript 非対応。Tavily 検索・実機検証（`sdef` がエラー -10827、Info.plist に `NSAppleScriptEnabled` / `OSAScriptingDefinition` キーなし、`do script` / `input text` が構文エラー）で再確認し、`.command` 方式を維持
+- リファクタリング要否を astro-sight で確認（最大循環的複雑度 8、関数は適切に分割済みのため大規模リファクタリングは不要）
+- コードベース全体レビューを 5 並列のレビューエージェントで実施。報告された確信度=高の 8 件をすべて自己検証し、誤検出・実害なし・パフォーマンス領域の 6 件を除外、codex(gpt-5.5) のセカンドオピニオンを併用して確実なバグ 2 件を修正:
+  - EmojiPickerPanel: styleMask に `.closable` が含まれ、タイトルバーの × ボタンで `close()` されると `dismissPanel()`（`orderOut` + `onDismiss`）を経由せず `onDismiss` が呼ばれないため、`WindowManager.isPickerVisible` が `true` のまま固着し以降の Option+Space でランチャー表示が壊れる問題を修正。EditorPickerPanel / TerminalPickerPanel と同様に `.closable` を除去し、閉じる操作を Escape / 絵文字選択 / Option+Space に統一
+  - SettingsView (DirectoriesSettingsTab) / SettingsManager: ディレクトリ一覧が `ForEach(..., id: \.offset)` + キャプチャした index で更新・削除していたため、行の `@State`（`isEditing` / `editedDirectory`）が削除・並び替え後に別ディレクトリへ引き継がれ、誤った行を更新し得る問題を修正。CommandsSettingsTab と同様に `id: \.path` + `firstIndex(path:)` 再検索へ統一し、`addDirectory` を path 一意（重複時は置換）にして行 identity の重複を防止
+- テスト数を 932 → 942 に増加
+  - EmojiPickerPanel: styleMask に `.closable` を含まないことを検証する回帰テストを 1 件追加
+  - SettingsManager: 同一 path の `addDirectory` が重複追加されず置き換えられることを検証する回帰テストを 1 件追加
+  - LauncherViewModel: 特殊アクション（Google / X Web 検索、カラーピッカー、Emoji ピッカー）の挿入、クエリ値の `&` / `=` / `+` パーセントエンコード、空キーワード非挿入、全角プレフィックスの正規化を検証するテストを 8 件追加
+
 2026-05-31 追加更新内容（同日2回目の定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、`main` が最新であることを確認

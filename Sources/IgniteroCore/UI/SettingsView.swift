@@ -223,15 +223,20 @@ struct DirectoriesSettingsTab: View {
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, 20)
         } else {
-          ForEach(
-            Array(viewModel.settings.registeredDirectories.enumerated()),
-            id: \.offset
-          ) { index, directory in
+          ForEach(viewModel.settings.registeredDirectories, id: \.path) { directory in
             DirectoryRow(
               directory: directory,
               onUpdate: { updated in
                 do {
-                  try viewModel.updateDirectory(at: index, updated)
+                  // path をキーに現在のインデックスを再検索し、削除・並び替えによる
+                  // インデックスずれで別ディレクトリを更新するのを防ぐ。
+                  // DirectoryEditForm は path を編集しないため path は安定キー。
+                  guard
+                    let currentIndex = viewModel.settings.registeredDirectories.firstIndex(where: {
+                      $0.path == directory.path
+                    })
+                  else { return }
+                  try viewModel.updateDirectory(at: currentIndex, updated)
                   errorMessage = nil
                 } catch {
                   errorMessage = "ディレクトリの更新に失敗しました"
@@ -239,7 +244,13 @@ struct DirectoriesSettingsTab: View {
               },
               onDelete: {
                 do {
-                  try viewModel.removeDirectory(at: index)
+                  // 削除時も path で再検索し、インデックスずれによる誤削除を防ぐ。
+                  guard
+                    let currentIndex = viewModel.settings.registeredDirectories.firstIndex(where: {
+                      $0.path == directory.path
+                    })
+                  else { return }
+                  try viewModel.removeDirectory(at: currentIndex)
                   errorMessage = nil
                 } catch {
                   errorMessage = "ディレクトリの削除に失敗しました"
