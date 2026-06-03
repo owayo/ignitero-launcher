@@ -5,7 +5,7 @@ let package = Package(
   name: "IgniteroLauncher",
   platforms: [.macOS(.v26)],
   dependencies: [
-    .package(url: "https://github.com/groue/GRDB.swift", from: "7.10.0"),
+    .package(url: "https://github.com/groue/GRDB.swift", from: "7.11.0"),
     .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.4.0"),
     .package(url: "https://github.com/krisk/fuse-swift", from: "1.4.0"),
     .package(url: "https://github.com/danielsaidi/EmojiKit", from: "3.0.0"),
