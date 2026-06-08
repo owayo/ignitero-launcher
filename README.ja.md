@@ -2,6 +2,20 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-06-09 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、`main` が最新であることを確認
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（4件すべて最新）を確認。`make build` と `make test` の通過も確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app / iTerm2 3.6.10 / Ghostty 1.3.1 / cmux 0.64.14: AppleScript 経由のコマンド実行を維持
+  - Warp 0.2026.06.03.09.49.01: 公式ドキュメントは URI Scheme / Launch Configurations を自動化手段として案内。ローカルの Warp.app は `sdef` がエラー -192 で AppleScript 辞書を取得できないため `.command` 方式を維持
+- リファクタリング要否を astro-sight で確認（最大循環的複雑度 8）。`LaunchService.swift` の Swift 6 構文が astro-sight で解析不能になっていたため、cmux CLI の stdout/stderr 回収から `nonisolated(unsafe)` を除去
+- コードベース全体レビューを実施。`astro-sight review --dir . --git` は missing cochange / API 変更 / dead symbols なし。CodeRabbit CLI は rate limit で利用不可だったため、手元の解析とテストで確認
+- LaunchService: cmux CLI の stdout/stderr を一時ファイルに分離して回収し、共有可変状態とパイプ容量依存をなくすよう修正
+- テスト数を 942 → 944 に増加
+  - LaunchService: cmux CLI の stderr が 64KB を超えても stdout を返すことを検証
+  - LaunchService: cmux CLI 異常終了時に stderr の内容を `scriptExecutionFailed` に含めることを検証
+
 2026-06-03 更新内容（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、`main` が最新であることを確認

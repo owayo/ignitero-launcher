@@ -779,6 +779,62 @@ struct LaunchServiceCmuxCLIPingTests {
   }
 }
 
+// MARK: - cmux CLI 実行テスト
+
+@Suite("LaunchService cmux CLI Execution")
+struct LaunchServiceCmuxCLIExecutionTests {
+
+  private func makeExecutableScript(_ content: String) throws -> URL {
+    let fileURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("ignitero-cmux-execute-\(UUID().uuidString)")
+    try content.write(to: fileURL, atomically: true, encoding: .utf8)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fileURL.path)
+    return fileURL
+  }
+
+  @Test("stderr が 64KB を超えても stdout を返す")
+  func returnsStdoutWhenStderrExceedsPipeBuffer() throws {
+    let fileURL = try makeExecutableScript(
+      """
+      #!/bin/sh
+      printf 'ok\\n'
+      i=0
+      while [ "$i" -lt 3000 ]; do
+        printf 'stderr-line-%04d-abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\\n' "$i" >&2
+        i=$((i + 1))
+      done
+      exit 0
+      """
+    )
+    defer { try? FileManager.default.removeItem(at: fileURL) }
+
+    let output = try LaunchService.executeCmuxCLI(["large-stderr"], cliPath: fileURL.path)
+
+    #expect(output == "ok")
+  }
+
+  @Test("異常終了時は stderr の内容をエラーに含める")
+  func failureUsesStderrMessage() throws {
+    let fileURL = try makeExecutableScript(
+      """
+      #!/bin/sh
+      printf 'fatal detail\\n' >&2
+      exit 9
+      """
+    )
+    defer { try? FileManager.default.removeItem(at: fileURL) }
+
+    do {
+      _ = try LaunchService.executeCmuxCLI(["fail"], cliPath: fileURL.path)
+      Issue.record("cmux CLI 異常終了でエラーがスローされるべき")
+    } catch LaunchError.scriptExecutionFailed(let message) {
+      #expect(message == "fatal detail")
+    } catch {
+      Issue.record("予期しないエラー: \(error)")
+    }
+  }
+}
+
 // MARK: - プロトコル準拠テスト
 
 @Suite("LaunchService Protocol")

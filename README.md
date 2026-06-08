@@ -72,17 +72,18 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - カスタムコマンド履歴は `command://UUID` 識別子で管理し、現在登録されているコマンドだけ起動時クリーンアップで保持
 - AppleScript実行失敗時はエラーを検出し、Ghostty は `.command` 方式、cmux は CLI 方式へ自動フォールバック
 - cmux CLI は実行ファイルの存在と実行権限を確認してから ping し、CLI 起動失敗時もアプリ本体がクラッシュしないように処理
+- cmux CLI の stdout/stderr は一時ファイルに分けて回収し、大きな stderr 出力でもデッドロックしないように処理
 - デフォルトターミナル（macOSターミナル / iTerm2 / Warp / Ghostty / cmux）で実行
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-05-31確認）
+#### ターミナル自動化方式（2026-06-09確認）
 
 - macOSターミナル: AppleScript（`do script`）
 - iTerm2 3.6.10: AppleScript（`create window` + `write text`。現行ドキュメントでは AppleScript は Deprecated 扱いだが辞書は利用可能）
-- Warp 0.2026.05.20.09.21.03（ローカル確認）: 公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内。ローカルの Warp.app は AppleScript 辞書を取得できないため `.command` ファイル方式
+- Warp 0.2026.06.03.09.49.01（ローカル確認）: 公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内。ローカルの Warp.app は AppleScript 辞書を取得できないため `.command` ファイル方式
 - Ghostty: AppleScript（Ghostty 1.3.1 で確認: `new window` + `input text "...\n"`）。AppleScript が無効な環境では `.command` ファイル方式へフォールバック
-- cmux: AppleScript（cmux 0.64.10 で確認: `new window` + `input text "...\n"`）でカスタムコマンドを実行。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュを防ぎ、正常終了のみ成功扱い
+- cmux: AppleScript（cmux 0.64.14 で確認: `new window` + `input text "...\n"`）でカスタムコマンドを実行。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュを防ぎ、正常終了のみ成功扱い
   - **注意**: ディレクトリを cmux で開く場合は Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
 
 ### アップデート通知
@@ -359,7 +360,7 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 - **データ**: GRDB.swift (SQLite), JSON 永続化
 - **検索**: Fuse-Swift（ファジー検索）
 - **ショートカット**: KeyboardShortcuts (`Option` + `Space`)
-- **テスト**: Swift Testing (942テスト)
+- **テスト**: Swift Testing (944テスト)
 - **パッケージ**: Swift Package Manager
 - **最小OS**: macOS 26
 

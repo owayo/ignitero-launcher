@@ -519,32 +519,39 @@ public struct LaunchService: Launching, Sendable {
 
   /// cmux CLI コマンドを実行し、stdout を返す。事前に ensureCmuxRunning() を呼ぶこと。
   @discardableResult
-  private static func executeCmuxCLI(_ arguments: [String]) throws -> String {
-    let cliPath = cmuxCLIPath
+  static func executeCmuxCLI(
+    _ arguments: [String],
+    cliPath: String = cmuxCLIPath
+  ) throws -> String {
     guard FileManager.default.fileExists(atPath: cliPath) else {
       throw LaunchError.terminalNotFound(.cmux)
     }
+    let fm = FileManager.default
+    let tempDir = fm.temporaryDirectory
+    let stdoutURL = tempDir.appendingPathComponent("ignitero-cmux-stdout-\(UUID().uuidString).log")
+    let stderrURL = tempDir.appendingPathComponent("ignitero-cmux-stderr-\(UUID().uuidString).log")
+    _ = fm.createFile(atPath: stdoutURL.path, contents: nil)
+    _ = fm.createFile(atPath: stderrURL.path, contents: nil)
+    let stdoutHandle = try FileHandle(forWritingTo: stdoutURL)
+    let stderrHandle = try FileHandle(forWritingTo: stderrURL)
+    defer {
+      try? stdoutHandle.close()
+      try? stderrHandle.close()
+      try? fm.removeItem(at: stdoutURL)
+      try? fm.removeItem(at: stderrURL)
+    }
+
     let process = Process()
-    let stdoutPipe = Pipe()
-    let stderrPipe = Pipe()
     process.executableURL = URL(fileURLWithPath: cliPath)
     process.arguments = arguments
-    process.standardOutput = stdoutPipe
-    process.standardError = stderrPipe
+    process.standardOutput = stdoutHandle
+    process.standardError = stderrHandle
     try process.run()
-    // stdout と stderr を並列に読み取る。逐次読み取りでは、一方のパイプの
-    // カーネルバッファ（64KB）が溢れた際にプロセスがブロックしデッドロックする。
-    // readabilityHandler はGCDキューで呼ばれるため、DispatchSemaphore で
-    // 完了を同期し、readDataToEndOfFile でスレッドセーフに読み取る。
-    nonisolated(unsafe) var stderrData = Data()
-    let semaphore = DispatchSemaphore(value: 0)
-    DispatchQueue.global().async {
-      stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-      semaphore.signal()
-    }
-    let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
     process.waitUntilExit()
-    semaphore.wait()
+    try? stdoutHandle.synchronize()
+    try? stderrHandle.synchronize()
+    let stdoutData = (try? Data(contentsOf: stdoutURL)) ?? Data()
+    let stderrData = (try? Data(contentsOf: stderrURL)) ?? Data()
     guard process.terminationStatus == 0 else {
       let stderrText = String(data: stderrData, encoding: .utf8)?
         .trimmingCharacters(in: .whitespacesAndNewlines)
