@@ -173,27 +173,6 @@ struct LaunchServiceAppNameTests {
   }
 }
 
-// MARK: - ワークスペース検出テスト
-
-@Suite("LaunchService Workspace Detection")
-struct LaunchServiceWorkspaceTests {
-
-  @Test func workspaceGlobPattern() {
-    let pattern = LaunchService.workspaceGlobPattern(for: "/Users/test/project")
-    #expect(pattern == "/Users/test/project/*.code-workspace")
-  }
-
-  @Test func workspaceGlobPatternTrailingSlash() {
-    let pattern = LaunchService.workspaceGlobPattern(for: "/Users/test/project/")
-    #expect(pattern == "/Users/test/project/*.code-workspace")
-  }
-
-  @Test func workspaceGlobPatternRootDirectory() {
-    let pattern = LaunchService.workspaceGlobPattern(for: "/")
-    #expect(pattern == "/*.code-workspace")
-  }
-}
-
 // MARK: - AppleScript コマンド生成テスト
 
 @Suite("LaunchService AppleScript Generation")
@@ -430,6 +409,26 @@ struct LaunchServiceCommandScriptTests {
       workingDirectory: nil
     )
     #expect(script.hasSuffix("exit\n"))
+  }
+
+  @Test("cd 失敗時はコマンドを実行せず終了する")
+  func commandScriptAbortsWhenCdFails() {
+    let script = LaunchService.commandScript(
+      command: "rm -rf build",
+      workingDirectory: "/Users/test/app"
+    )
+    // 作業ディレクトリが消えている場合に $HOME 等の別 cwd で
+    // コマンドが実行されないこと（AppleScript 経路の && と同等の挙動）
+    #expect(script.contains("cd '/Users/test/app' || exit 1"))
+  }
+
+  @Test("作業ディレクトリなしの場合は cd 行を含まない")
+  func commandScriptWithoutWorkingDirectoryHasNoCd() {
+    let script = LaunchService.commandScript(
+      command: "echo hello",
+      workingDirectory: nil
+    )
+    #expect(!script.contains("cd "))
   }
 }
 
@@ -904,29 +903,36 @@ struct LaunchServiceAppleScriptUnicodeTests {
   }
 }
 
-// MARK: - normalizedDirectoryPath テスト（workspaceGlobPattern 経由で間接検証）
+// MARK: - normalizedDirectoryPath テスト
 
 @Suite("LaunchService normalizedDirectoryPath Edge Cases")
 struct LaunchServiceNormalizedDirectoryPathTests {
 
   @Test func rootPathPreservesSlash() {
-    let pattern = LaunchService.workspaceGlobPattern(for: "/")
-    #expect(pattern == "/*.code-workspace")
+    #expect(LaunchService.normalizedDirectoryPath("/") == "/")
   }
 
   @Test func pathWithTrailingSlashIsNormalized() {
-    let pattern = LaunchService.workspaceGlobPattern(for: "/Users/test/project/")
-    #expect(pattern == "/Users/test/project/*.code-workspace")
+    #expect(
+      LaunchService.normalizedDirectoryPath("/Users/test/project/") == "/Users/test/project")
   }
 
   @Test func pathWithoutTrailingSlashUnchanged() {
-    let pattern = LaunchService.workspaceGlobPattern(for: "/Users/test/project")
-    #expect(pattern == "/Users/test/project/*.code-workspace")
+    #expect(LaunchService.normalizedDirectoryPath("/Users/test/project") == "/Users/test/project")
   }
 
   @Test func unicodePathNormalized() {
-    let pattern = LaunchService.workspaceGlobPattern(for: "/Users/test/プロジェクト/")
-    #expect(pattern == "/Users/test/プロジェクト/*.code-workspace")
+    #expect(
+      LaunchService.normalizedDirectoryPath("/Users/test/プロジェクト/") == "/Users/test/プロジェクト")
+  }
+
+  @Test func pathWithSpacesUnchanged() {
+    #expect(
+      LaunchService.normalizedDirectoryPath("/Users/test/My Project") == "/Users/test/My Project")
+  }
+
+  @Test func emptyPathUnchanged() {
+    #expect(LaunchService.normalizedDirectoryPath("") == "")
   }
 }
 
@@ -1219,29 +1225,5 @@ struct LaunchServiceAppleScriptPropertiesTests {
       #expect(script.contains("cd '/tmp/work'"), "\(terminal) は cd 句を含むべき")
       #expect(script.contains("echo done"), "\(terminal) は本体コマンドを含むべき")
     }
-  }
-}
-
-// MARK: - ワークスペースファイル検索テスト
-
-@Suite("LaunchService Workspace Glob Edge Cases")
-struct LaunchServiceWorkspaceGlobEdgeCaseTests {
-
-  @Test("Unicode パスのワークスペースグロブ")
-  func workspaceGlobPatternWithUnicodePath() {
-    let pattern = LaunchService.workspaceGlobPattern(for: "/Users/テスト/プロジェクト")
-    #expect(pattern == "/Users/テスト/プロジェクト/*.code-workspace")
-  }
-
-  @Test("スペースを含むパスのワークスペースグロブ")
-  func workspaceGlobPatternWithSpaces() {
-    let pattern = LaunchService.workspaceGlobPattern(for: "/Users/test/My Project")
-    #expect(pattern == "/Users/test/My Project/*.code-workspace")
-  }
-
-  @Test("空のパスのワークスペースグロブ")
-  func workspaceGlobPatternWithEmptyPath() {
-    let pattern = LaunchService.workspaceGlobPattern(for: "")
-    #expect(pattern == "*.code-workspace")
   }
 }

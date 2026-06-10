@@ -101,41 +101,15 @@ import Testing
   #expect(empty == false)
 }
 
-@Test func cacheDatabaseNeedsUpdateWhenNoLastUpdated() async throws {
-  let db = try CacheDatabase(inMemory: true)
-  let needs = try await db.needsUpdate(intervalHours: 1)
-  #expect(needs == true)
-}
-
-@Test func cacheDatabaseNeedsUpdateWhenExpired() async throws {
-  let db = try CacheDatabase(inMemory: true)
-  // 2時間前のタイムスタンプを設定
-  let twoHoursAgo = Date().addingTimeInterval(-2 * 3600)
-  try await db.setLastUpdated(twoHoursAgo)
-  let needs = try await db.needsUpdate(intervalHours: 1)
-  #expect(needs == true)
-}
-
-@Test func cacheDatabaseDoesNotNeedUpdateWhenRecent() async throws {
-  let db = try CacheDatabase(inMemory: true)
-  // 現在のタイムスタンプを設定
-  try await db.setLastUpdated(Date())
-  let needs = try await db.needsUpdate(intervalHours: 1)
-  #expect(needs == false)
-}
-
 @Test func cacheDatabaseClearCache() async throws {
   let db = try CacheDatabase(inMemory: true)
   try await db.saveApps([AppItem(name: "Safari", path: "/Applications/Safari.app")])
   try await db.saveDirectories([DirectoryItem(name: "proj", path: "/proj")])
-  try await db.setLastUpdated(Date())
 
   try await db.clearCache()
 
   let empty = try await db.isEmpty()
   #expect(empty == true)
-  let needs = try await db.needsUpdate(intervalHours: 1)
-  #expect(needs == true)
 }
 
 @Test func cacheDatabaseWALModeEnabled() async throws {

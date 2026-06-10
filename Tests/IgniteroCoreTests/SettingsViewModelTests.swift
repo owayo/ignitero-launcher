@@ -190,7 +190,7 @@ struct SettingsViewModelCacheUpdateTests {
     let vm = SettingsViewModel(settingsManager: manager)
 
     var callbackCount = 0
-    vm.onSettingsChanged = { callbackCount += 1 }
+    vm.onSettingsChanged = { _ in callbackCount += 1 }
 
     let newSettings = CacheUpdateSettings(
       updateOnStartup: false,
@@ -617,7 +617,7 @@ struct SettingsViewModelOnSettingsChangedTests {
     let vm = SettingsViewModel(settingsManager: manager)
 
     var callbackCount = 0
-    vm.onSettingsChanged = { callbackCount += 1 }
+    vm.onSettingsChanged = { _ in callbackCount += 1 }
 
     try vm.setDefaultEditor(.cursor)
     #expect(callbackCount == 1)
@@ -629,7 +629,7 @@ struct SettingsViewModelOnSettingsChangedTests {
     let vm = SettingsViewModel(settingsManager: manager)
 
     var callbackCount = 0
-    vm.onSettingsChanged = { callbackCount += 1 }
+    vm.onSettingsChanged = { _ in callbackCount += 1 }
 
     try vm.setDefaultTerminal(.ghostty)
     #expect(callbackCount == 1)
@@ -641,7 +641,7 @@ struct SettingsViewModelOnSettingsChangedTests {
     let vm = SettingsViewModel(settingsManager: manager)
 
     var callbackCount = 0
-    vm.onSettingsChanged = { callbackCount += 1 }
+    vm.onSettingsChanged = { _ in callbackCount += 1 }
 
     let newSettings = CacheUpdateSettings(
       updateOnStartup: false,
@@ -658,7 +658,7 @@ struct SettingsViewModelOnSettingsChangedTests {
     let vm = SettingsViewModel(settingsManager: manager)
 
     var callbackCount = 0
-    vm.onSettingsChanged = { callbackCount += 1 }
+    vm.onSettingsChanged = { _ in callbackCount += 1 }
 
     try vm.setDefaultEditor(.vscode)
     try vm.setDefaultTerminal(.warp)
@@ -686,6 +686,104 @@ struct SettingsViewModelOnSettingsChangedTests {
     )
     try vm.setCacheUpdateSettings(cacheSettings)
     // クラッシュしなければOK
+  }
+
+  @MainActor
+  @Test("エディタ/ターミナル変更は reloadOnly を通知する")
+  func editorAndTerminalChangesNotifyReloadOnly() throws {
+    let manager = try makeTempSettingsManager()
+    let vm = SettingsViewModel(settingsManager: manager)
+
+    var changes: [SettingsChange] = []
+    vm.onSettingsChanged = { changes.append($0) }
+
+    try vm.setDefaultEditor(.vscode)
+    try vm.setDefaultTerminal(.ghostty)
+
+    #expect(changes == [.reloadOnly, .reloadOnly])
+  }
+
+  @MainActor
+  @Test("キャッシュ更新設定変更は updateScheduleChanged を通知する")
+  func cacheUpdateSettingsNotifyUpdateScheduleChanged() throws {
+    let manager = try makeTempSettingsManager()
+    let vm = SettingsViewModel(settingsManager: manager)
+
+    var changes: [SettingsChange] = []
+    vm.onSettingsChanged = { changes.append($0) }
+
+    try vm.setCacheUpdateSettings(
+      CacheUpdateSettings(
+        updateOnStartup: true, autoUpdateEnabled: true, autoUpdateIntervalHours: 12))
+
+    #expect(changes == [.updateScheduleChanged])
+  }
+
+  @MainActor
+  @Test("コマンドの追加・更新・削除は reloadOnly を通知する")
+  func commandCRUDNotifiesReloadOnly() throws {
+    let manager = try makeTempSettingsManager()
+    let vm = SettingsViewModel(settingsManager: manager)
+
+    var changes: [SettingsChange] = []
+    vm.onSettingsChanged = { changes.append($0) }
+
+    try vm.addCommand(alias: "build", command: "make build", workingDirectory: nil)
+    let cmd = manager.settings.customCommands[0]
+    try vm.updateCommand(at: 0, CustomCommand(id: cmd.id, alias: "build", command: "make all"))
+    try vm.removeCommand(at: 0)
+
+    #expect(changes == [.reloadOnly, .reloadOnly, .reloadOnly])
+  }
+
+  @MainActor
+  @Test("ディレクトリの追加・更新・削除は cacheInvalidated を通知する")
+  func directoryCRUDNotifiesCacheInvalidated() throws {
+    let manager = try makeTempSettingsManager()
+    let vm = SettingsViewModel(settingsManager: manager)
+
+    var changes: [SettingsChange] = []
+    vm.onSettingsChanged = { changes.append($0) }
+
+    try vm.addDirectory(
+      path: "/tmp/projects", parentOpenMode: .finder, subdirsOpenMode: .editor, scanForApps: false)
+    var dir = manager.settings.registeredDirectories[0]
+    dir.scanForApps = true
+    try vm.updateDirectory(at: 0, dir)
+    try vm.removeDirectory(at: 0)
+
+    #expect(changes == [.cacheInvalidated, .cacheInvalidated, .cacheInvalidated])
+  }
+
+  @MainActor
+  @Test("除外アプリのトグルは cacheInvalidated を通知する")
+  func toggleExcludedAppNotifiesCacheInvalidated() throws {
+    let manager = try makeTempSettingsManager()
+    let vm = SettingsViewModel(settingsManager: manager)
+
+    var changes: [SettingsChange] = []
+    vm.onSettingsChanged = { changes.append($0) }
+
+    try vm.toggleExcludedApp("Safari")
+    try vm.toggleExcludedApp("Safari")
+
+    #expect(changes == [.cacheInvalidated, .cacheInvalidated])
+  }
+
+  @MainActor
+  @Test("範囲外インデックスの削除・更新は通知しない")
+  func outOfRangeCRUDDoesNotNotify() throws {
+    let manager = try makeTempSettingsManager()
+    let vm = SettingsViewModel(settingsManager: manager)
+
+    var changes: [SettingsChange] = []
+    vm.onSettingsChanged = { changes.append($0) }
+
+    try vm.removeCommand(at: 5)
+    try vm.updateCommand(at: 5, CustomCommand(alias: "x", command: "y"))
+    try vm.removeDirectory(at: 5)
+
+    #expect(changes.isEmpty)
   }
 }
 

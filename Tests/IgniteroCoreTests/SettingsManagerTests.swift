@@ -31,7 +31,6 @@ struct SettingsCodableTests {
         autoUpdateIntervalHours: 6
       ),
       excludedApps: ["Chess.app"],
-      windowPosition: WindowPosition(x: 100, y: 200),
       updateCache: nil
     )
 
@@ -57,8 +56,6 @@ struct SettingsCodableTests {
     #expect(decoded.cacheUpdate.autoUpdateEnabled == false)
     #expect(decoded.cacheUpdate.autoUpdateIntervalHours == 6)
     #expect(decoded.excludedApps == ["Chess.app"])
-    #expect(decoded.windowPosition?.x == 100)
-    #expect(decoded.windowPosition?.y == 200)
     #expect(decoded.updateCache == nil)
   }
 
@@ -108,8 +105,6 @@ struct SettingsCodableTests {
     #expect(settings.cacheUpdate.autoUpdateEnabled == true)
     #expect(settings.cacheUpdate.autoUpdateIntervalHours == 12)
     #expect(settings.excludedApps == ["Safari.app", "Mail.app"])
-    #expect(settings.windowPosition?.x == 50)
-    #expect(settings.windowPosition?.y == 75)
     #expect(settings.updateCache == nil)
   }
 
@@ -141,7 +136,6 @@ struct SettingsCodableTests {
     #expect(settings.cacheUpdate.autoUpdateEnabled == false)
     #expect(settings.cacheUpdate.autoUpdateIntervalHours == 6)
     #expect(settings.excludedApps.isEmpty)
-    #expect(settings.windowPosition == nil)
     #expect(settings.updateCache == nil)
   }
 
@@ -184,7 +178,6 @@ struct SettingsCodableTests {
       """
     let data = Data(json.utf8)
     let settings = try JSONDecoder().decode(Settings.self, from: data)
-    #expect(settings.windowPosition == nil)
     #expect(settings.updateCache == nil)
     #expect(settings.defaultEditor == .cursor)
     #expect(settings.defaultTerminal == .ghostty)
@@ -544,7 +537,5 @@ struct SettingsManagerTests {
     #expect(manager.settings.cacheUpdate.autoUpdateEnabled == true)
     #expect(manager.settings.cacheUpdate.autoUpdateIntervalHours == 4)
     #expect(manager.settings.excludedApps == ["Feedback Assistant.app"])
-    #expect(manager.settings.windowPosition?.x == 300)
-    #expect(manager.settings.windowPosition?.y == 150)
   }
 }

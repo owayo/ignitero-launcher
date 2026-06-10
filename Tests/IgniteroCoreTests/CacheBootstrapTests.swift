@@ -200,7 +200,9 @@ struct CacheBootstrapTests {
 
     await bootstrap.rebuildCache()
 
-    #expect(mockDB.clearCacheCalled == true)
+    // saveApps/saveDirectories が DELETE+INSERT で置換するため
+    // 事前の clearCache は行わない（スキャン失敗時の空キャッシュ防止）
+    #expect(mockDB.clearCacheCalled == false)
     #expect(mockDB.saveAppsCalled == true)
     #expect(mockDB.saveDirectoriesCalled == true)
   }

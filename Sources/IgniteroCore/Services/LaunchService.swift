@@ -105,11 +105,6 @@ public struct LaunchService: Launching, Sendable {
 
   // MARK: - ワークスペース検出
 
-  public static func workspaceGlobPattern(for directoryPath: String) -> String {
-    let normalized = normalizedDirectoryPath(directoryPath)
-    return (normalized as NSString).appendingPathComponent("*.code-workspace")
-  }
-
   private func findWorkspaceFile(in directoryPath: String) -> String? {
     let fm = FileManager.default
     let normalized = Self.normalizedDirectoryPath(directoryPath)
@@ -186,7 +181,9 @@ public struct LaunchService: Launching, Sendable {
   ) -> String {
     var lines = ["#!/bin/bash"]
     if let wd = workingDirectory {
-      lines.append("cd \(shellEscaped(wd))")
+      // 作業ディレクトリが消えている場合に別の cwd（通常 $HOME）でコマンドが
+      // 実行されるのを防ぐ。AppleScript 経路の `cd ... && ...` と挙動を揃える。
+      lines.append("cd \(shellEscaped(wd)) || exit 1")
     }
     lines.append(command)
     lines.append("exit")
@@ -199,7 +196,7 @@ public struct LaunchService: Launching, Sendable {
     return "'\(escaped)'"
   }
 
-  private static func normalizedDirectoryPath(_ path: String) -> String {
+  static func normalizedDirectoryPath(_ path: String) -> String {
     if path != "/", path.hasSuffix("/") {
       return String(path.dropLast())
     }

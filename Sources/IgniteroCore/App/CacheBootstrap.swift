@@ -20,6 +20,13 @@ public final class CacheBootstrap {
   public var autoUpdateTask: Task<Void, Never>?
   public private(set) var lastScanDate: Date?
 
+  // MARK: - Callbacks
+
+  /// スキャン完了（DB 保存後）に呼ばれるコールバック。
+  /// 自動更新を含む全スキャン経路でビューモデルへの再読込を一本化するために使う。
+  /// 引数は除外フィルタ適用前の全アプリ一覧（設定画面の除外アプリ一覧用）。
+  public var onScanCompleted: (@MainActor ([AppItem]) async -> Void)?
+
   // MARK: - Initialization
 
   public init(
@@ -38,7 +45,10 @@ public final class CacheBootstrap {
 
   /// 起動時のキャッシュ構築を実行する。
   /// キャッシュが空、または起動時更新設定が有効な場合にスキャンを実行する。
-  public func performInitialScan() async {
+  /// - Returns: スキャンが完了しキャッシュが更新された場合は `true`
+  ///   （呼び出し側はキャッシュからの再読込要否の判断に使う）
+  @discardableResult
+  public func performInitialScan() async -> Bool {
     let shouldScan: Bool
     do {
       let cacheIsEmpty = try cacheDatabase.isEmpty()
@@ -46,29 +56,32 @@ public final class CacheBootstrap {
       shouldScan = cacheIsEmpty || updateOnStartup
     } catch {
       Self.logger.error("Failed to check cache status: \(error.localizedDescription)")
-      return
+      return false
     }
 
     guard shouldScan else {
       Self.logger.info("Cache is populated and updateOnStartup is disabled; skipping initial scan")
-      return
+      return false
     }
 
-    await runScan()
+    return await runScan()
   }
 
   // MARK: - Auto Update
 
   /// 自動更新が有効な場合、設定された間隔でバックグラウンドキャッシュ更新を開始する。
+  ///
+  /// 既存のタイマーは常に停止してから設定を反映するため、
+  /// 設定変更後の再呼び出しで「有効→無効」「間隔変更」のどちらも反映される。
   public func startAutoUpdate() {
+    // 設定にかかわらず既存のタスクを止め、現在の設定でやり直す
+    stopAutoUpdate()
+
     let settings = settingsManager.settings.cacheUpdate
     guard settings.autoUpdateEnabled else {
       Self.logger.info("Auto update is disabled; not starting background task")
       return
     }
-
-    // 既存のタスクをキャンセル
-    stopAutoUpdate()
 
     let intervalNanoseconds = Self.autoUpdateIntervalNanoseconds(
       hours: settings.autoUpdateIntervalHours)
@@ -101,12 +114,10 @@ public final class CacheBootstrap {
   // MARK: - Rebuild Cache
 
   /// 強制的にキャッシュを再構築する（メニューバーアクションから呼び出される）。
+  ///
+  /// saveApps/saveDirectories が DELETE+INSERT を同一トランザクションで行うため、
+  /// 事前の clearCache は不要（スキャン失敗時に空キャッシュが残る事故も防げる）。
   public func rebuildCache() async {
-    do {
-      try cacheDatabase.clearCache()
-    } catch {
-      Self.logger.error("Failed to clear cache: \(error.localizedDescription)")
-    }
     await runScan()
   }
 
@@ -122,10 +133,14 @@ public final class CacheBootstrap {
   // MARK: - Private
 
   /// アプリスキャンとディレクトリスキャンを実行し、結果をデータベースに保存する。
-  private func runScan() async {
+  /// - Returns: スキャンが完了しキャッシュが更新された場合は `true`
+  @discardableResult
+  private func runScan() async -> Bool {
+    guard !isScanning else {
+      Self.logger.info("Scan already in progress; skipping")
+      return false
+    }
     isScanning = true
-    // UIがローディング状態を描画できるようメインランループに制御を返す
-    await Task.yield()
     defer {
       isScanning = false
       lastScanDate = Date()
@@ -133,26 +148,36 @@ public final class CacheBootstrap {
 
     let settings = settingsManager.settings
 
-    // アプリスキャン
-    var allApps: [AppItem] = []
+    // アプリスキャン（除外フィルタ前の全アプリ。設定画面の除外アプリ一覧にも使う）
+    // スキャンはバックグラウンドで実行されるため、メインスレッドはブロックされない。
+    let scannedAllApps: [AppItem]
     do {
-      let scannedApps = try appScanner.scanApplications(excludedApps: settings.excludedApps)
-      allApps.append(contentsOf: scannedApps)
+      scannedAllApps = try await appScanner.scanApplications(excludedApps: [])
     } catch {
+      // 失敗時は既存キャッシュを保持する（空配列で上書きしない）
       Self.logger.error("App scan failed: \(error.localizedDescription)")
+      return false
+    }
+
+    // ランチャー用に除外フィルタを適用する
+    var allApps = scannedAllApps.filter {
+      !appScanner.isExcluded($0, excludedApps: settings.excludedApps)
     }
 
     // ディレクトリスキャン
-    var allDirectories: [DirectoryItem] = []
+    let allDirectories: [DirectoryItem]
     do {
       let scanResult = try directoryScanner.scan(directories: settings.registeredDirectories)
       allDirectories = scanResult.directories
       allApps.append(contentsOf: scanResult.apps)
     } catch {
+      // 失敗時は既存キャッシュを保持する
       Self.logger.error("Directory scan failed: \(error.localizedDescription)")
+      return false
     }
 
-    // データベースに保存
+    // データベースに保存（saveApps/saveDirectories は DELETE+INSERT を
+    // 同一トランザクションで行うため、置換はアトミック）
     do {
       try cacheDatabase.saveApps(allApps)
       try cacheDatabase.saveDirectories(allDirectories)
@@ -162,5 +187,9 @@ public final class CacheBootstrap {
 
     Self.logger.info(
       "Scan completed: \(allApps.count) apps, \(allDirectories.count) directories")
+
+    // 全スキャン経路（起動時・自動更新・手動再構築）共通で完了を通知する
+    await onScanCompleted?(scannedAllApps)
+    return true
   }
 }

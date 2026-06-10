@@ -207,10 +207,32 @@ public final class AppCoordinator {
     // ランチャーパネルを WindowManager に接続する
     wm.launcherPanel = self.launcherPanel
 
-    // ランチャー表示時に前回の検索をクリアし、検索フィールドにフォーカスを要求する
-    // 設定変更時にランチャーのデータを再読み込み
-    settingsViewModel.onSettingsChanged = { [weak self] in
-      self?.reloadDataFromSettings()
+    // 設定変更時に変更種別へ応じた反映を行う
+    // - reloadOnly: コマンド/エディタ/ターミナル変更 → ViewModel 再読込のみ
+    // - cacheInvalidated: ディレクトリ/除外アプリ変更 → キャッシュ再構築
+    // - updateScheduleChanged: 自動更新設定変更 → タイマー再起動 + 再読込
+    settingsViewModel.onSettingsChanged = { [weak self] change in
+      guard let self else { return }
+      switch change {
+      case .reloadOnly:
+        self.reloadDataFromSettings()
+      case .cacheInvalidated:
+        Task { await self.rebuildCacheAndReload() }
+      case .updateScheduleChanged:
+        self.reloadDataFromSettings()
+        self.cacheBootstrap.startAutoUpdate()
+      }
+    }
+
+    // スキャン完了（起動時・自動更新・手動再構築すべて）でビューモデルへ再読込する
+    // スキャン済みの全アプリ一覧を受け取るため、設定画面用の再スキャンは発生しない
+    cacheBootstrap.onScanCompleted = { [weak self] scannedAllApps in
+      await self?.loadCacheDataIntoViewModel(scannedAllApps: scannedAllApps)
+    }
+
+    // アップデートバナーの非表示操作を設定へ永続化する（再起動時の再表示を防ぐ）
+    launcherVM.onUpdateBannerDismissed = { [weak self] version in
+      self?.persistDismissedUpdateVersion(version)
     }
 
     // メニューバーからのキャッシュ再構築要求は AppCoordinator の再構築フローに委譲する
@@ -282,8 +304,12 @@ public final class AppCoordinator {
     setupLauncherView()
 
     // 5. 初回キャッシュスキャンを実行する
-    await cacheBootstrap.performInitialScan()
-    await loadCacheDataIntoViewModel()
+    // スキャンが走った場合は onScanCompleted 経由で再読込済みのため、
+    // スキップされた場合のみ既存キャッシュから読み込む
+    let didScan = await cacheBootstrap.performInitialScan()
+    if !didScan {
+      await loadCacheDataIntoViewModel()
+    }
     Self.logger.info("Initial cache scan completed")
 
     // 6. アップデートを確認する
@@ -313,9 +339,6 @@ public final class AppCoordinator {
     } catch {
       Self.logger.error("Failed to save selection history: \(error.localizedDescription)")
     }
-
-    // ウィンドウ位置を保存する
-    windowManager.savePanelPosition()
 
     // 設定を保存する
     do {
@@ -660,9 +683,6 @@ public final class AppCoordinator {
 
     launcherPanel.setContentView(view)
 
-    // ウィンドウ位置を復元する
-    windowManager.restorePanelPosition()
-
     // 初期サイズを設定する
     let frame = NSRect(
       x: launcherPanel.frame.origin.x,
@@ -674,21 +694,33 @@ public final class AppCoordinator {
   }
 
   /// キャッシュを再構築し、ビューモデルにデータを再読み込みする。
+  ///
+  /// 再読込は CacheBootstrap.onScanCompleted 経由で行われる。
+  /// 再構築中の再入（メニュー連打・設定変更・自動更新との並走）は無視する。
   public func rebuildCacheAndReload() async {
+    guard !cacheBootstrap.isScanning else {
+      Self.logger.info("Cache rebuild already in progress; skipping")
+      return
+    }
     launcherViewModel.isScanning = true
+    defer { launcherViewModel.isScanning = false }
     await cacheBootstrap.rebuildCache()
-    await loadCacheDataIntoViewModel()
-    launcherViewModel.isScanning = false
   }
 
   /// キャッシュデータをビューモデルに読み込む。
-  private func loadCacheDataIntoViewModel() async {
+  ///
+  /// - Parameter scannedAllApps: スキャン直後に呼ばれる場合の全アプリ一覧
+  ///   （除外フィルタ前）。nil の場合（起動時のスキャンスキップ時）は
+  ///   設定画面用にバックグラウンドでスキャンする。
+  private func loadCacheDataIntoViewModel(scannedAllApps: [AppItem]? = nil) async {
+    var cacheLoadSucceeded = true
     do {
       let apps = try await cacheDatabase.loadApps()
       let directories = try await cacheDatabase.loadDirectories()
       launcherViewModel.apps = apps
       launcherViewModel.directories = directories
     } catch {
+      cacheLoadSucceeded = false
       Self.logger.error("Failed to load cache data: \(error.localizedDescription)")
     }
 
@@ -710,22 +742,29 @@ public final class AppCoordinator {
     let terminalType = settingsManager.settings.defaultTerminal
     launcherViewModel.defaultTerminalName = LaunchService.displayName(for: terminalType)
 
-    // 設定画面の除外アプリ一覧向けに、除外フィルタなしで全アプリを読み込む
-    do {
-      let allApps = try appScanner.scanApplications(excludedApps: [])
-      settingsViewModel.allApps = allApps
-    } catch {
-      Self.logger.error("Failed to scan apps for settings: \(error.localizedDescription)")
+    // 設定画面の除外アプリ一覧向けの全アプリ一覧（除外フィルタなし）
+    if let scannedAllApps {
+      settingsViewModel.allApps = scannedAllApps
+    } else {
+      do {
+        settingsViewModel.allApps = try await appScanner.scanApplications(excludedApps: [])
+      } catch {
+        Self.logger.error("Failed to scan apps for settings: \(error.localizedDescription)")
+      }
     }
 
     // 削除済みアプリやディレクトリの履歴を削除する
-    // キャッシュ DB、スキャナー、カスタムコマンド識別子をすべて有効とみなす
-    var validPaths = Set<String>()
-    for app in launcherViewModel.apps { validPaths.insert(app.path) }
-    for dir in launcherViewModel.directories { validPaths.insert(dir.path) }
-    for command in launcherViewModel.commands { validPaths.insert(command.historyIdentifier) }
-    for app in settingsViewModel.allApps { validPaths.insert(app.path) }
-    selectionHistory.purgeInvalidPaths(validPaths)
+    // キャッシュ DB、スキャナー、カスタムコマンド識別子をすべて有効とみなす。
+    // キャッシュ読込に失敗した場合は validPaths が不完全になり
+    // 有効な履歴まで消してしまうため、purge をスキップする。
+    if cacheLoadSucceeded {
+      var validPaths = Set<String>()
+      for app in launcherViewModel.apps { validPaths.insert(app.path) }
+      for dir in launcherViewModel.directories { validPaths.insert(dir.path) }
+      for command in launcherViewModel.commands { validPaths.insert(command.historyIdentifier) }
+      for app in settingsViewModel.allApps { validPaths.insert(app.path) }
+      selectionHistory.purgeInvalidPaths(validPaths)
+    }
 
     // 履歴を読み込む
     launcherViewModel.history = selectionHistory.allEntries
@@ -736,6 +775,19 @@ public final class AppCoordinator {
     let result = await updateChecker.checkForUpdate(currentVersion: Ignitero.version)
     if let result {
       launcherViewModel.showUpdateBanner(version: result.latestVersion)
+    }
+  }
+
+  /// 非表示にされたアップデートバージョンを設定へ永続化する。
+  private func persistDismissedUpdateVersion(_ version: String) {
+    var cache = settingsManager.settings.updateCache ?? UpdateCache()
+    cache.dismissedVersion = version
+    settingsManager.settings.updateCache = cache
+    do {
+      try settingsManager.save()
+    } catch {
+      Self.logger.error(
+        "Failed to persist dismissed update version: \(error.localizedDescription)")
     }
   }
 

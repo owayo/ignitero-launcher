@@ -51,7 +51,7 @@ struct GlobalShortcutManagerInitTests {
 
   @MainActor
   @Test func canBeCreatedWithDependencies() {
-    let windowManager = WindowManager(userDefaults: .makeTempDefaults())
+    let windowManager = WindowManager()
     let imeController = MockIMEController()
     let manager = GlobalShortcutManager(
       windowManager: windowManager,
@@ -63,7 +63,7 @@ struct GlobalShortcutManagerInitTests {
 
   @MainActor
   @Test func hasWindowManagerReference() {
-    let windowManager = WindowManager(userDefaults: .makeTempDefaults())
+    let windowManager = WindowManager()
     let imeController = MockIMEController()
     let manager = GlobalShortcutManager(
       windowManager: windowManager,
@@ -81,7 +81,7 @@ struct GlobalShortcutManagerReregisterTests {
 
   @MainActor
   @Test func reregisterCallsTeardownAndSetup() {
-    let windowManager = WindowManager(userDefaults: .makeTempDefaults())
+    let windowManager = WindowManager()
     let imeController = MockIMEController()
     let manager = GlobalShortcutManager(
       windowManager: windowManager,
@@ -100,7 +100,7 @@ struct GlobalShortcutManagerReregisterTests {
 
   @MainActor
   @Test func reregisterWithoutPriorSetup() {
-    let windowManager = WindowManager(userDefaults: .makeTempDefaults())
+    let windowManager = WindowManager()
     let imeController = MockIMEController()
     let manager = GlobalShortcutManager(
       windowManager: windowManager,
@@ -124,7 +124,7 @@ struct GlobalShortcutManagerToggleIMETests {
 
   @MainActor
   @Test func handleShortcutTogglesToVisible() {
-    let windowManager = WindowManager(userDefaults: .makeTempDefaults())
+    let windowManager = WindowManager()
     let imeController = MockIMEController()
     let manager = GlobalShortcutManager(
       windowManager: windowManager,
@@ -140,7 +140,7 @@ struct GlobalShortcutManagerToggleIMETests {
 
   @MainActor
   @Test func handleShortcutCallsSwitchToASCIIWhenBecomingVisible() {
-    let windowManager = WindowManager(userDefaults: .makeTempDefaults())
+    let windowManager = WindowManager()
     let imeController = MockIMEController()
     let manager = GlobalShortcutManager(
       windowManager: windowManager,
@@ -156,7 +156,7 @@ struct GlobalShortcutManagerToggleIMETests {
 
   @MainActor
   @Test func handleShortcutDoesNotCallSwitchToASCIIWhenHiding() {
-    let windowManager = WindowManager(userDefaults: .makeTempDefaults())
+    let windowManager = WindowManager()
     let imeController = MockIMEController()
     let manager = GlobalShortcutManager(
       windowManager: windowManager,
@@ -176,7 +176,7 @@ struct GlobalShortcutManagerToggleIMETests {
 
   @MainActor
   @Test func handleShortcutMultipleToggles() {
-    let windowManager = WindowManager(userDefaults: .makeTempDefaults())
+    let windowManager = WindowManager()
     let imeController = MockIMEController()
     let manager = GlobalShortcutManager(
       windowManager: windowManager,

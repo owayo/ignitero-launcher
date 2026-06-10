@@ -129,32 +129,6 @@ public actor CacheDatabase: CacheDatabaseProtocol {
     }
   }
 
-  public func needsUpdate(intervalHours: Int) throws -> Bool {
-    try dbQueue.read { db in
-      guard
-        let value = try String.fetchOne(
-          db, sql: "SELECT value FROM metadata WHERE key = 'last_updated'")
-      else {
-        return true
-      }
-      guard let lastUpdated = ISO8601DateFormatter().date(from: value) else {
-        return true
-      }
-      let elapsed = Date().timeIntervalSince(lastUpdated)
-      return elapsed >= Double(intervalHours) * 3600
-    }
-  }
-
-  public func setLastUpdated(_ date: Date) throws {
-    try dbQueue.write { db in
-      let value = ISO8601DateFormatter().string(from: date)
-      try db.execute(
-        sql: "INSERT OR REPLACE INTO metadata (key, value) VALUES ('last_updated', ?)",
-        arguments: [value]
-      )
-    }
-  }
-
   nonisolated public func clearCache() throws {
     try dbQueue.write { db in
       try db.execute(sql: "DELETE FROM apps")

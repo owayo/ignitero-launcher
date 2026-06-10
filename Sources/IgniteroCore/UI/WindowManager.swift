@@ -1,10 +1,10 @@
 import AppKit
 import Foundation
 
-/// ランチャーウィンドウの表示/非表示、位置管理、リサイズを統括するマネージャ。
+/// ランチャーウィンドウの表示/非表示、リサイズを統括するマネージャ。
 ///
 /// `@MainActor` でスレッド安全性を保証し、`@Observable` で SwiftUI バインディングに対応。
-/// ウィンドウ位置は `UserDefaults` で永続化し、起動時に復元する。
+/// パネルは表示のたびにカーソルのあるスクリーンの中央上部へ配置する（Spotlight 風）。
 @MainActor
 @Observable
 public final class WindowManager {
@@ -27,14 +27,6 @@ public final class WindowManager {
 
   /// ランチャーウィンドウの幅 (px)
   public static let width: CGFloat = 680
-
-  // MARK: - UserDefaults Keys
-
-  private enum DefaultsKey {
-    static let positionX = "ignitero.launcher.position.x"
-    static let positionY = "ignitero.launcher.position.y"
-    static let positionSaved = "ignitero.launcher.position.saved"
-  }
 
   // MARK: - Published State
 
@@ -66,8 +58,6 @@ public final class WindowManager {
 
   // MARK: - Private
 
-  private let userDefaults: UserDefaults
-
   /// クリック外イベント監視トークン
   private var clickMonitor: Any?
 
@@ -79,12 +69,7 @@ public final class WindowManager {
 
   // MARK: - Initialization
 
-  /// WindowManager を初期化する。
-  ///
-  /// - Parameter userDefaults: 位置永続化に使用する UserDefaults。テスト時に差し替え可能。
-  public init(userDefaults: UserDefaults = .standard) {
-    self.userDefaults = userDefaults
-  }
+  public init() {}
 
   // MARK: - Launcher Visibility
 
@@ -139,14 +124,6 @@ public final class WindowManager {
     stopKeyEventMonitor()
     stopDismissMonitors()
     launcherPanel?.orderOut(nil)
-  }
-
-  /// パネルが外部要因（クリック外・アプリ切り替え）で非表示になった際に状態を同期する。
-  public func syncHiddenState() {
-    guard isLauncherVisible else { return }
-    isLauncherVisible = false
-    stopKeyEventMonitor()
-    stopDismissMonitors()
   }
 
   // MARK: - Dismiss Monitors
@@ -267,41 +244,5 @@ public final class WindowManager {
     frame.size.height = newHeight
     frame.origin.y -= heightDelta  // macOS は下端が原点のためリサイズ時に y を調整
     panel.setFrame(frame, display: true, animate: false)
-  }
-
-  // MARK: - Position Persistence
-
-  /// 現在のウィンドウ位置を UserDefaults に保存する。
-  public func savePosition(x: Double, y: Double) {
-    userDefaults.set(x, forKey: DefaultsKey.positionX)
-    userDefaults.set(y, forKey: DefaultsKey.positionY)
-    userDefaults.set(true, forKey: DefaultsKey.positionSaved)
-  }
-
-  /// 保存されたウィンドウ位置を復元する。
-  public func restorePosition() -> (x: Double, y: Double)? {
-    guard userDefaults.bool(forKey: DefaultsKey.positionSaved) else {
-      return nil
-    }
-    let x = userDefaults.double(forKey: DefaultsKey.positionX)
-    let y = userDefaults.double(forKey: DefaultsKey.positionY)
-    return (x: x, y: y)
-  }
-
-  /// パネルの現在位置を UserDefaults に保存する。
-  public func savePanelPosition() {
-    guard let panel = launcherPanel else { return }
-    let origin = panel.frame.origin
-    savePosition(x: Double(origin.x), y: Double(origin.y))
-  }
-
-  /// 保存された位置にパネルを復元する。
-  public func restorePanelPosition() {
-    guard let panel = launcherPanel,
-      let position = restorePosition()
-    else { return }
-    var frame = panel.frame
-    frame.origin = CGPoint(x: position.x, y: position.y)
-    panel.setFrame(frame, display: false)
   }
 }

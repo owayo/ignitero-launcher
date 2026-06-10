@@ -13,7 +13,7 @@ struct MenuBarActionsInitialStateTests {
   @MainActor
   @Test func initialIsRebuildingCacheIsFalse() {
     let actions = MenuBarActions(
-      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
+      windowManager: WindowManager(),
       settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
     #expect(actions.isRebuildingCache == false)
@@ -22,7 +22,7 @@ struct MenuBarActionsInitialStateTests {
   @MainActor
   @Test func initialIsSettingsOpenIsFalse() {
     let actions = MenuBarActions(
-      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
+      windowManager: WindowManager(),
       settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
     #expect(actions.isSettingsOpen == false)
@@ -31,7 +31,7 @@ struct MenuBarActionsInitialStateTests {
   @MainActor
   @Test func initialOnRebuildCacheIsNil() {
     let actions = MenuBarActions(
-      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
+      windowManager: WindowManager(),
       settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
     #expect(actions.onRebuildCache == nil)
@@ -46,7 +46,7 @@ struct MenuBarActionsShowWindowTests {
 
   @MainActor
   @Test func showWindowSetsLauncherVisible() {
-    let windowManager = WindowManager(userDefaults: .makeTempDefaults())
+    let windowManager = WindowManager()
     let actions = MenuBarActions(
       windowManager: windowManager,
       settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
@@ -59,7 +59,7 @@ struct MenuBarActionsShowWindowTests {
 
   @MainActor
   @Test func showWindowIdempotent() {
-    let windowManager = WindowManager(userDefaults: .makeTempDefaults())
+    let windowManager = WindowManager()
     let actions = MenuBarActions(
       windowManager: windowManager,
       settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
@@ -80,7 +80,7 @@ struct MenuBarActionsRebuildCacheTests {
   @MainActor
   @Test func rebuildCacheWithoutCallbackCompletesAndResetsFlag() async {
     let actions = MenuBarActions(
-      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
+      windowManager: WindowManager(),
       settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
@@ -92,7 +92,7 @@ struct MenuBarActionsRebuildCacheTests {
   @MainActor
   @Test func rebuildCacheInvokesCallback() async {
     let actions = MenuBarActions(
-      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
+      windowManager: WindowManager(),
       settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
@@ -109,7 +109,7 @@ struct MenuBarActionsRebuildCacheTests {
   @MainActor
   @Test func rebuildCacheSetsIsRebuildingCacheDuringExecution() async {
     let actions = MenuBarActions(
-      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
+      windowManager: WindowManager(),
       settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
@@ -132,7 +132,7 @@ struct MenuBarActionsRebuildCacheTests {
     // クロージャ内で throw 表現は使えないが、Task.cancel() などの非同期境界を経由しても
     // defer はメソッド終了時に実行される。
     let actions = MenuBarActions(
-      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
+      windowManager: WindowManager(),
       settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
@@ -155,7 +155,7 @@ struct MenuBarActionsOpenSettingsTests {
   @MainActor
   @Test func openSettingsSetsIsSettingsOpenTrue() {
     let actions = MenuBarActions(
-      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
+      windowManager: WindowManager(),
       settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
@@ -166,7 +166,7 @@ struct MenuBarActionsOpenSettingsTests {
   @MainActor
   @Test func openSettingsIdempotent() {
     let actions = MenuBarActions(
-      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
+      windowManager: WindowManager(),
       settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
@@ -178,7 +178,7 @@ struct MenuBarActionsOpenSettingsTests {
   @MainActor
   @Test func closeSettingsSetsIsSettingsOpenFalse() {
     let actions = MenuBarActions(
-      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
+      windowManager: WindowManager(),
       settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
@@ -198,7 +198,7 @@ struct MenuBarActionsQuitTests {
   @MainActor
   @Test func quitMethodExists() {
     let actions = MenuBarActions(
-      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
+      windowManager: WindowManager(),
       settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
@@ -217,7 +217,7 @@ struct MenuBarActionsDependenciesTests {
 
   @MainActor
   @Test func hasWindowManager() {
-    let windowManager = WindowManager(userDefaults: .makeTempDefaults())
+    let windowManager = WindowManager()
     let actions = MenuBarActions(
       windowManager: windowManager,
       settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
@@ -230,7 +230,7 @@ struct MenuBarActionsDependenciesTests {
   @Test func hasSettingsManager() {
     let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
     let actions = MenuBarActions(
-      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
+      windowManager: WindowManager(),
       settingsManager: settingsManager
     )
 
@@ -247,7 +247,7 @@ struct MenuBarActionsMenuItemsTests {
   @MainActor
   @Test func menuItemsReturnsExpectedItems() {
     let actions = MenuBarActions(
-      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
+      windowManager: WindowManager(),
       settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 
@@ -262,7 +262,7 @@ struct MenuBarActionsMenuItemsTests {
   @MainActor
   @Test func menuItemsShowRebuildingStateWhenCacheRebuilding() async {
     let actions = MenuBarActions(
-      windowManager: WindowManager(userDefaults: .makeTempDefaults()),
+      windowManager: WindowManager(),
       settingsManager: SettingsManager(configDirectory: makeTempConfigDir())
     )
 

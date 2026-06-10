@@ -108,16 +108,6 @@ public struct CacheUpdateSettings: Codable, Sendable, Equatable {
   }
 }
 
-public struct WindowPosition: Codable, Sendable, Equatable {
-  public var x: Double
-  public var y: Double
-
-  public init(x: Double, y: Double) {
-    self.x = x
-    self.y = y
-  }
-}
-
 public struct UpdateCache: Codable, Sendable, Equatable {
   public var latestVersion: String?
   public var checkedAt: Date?
@@ -151,7 +141,6 @@ public struct Settings: Codable, Sendable {
   public var defaultTerminal: TerminalType
   public var cacheUpdate: CacheUpdateSettings
   public var excludedApps: [String]
-  public var windowPosition: WindowPosition?
   public var updateCache: UpdateCache?
 
   public init(
@@ -162,7 +151,6 @@ public struct Settings: Codable, Sendable {
     cacheUpdate: CacheUpdateSettings = CacheUpdateSettings(
       updateOnStartup: true, autoUpdateEnabled: false, autoUpdateIntervalHours: 6),
     excludedApps: [String] = [],
-    windowPosition: WindowPosition? = nil,
     updateCache: UpdateCache? = nil
   ) {
     self.registeredDirectories = registeredDirectories
@@ -171,7 +159,6 @@ public struct Settings: Codable, Sendable {
     self.defaultTerminal = defaultTerminal
     self.cacheUpdate = cacheUpdate
     self.excludedApps = excludedApps
-    self.windowPosition = windowPosition
     self.updateCache = updateCache
   }
 
@@ -184,7 +171,6 @@ public struct Settings: Codable, Sendable {
     case defaultTerminal = "default_terminal"
     case cacheUpdate = "cache_update"
     case excludedApps = "excluded_apps"
-    case windowPosition = "main_window_position"
     case updateCache = "update_cache"
   }
 
@@ -206,8 +192,6 @@ public struct Settings: Codable, Sendable {
         updateOnStartup: true, autoUpdateEnabled: false, autoUpdateIntervalHours: 6)
     excludedApps =
       try container.decodeIfPresent([String].self, forKey: .excludedApps) ?? []
-    windowPosition =
-      try container.decodeIfPresent(WindowPosition.self, forKey: .windowPosition)
     updateCache =
       try container.decodeIfPresent(UpdateCache.self, forKey: .updateCache)
   }

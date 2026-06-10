@@ -1283,3 +1283,122 @@ struct AppCoordinatorEditorPickerObservationTests {
     #expect(coordinator.windowManager.isPickerVisible == true || true)
   }
 }
+
+// MARK: - 設定変更の反映テスト
+
+@Suite("AppCoordinator Settings Change Propagation")
+struct AppCoordinatorSettingsChangeTests {
+
+  @Test("コマンド追加が即座にランチャーへ反映される")
+  @MainActor
+  func addCommandReflectsImmediately() async throws {
+    let coordinator = makeCoordinator()
+    await coordinator.start()
+
+    try coordinator.settingsViewModel.addCommand(
+      alias: "build", command: "make build", workingDirectory: nil)
+
+    #expect(coordinator.launcherViewModel.commands.contains { $0.alias == "build" })
+  }
+
+  @Test("コマンド削除が即座にランチャーへ反映される")
+  @MainActor
+  func removeCommandReflectsImmediately() async throws {
+    let coordinator = makeCoordinator()
+    await coordinator.start()
+    try coordinator.settingsViewModel.addCommand(
+      alias: "build", command: "make build", workingDirectory: nil)
+
+    try coordinator.settingsViewModel.removeCommand(at: 0)
+
+    #expect(coordinator.launcherViewModel.commands.isEmpty)
+  }
+
+  @Test("ディレクトリ追加がキャッシュ再構築をトリガーする")
+  @MainActor
+  func addDirectoryTriggersCacheRebuild() async throws {
+    let mockDB = MockCacheDB(isEmpty: true)
+    let coordinator = makeCoordinator(cacheDatabase: mockDB)
+    await coordinator.start()
+    mockDB.saveAppsCalled = false
+
+    try coordinator.settingsViewModel.addDirectory(
+      path: "/tmp/projects", parentOpenMode: .finder, subdirsOpenMode: .editor,
+      scanForApps: false)
+
+    // cacheInvalidated は Task 経由で再構築するため完了をポーリングで待つ
+    for _ in 0..<1000 where !mockDB.saveAppsCalled {
+      await Task.yield()
+    }
+    #expect(mockDB.saveAppsCalled)
+  }
+
+  @Test("自動更新設定の変更がタイマーへ即時反映される")
+  @MainActor
+  func cacheUpdateSettingsRestartTimer() async throws {
+    let coordinator = makeCoordinator()
+    await coordinator.start()
+    #expect(coordinator.cacheBootstrap.autoUpdateTask == nil)
+
+    // 有効化 → タイマー起動
+    try coordinator.settingsViewModel.setCacheUpdateSettings(
+      CacheUpdateSettings(
+        updateOnStartup: true, autoUpdateEnabled: true, autoUpdateIntervalHours: 6))
+    #expect(coordinator.cacheBootstrap.autoUpdateTask != nil)
+
+    // 無効化 → タイマー停止
+    try coordinator.settingsViewModel.setCacheUpdateSettings(
+      CacheUpdateSettings(
+        updateOnStartup: true, autoUpdateEnabled: false, autoUpdateIntervalHours: 6))
+    #expect(coordinator.cacheBootstrap.autoUpdateTask == nil)
+  }
+
+  @Test("スキャン完了でビューモデルへ再読込される（自動更新経路の配線）")
+  @MainActor
+  func scanCompletionReloadsViewModel() async throws {
+    let mockDB = MockCacheDB(isEmpty: false)
+    let app = AppItem(name: "Safari", path: "/Applications/Safari.app")
+    let coordinator = makeCoordinator(
+      cacheDatabase: mockDB, appScanner: MockAppScanner(apps: [app]))
+    await coordinator.start()
+
+    // スキャン後の load で返すアプリを差し替えて、再読込されたことを観測する
+    mockDB.loadedApps = [app]
+    coordinator.launcherViewModel.apps = []
+
+    // 自動更新と同じ経路（runScan）で再構築する
+    await coordinator.cacheBootstrap.rebuildCache()
+
+    #expect(coordinator.launcherViewModel.apps.map(\.path) == [app.path])
+  }
+
+  @Test("バナー dismiss が dismissedVersion として永続化される")
+  @MainActor
+  func bannerDismissPersistsDismissedVersion() async throws {
+    let settings = makeTempSettingsManager()
+    let coordinator = makeCoordinator(settingsManager: settings)
+    await coordinator.start()
+
+    coordinator.launcherViewModel.showUpdateBanner(version: "99.0.0")
+    coordinator.launcherViewModel.dismissUpdateBanner(version: "99.0.0")
+
+    #expect(settings.settings.updateCache?.dismissedVersion == "99.0.0")
+  }
+
+  @Test("再構築中の再入はスキップされる")
+  @MainActor
+  func rebuildReentryIsSkipped() async throws {
+    let mockDB = MockCacheDB(isEmpty: true)
+    let coordinator = makeCoordinator(cacheDatabase: mockDB)
+    await coordinator.start()
+
+    // 並行で2回起動しても再構築は完了し、状態固着が起きない
+    mockDB.saveAppsCalled = false
+    async let first: Void = coordinator.rebuildCacheAndReload()
+    async let second: Void = coordinator.rebuildCacheAndReload()
+    _ = await (first, second)
+
+    #expect(mockDB.saveAppsCalled)
+    #expect(coordinator.launcherViewModel.isScanning == false)
+  }
+}

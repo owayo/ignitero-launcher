@@ -554,130 +554,19 @@ public struct LauncherView: View {
   // MARK: - Key Event Handling
 
   /// Enter キーが押された際の処理。
+  ///
+  /// 矢印キー・Escape 等は WindowManager のキーイベントモニター経由で
+  /// AppCoordinator が処理するため、ここでは Enter 由来のアクションのみ扱う。
   private func handleEnterKey() {
-    if let action = viewModel.handleSpecialKey(.enter, modifiers: []) {
-      performAction(action)
-    }
-  }
-
-  /// 特殊キーアクションを実行する。
-  private func performAction(_ action: SpecialKeyAction) {
-    switch action {
-    case .dismiss:
-      viewModel.clearSearch()
-      onDismiss?()
-
+    switch viewModel.handleSpecialKey(.enter, modifiers: []) {
+    case .copyCalculator:
+      viewModel.copyCalculatorResult()
     case .execute:
       if let result = viewModel.confirmSelection() {
         onExecute?(result)
       }
-
-    case .copyCalculator:
-      viewModel.copyCalculatorResult()
-
-    case .openInTerminal:
-      if let result = viewModel.confirmSelection() {
-        onOpenInTerminal?(result.path)
-      }
-
-    case .showEditorPicker:
-      if let result = viewModel.confirmSelection() {
-        onShowEditorPicker?(result.path)
-      }
-
-    case .showTerminalPicker:
-      if let result = viewModel.confirmSelection() {
-        onShowTerminalPicker?(result.path)
-      }
-    }
-  }
-}
-
-// MARK: - LauncherKeyEventHandler
-
-/// ランチャーのキーイベントをハンドリングするための NSView ラッパー。
-///
-/// SwiftUI の `onKeyPress` では処理できない矢印キーやモディファイアキーの組み合わせを
-/// `keyDown(with:)` オーバーライドで処理する。
-public final class LauncherKeyEventHandler: NSView {
-
-  /// キーイベント処理のコールバック
-  public var onKeyEvent: ((NSEvent) -> Bool)?
-
-  override public var acceptsFirstResponder: Bool { true }
-
-  override public func keyDown(with event: NSEvent) {
-    if let handler = onKeyEvent, handler(event) {
-      return
-    }
-    super.keyDown(with: event)
-  }
-}
-
-// MARK: - LauncherKeyEventModifier
-
-/// キーイベントハンドラーを SwiftUI ビューに統合する ViewModifier。
-struct LauncherKeyEventModifier: ViewModifier {
-  let viewModel: LauncherViewModel
-  let onAction: (SpecialKeyAction) -> Void
-
-  func body(content: Content) -> some View {
-    content.background(
-      LauncherKeyEventRepresentable(viewModel: viewModel, onAction: onAction)
-        .frame(width: 0, height: 0)
-    )
-  }
-}
-
-/// NSViewRepresentable でキーイベントハンドラーを SwiftUI に橋渡しする。
-struct LauncherKeyEventRepresentable: NSViewRepresentable {
-  let viewModel: LauncherViewModel
-  let onAction: (SpecialKeyAction) -> Void
-
-  func makeNSView(context: Context) -> LauncherKeyEventHandler {
-    let view = LauncherKeyEventHandler()
-    view.onKeyEvent = { event in
-      handleKeyEvent(event)
-    }
-    return view
-  }
-
-  func updateNSView(_ nsView: LauncherKeyEventHandler, context: Context) {
-    nsView.onKeyEvent = { event in
-      handleKeyEvent(event)
-    }
-  }
-
-  @MainActor
-  private func handleKeyEvent(_ event: NSEvent) -> Bool {
-    switch event.keyCode {
-    case 126:  // Up arrow
-      viewModel.moveSelectionUp()
-      HapticService.selectionChanged()
-      return true
-    case 125:  // Down arrow
-      viewModel.moveSelectionDown()
-      HapticService.selectionChanged()
-      return true
-    case 53:  // Escape
-      if let action = viewModel.handleSpecialKey(.escape, modifiers: event.modifierFlags) {
-        onAction(action)
-      }
-      return true
-    case 124:  // Right arrow
-      if let action = viewModel.handleSpecialKey(.right, modifiers: event.modifierFlags) {
-        onAction(action)
-        return true
-      }
-      return false
-    case 123:  // Left arrow
-      if let action = viewModel.handleSpecialKey(.left, modifiers: event.modifierFlags) {
-        onAction(action)
-        return true
-      }
-      return false
     default:
-      return false
+      break
     }
   }
 }

@@ -12,12 +12,6 @@ public final class EmojiKeywordSearch: Sendable {
   /// emoji 文字列 → キーワード配列
   private let keywords: [String: [String]]
 
-  /// 正規化済みの emoji 文字列 → 元の emoji 文字列 のマッピング
-  ///
-  /// emojibase のデータには Variation Selector (U+FE0F) 付きの
-  /// 文字列が含まれるため、VS を除去した文字列でもルックアップ可能にする。
-  private let normalizedLookup: [String: String]
-
   public init() {
     guard
       let url = ResourceBundle.bundle.url(forResource: "emoji_keywords_ja", withExtension: "json"),
@@ -25,18 +19,9 @@ public final class EmojiKeywordSearch: Sendable {
       let dict = try? JSONDecoder().decode([String: [String]].self, from: data)
     else {
       self.keywords = [:]
-      self.normalizedLookup = [:]
       return
     }
     self.keywords = dict
-
-    // Variation Selector 除去版のルックアップを構築
-    var lookup: [String: String] = [:]
-    for key in dict.keys {
-      let normalized = key.removingVariationSelectors()
-      lookup[normalized] = key
-    }
-    self.normalizedLookup = lookup
   }
 
   /// クエリにマッチする絵文字の集合を返す。

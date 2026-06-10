@@ -562,8 +562,8 @@ struct AppScannerAppInfoExtractionTests {
 
     #expect(appItem != nil)
     #expect(appItem!.path == appPath)
-    let mdlsName = scanner.localizedNameViaMdls(for: appPath)
-    let expectedName = mdlsName ?? "Display Name App"
+    let systemName = scanner.localizedSystemName(for: appPath)
+    let expectedName = systemName ?? "Display Name App"
     #expect(appItem!.name == expectedName)
   }
 
@@ -580,8 +580,8 @@ struct AppScannerAppInfoExtractionTests {
     let appItem = scanner.extractAppInfo(from: appPath)
 
     #expect(appItem != nil)
-    let mdlsName = scanner.localizedNameViaMdls(for: appPath)
-    let expectedName = mdlsName ?? "BundleOnlyApp"
+    let systemName = scanner.localizedSystemName(for: appPath)
+    let expectedName = systemName ?? "BundleOnlyApp"
     #expect(appItem!.name == expectedName)
     let expectedOriginalName: String? =
       expectedName == "BundleOnlyApp"
@@ -614,7 +614,7 @@ struct AppScannerAppInfoExtractionTests {
 @Suite("AppScanner Excluded Apps")
 struct AppScannerExcludedAppsTests {
 
-  @Test func filtersExcludedApps() throws {
+  @Test func filtersExcludedApps() async throws {
     let tmpDir = try makeTempDir()
     defer { cleanup(tmpDir) }
 
@@ -626,7 +626,7 @@ struct AppScannerExcludedAppsTests {
     let scanner = AppScanner(
       scanTargets: [AppScanner.ScanTarget(path: tmpDir, maxDepth: 1)]
     )
-    let results = try scanner.scanApplications(excludedApps: [excludedPath])
+    let results = try await scanner.scanApplications(excludedApps: [excludedPath])
 
     #expect(results.count == 2)
     #expect(!results.contains { $0.path == excludedPath })
@@ -634,7 +634,7 @@ struct AppScannerExcludedAppsTests {
     #expect(results.contains { $0.path.hasSuffix("AlsoKeep.app") })
   }
 
-  @Test func filtersExcludedAppsByDisplayName() throws {
+  @Test func filtersExcludedAppsByDisplayName() async throws {
     let tmpDir = try makeTempDir()
     defer { cleanup(tmpDir) }
 
@@ -649,14 +649,14 @@ struct AppScannerExcludedAppsTests {
     let scanner = AppScanner(
       scanTargets: [AppScanner.ScanTarget(path: tmpDir, maxDepth: 1)]
     )
-    let results = try scanner.scanApplications(excludedApps: ["Exclude Display"])
+    let results = try await scanner.scanApplications(excludedApps: ["Exclude Display"])
 
     #expect(results.count == 1)
     #expect(!results.contains { $0.path == excludedPath })
     #expect(results.contains { $0.path.hasSuffix("Keep.app") })
   }
 
-  @Test func filtersExcludedAppsByBundleFileName() throws {
+  @Test func filtersExcludedAppsByBundleFileName() async throws {
     let tmpDir = try makeTempDir()
     defer { cleanup(tmpDir) }
 
@@ -670,14 +670,14 @@ struct AppScannerExcludedAppsTests {
     let scanner = AppScanner(
       scanTargets: [AppScanner.ScanTarget(path: tmpDir, maxDepth: 1)]
     )
-    let results = try scanner.scanApplications(excludedApps: ["Exclude.app"])
+    let results = try await scanner.scanApplications(excludedApps: ["Exclude.app"])
 
     #expect(results.count == 1)
     #expect(!results.contains { $0.path == excludedPath })
     #expect(results.contains { $0.path.hasSuffix("Keep.app") })
   }
 
-  @Test func emptyExcludedAppsKeepsAll() throws {
+  @Test func emptyExcludedAppsKeepsAll() async throws {
     let tmpDir = try makeTempDir()
     defer { cleanup(tmpDir) }
 
@@ -687,7 +687,7 @@ struct AppScannerExcludedAppsTests {
     let scanner = AppScanner(
       scanTargets: [AppScanner.ScanTarget(path: tmpDir, maxDepth: 1)]
     )
-    let results = try scanner.scanApplications(excludedApps: [])
+    let results = try await scanner.scanApplications(excludedApps: [])
 
     #expect(results.count == 2)
   }
@@ -698,7 +698,7 @@ struct AppScannerExcludedAppsTests {
 @Suite("AppScanner Full Scan")
 struct AppScannerFullScanTests {
 
-  @Test func scanMultipleDirectories() throws {
+  @Test func scanMultipleDirectories() async throws {
     let tmpDir1 = try makeTempDir()
     let tmpDir2 = try makeTempDir()
     defer {
@@ -715,14 +715,14 @@ struct AppScannerFullScanTests {
         AppScanner.ScanTarget(path: tmpDir2, maxDepth: 1),
       ]
     )
-    let results = try scanner.scanApplications(excludedApps: [])
+    let results = try await scanner.scanApplications(excludedApps: [])
 
     #expect(results.count == 2)
     #expect(results.contains { $0.name == "App1" })
     #expect(results.contains { $0.name == "App2" })
   }
 
-  @Test func resultsSortedByName() throws {
+  @Test func resultsSortedByName() async throws {
     let tmpDir = try makeTempDir()
     defer { cleanup(tmpDir) }
 
@@ -733,7 +733,7 @@ struct AppScannerFullScanTests {
     let scanner = AppScanner(
       scanTargets: [AppScanner.ScanTarget(path: tmpDir, maxDepth: 1)]
     )
-    let results = try scanner.scanApplications(excludedApps: [])
+    let results = try await scanner.scanApplications(excludedApps: [])
 
     #expect(results.count == 3)
     #expect(results[0].name == "Alpha")
@@ -741,7 +741,7 @@ struct AppScannerFullScanTests {
     #expect(results[2].name == "Zebra")
   }
 
-  @Test func deduplicatesAppsByPath() throws {
+  @Test func deduplicatesAppsByPath() async throws {
     let tmpDir = try makeTempDir()
     defer { cleanup(tmpDir) }
 
@@ -754,42 +754,42 @@ struct AppScannerFullScanTests {
         AppScanner.ScanTarget(path: tmpDir, maxDepth: 1),
       ]
     )
-    let results = try scanner.scanApplications(excludedApps: [])
+    let results = try await scanner.scanApplications(excludedApps: [])
 
     #expect(results.count == 1)
   }
 
-  @Test func scanEmptyDirectoriesReturnsEmpty() throws {
+  @Test func scanEmptyDirectoriesReturnsEmpty() async throws {
     let tmpDir = try makeTempDir()
     defer { cleanup(tmpDir) }
 
     let scanner = AppScanner(
       scanTargets: [AppScanner.ScanTarget(path: tmpDir, maxDepth: 2)]
     )
-    let results = try scanner.scanApplications(excludedApps: [])
+    let results = try await scanner.scanApplications(excludedApps: [])
 
     #expect(results.isEmpty)
   }
 
-  @Test func scanNonExistentDirectorySkipsGracefully() throws {
+  @Test func scanNonExistentDirectorySkipsGracefully() async throws {
     let scanner = AppScanner(
       scanTargets: [
         AppScanner.ScanTarget(
           path: "/nonexistent/path/\(UUID().uuidString)", maxDepth: 2)
       ]
     )
-    let results = try scanner.scanApplications(excludedApps: [])
+    let results = try await scanner.scanApplications(excludedApps: [])
 
     #expect(results.isEmpty)
   }
 }
 
-// MARK: - mdls 統合テスト
+// MARK: - ローカライズ名解決テスト
 
-@Suite("AppScanner mdls")
-struct AppScannerMdlsTests {
+@Suite("AppScanner Localized System Name")
+struct AppScannerLocalizedSystemNameTests {
 
-  @Test func mdlsReturnsNameForApp() throws {
+  @Test func returnsNameForExistingApp() throws {
     let tmpDir = try makeTempDir()
     defer { cleanup(tmpDir) }
 
@@ -797,21 +797,72 @@ struct AppScannerMdlsTests {
       at: tmpDir, name: "FakeApp.app", bundleName: "FakeApp")
 
     let scanner = AppScanner()
-    let name = scanner.localizedNameViaMdls(for: appPath)
+    let name = scanner.localizedSystemName(for: appPath)
 
     if let name {
       #expect(!name.isEmpty)
-      #expect(name != "(null)")
+      // Finder の拡張子表示設定にかかわらず .app は除去される
+      #expect(!name.hasSuffix(".app"))
     } else {
       #expect(name == nil)
     }
   }
 
-  @Test func mdlsReturnsNilForNonExistentPath() {
+  @Test func returnsNilForNonExistentPath() {
     let scanner = AppScanner()
-    let name = scanner.localizedNameViaMdls(
+    let name = scanner.localizedSystemName(
       for: "/nonexistent/path/\(UUID().uuidString).app")
 
     #expect(name == nil)
+  }
+}
+
+// MARK: - AppItem 除外判定テスト
+
+@Suite("AppScanner isExcluded(app:)")
+struct AppScannerIsExcludedItemTests {
+
+  private let scanner = AppScanner()
+
+  @Test("パス・バンドルファイル名・バンドル名・表示名・元名のいずれでも除外できる")
+  func matchesAllIdentifierForms() {
+    let app = AppItem(
+      name: "プレビュー",
+      path: "/Applications/Preview.app",
+      originalName: "Preview"
+    )
+
+    #expect(scanner.isExcluded(app, excludedApps: ["/Applications/Preview.app"]))
+    #expect(scanner.isExcluded(app, excludedApps: ["Preview.app"]))
+    #expect(scanner.isExcluded(app, excludedApps: ["Preview"]))
+    #expect(scanner.isExcluded(app, excludedApps: ["プレビュー"]))
+  }
+
+  @Test("該当しないアプリは除外されない")
+  func doesNotMatchUnrelatedApp() {
+    let app = AppItem(name: "Safari", path: "/Applications/Safari.app")
+
+    #expect(!scanner.isExcluded(app, excludedApps: ["Preview", "Mail.app"]))
+    #expect(!scanner.isExcluded(app, excludedApps: []))
+  }
+
+  @Test("scanApplications の除外結果とフィルタ適用結果が一致する")
+  func filterMatchesScanResults() async throws {
+    let tmpDir = try makeTempDir()
+    defer { cleanup(tmpDir) }
+
+    _ = try createFakeApp(at: tmpDir, name: "Keep.app", bundleName: "Keep")
+    _ = try createFakeApp(at: tmpDir, name: "Exclude.app", bundleName: "Exclude")
+
+    let scanner = AppScanner(
+      scanTargets: [AppScanner.ScanTarget(path: tmpDir, maxDepth: 1)]
+    )
+    let excluded = ["Exclude.app"]
+
+    let scanFiltered = try await scanner.scanApplications(excludedApps: excluded)
+    let allApps = try await scanner.scanApplications(excludedApps: [])
+    let postFiltered = allApps.filter { !scanner.isExcluded($0, excludedApps: excluded) }
+
+    #expect(scanFiltered.map(\.path) == postFiltered.map(\.path))
   }
 }

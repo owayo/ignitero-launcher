@@ -86,6 +86,9 @@ public final class LauncherViewModel {
   /// 検索フィールドへのフォーカス要求トリガー（インクリメントで発火）
   public var focusTrigger: Int = 0
 
+  /// アップデートバナーが非表示にされたときに呼ばれるコールバック（非表示状態の永続化用）
+  public var onUpdateBannerDismissed: ((String) -> Void)?
+
   // MARK: - 依存関係
 
   private let searchService: SearchService
@@ -250,11 +253,13 @@ public final class LauncherViewModel {
 
   /// 指定バージョンのアップデートバナーを非表示にする。
   ///
-  /// 現在のバナーバージョンと一致する場合のみ非表示フラグを設定する。
+  /// 現在のバナーバージョンと一致する場合のみ非表示フラグを設定し、
+  /// 永続化用コールバックへ通知する。
   /// - Parameter version: 非表示にするバージョン
   public func dismissUpdateBanner(version: String) {
     guard updateBannerVersion == version else { return }
     isUpdateBannerDismissed = true
+    onUpdateBannerDismissed?(version)
   }
 
   // MARK: - 特殊アクション

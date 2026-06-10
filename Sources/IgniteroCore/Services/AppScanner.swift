@@ -4,7 +4,37 @@ import os
 // MARK: - AppScannerProtocol
 
 public protocol AppScannerProtocol: Sendable {
-  func scanApplications(excludedApps: [String]) throws -> [AppItem]
+  /// アプリケーションをスキャンする。
+  ///
+  /// nonisolated async のため呼び出し元が MainActor でもバックグラウンドで実行され、
+  /// メインスレッドをブロックしない。
+  func scanApplications(excludedApps: [String]) async throws -> [AppItem]
+
+  /// スキャン済みアプリが除外リストに該当するかを判定する。
+  func isExcluded(_ app: AppItem, excludedApps: [String]) -> Bool
+}
+
+extension AppScannerProtocol {
+  /// 既定実装: パス・バンドルファイル名・バンドル名・表示名・元名で照合する。
+  public func isExcluded(_ app: AppItem, excludedApps: [String]) -> Bool {
+    guard !excludedApps.isEmpty else { return false }
+    let excludedSet = Set(excludedApps)
+    let bundleFileName = (app.path as NSString).lastPathComponent
+    let bundleName =
+      bundleFileName.hasSuffix(".app")
+      ? String(bundleFileName.dropLast(4)) : bundleFileName
+    if excludedSet.contains(app.path)
+      || excludedSet.contains(bundleFileName)
+      || excludedSet.contains(bundleName)
+      || excludedSet.contains(app.name)
+    {
+      return true
+    }
+    if let originalName = app.originalName, excludedSet.contains(originalName) {
+      return true
+    }
+    return false
+  }
 }
 
 // MARK: - AppScanner
@@ -52,7 +82,7 @@ public struct AppScanner: AppScannerProtocol, Sendable {
 
   // MARK: - Core Scan
 
-  public func scanApplications(excludedApps: [String]) throws -> [AppItem] {
+  public func scanApplications(excludedApps: [String]) async throws -> [AppItem] {
     let excludedSet = Set(excludedApps)
     var seenPaths = Set<String>()
     var results: [AppItem] = []
@@ -102,6 +132,19 @@ public struct AppScanner: AppScannerProtocol, Sendable {
     // 名前でソート
     results.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     return results
+  }
+
+  /// スキャン済みアプリが除外リストに該当するかを判定する。
+  ///
+  /// AppItem の名前照合に加えて Info.plist の表示名/バンドル名でも照合する
+  /// （スキャン時の事前・事後チェックと同一の判定）。
+  public func isExcluded(_ app: AppItem, excludedApps: [String]) -> Bool {
+    guard !excludedApps.isEmpty else { return false }
+    let excludedSet = Set(excludedApps)
+    if isExcluded(bundlePath: app.path, appItem: app, excludedSet: excludedSet) {
+      return true
+    }
+    return isExcluded(bundlePath: app.path, appItem: nil, excludedSet: excludedSet)
   }
 
   private func isExcluded(
@@ -256,43 +299,20 @@ public struct AppScanner: AppScannerProtocol, Sendable {
 
   // MARK: - Localized Name Resolution
 
-  /// mdls を使用してローカライズされた表示名を取得する
-  public func localizedNameViaMdls(for appPath: String) -> String? {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/usr/bin/mdls")
-    process.arguments = ["-name", "kMDItemDisplayName", "-raw", appPath]
-
-    let pipe = Pipe()
-    process.standardOutput = pipe
-    process.standardError = FileHandle.nullDevice
-
-    do {
-      try process.run()
-      // パイプバッファが満杯になった場合のデッドロックを防ぐため、
-      // waitUntilExit の前に readDataToEndOfFile を呼ぶ。
-      let data = pipe.fileHandleForReading.readDataToEndOfFile()
-      process.waitUntilExit()
-      guard process.terminationStatus == 0 else { return nil }
-      return Self.parseLocalizedName(from: data)
-    } catch {
-      Self.logger.debug("mdls failed for \(appPath): \(error.localizedDescription)")
-      return nil
-    }
-  }
-
-  /// mdls の出力データからローカライズ名をパースする。
-  private static func parseLocalizedName(from data: Data) -> String? {
-    guard
-      let output = String(data: data, encoding: .utf8)?.trimmingCharacters(
-        in: .whitespacesAndNewlines)
+  /// LaunchServices からローカライズされた表示名（Finder 表示名）を取得する。
+  ///
+  /// 旧実装はアプリごとに /usr/bin/mdls を同期 spawn しており、
+  /// スキャン全体で数百回のプロセス起動が発生していた。
+  /// URLResourceValues はプロセス起動なしで同等のローカライズ名を返す。
+  public func localizedSystemName(for appPath: String) -> String? {
+    let url = URL(fileURLWithPath: appPath)
+    guard let values = try? url.resourceValues(forKeys: [.localizedNameKey]),
+      let name = values.localizedName
     else { return nil }
 
-    // mdls は見つからない場合 "(null)" を返す
-    if output.isEmpty || output == "(null)" {
-      return nil
-    }
-
-    return output
+    // Finder の「拡張子を表示」設定によっては .app 付きで返るため除去する
+    let trimmed = name.hasSuffix(".app") ? String(name.dropLast(4)) : name
+    return trimmed.isEmpty ? nil : trimmed
   }
 
   /// .lproj/InfoPlist.strings からローカライズ名を取得する
@@ -362,7 +382,7 @@ public struct AppScanner: AppScannerProtocol, Sendable {
 
     // ローカライズ名の取得を試行
     let localizedName =
-      localizedNameViaMdls(for: appPath)
+      localizedSystemName(for: appPath)
       ?? localizedNameFromLproj(for: appPath)
 
     // 名前の優先順位: ローカライズ名 > CFBundleDisplayName > CFBundleName > ファイル名
@@ -397,11 +417,4 @@ public struct AppScanner: AppScannerProtocol, Sendable {
     }
     return fileName
   }
-}
-
-// MARK: - AppScannerError
-
-public enum AppScannerError: Error, Sendable {
-  case scanFailed(String)
-  case plistParsingFailed(String)
 }

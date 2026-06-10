@@ -11,6 +11,18 @@ public enum SettingsTab: String, CaseIterable, Sendable {
   case excludedApps
 }
 
+// MARK: - SettingsChange
+
+/// 設定変更の種別。変更内容に応じてランチャー側で必要な反映処理が異なる。
+public enum SettingsChange: Sendable, Equatable {
+  /// ViewModel の再読み込みのみで反映できる変更（エディタ/ターミナル/コマンド）
+  case reloadOnly
+  /// キャッシュ再スキャンが必要な変更（ディレクトリ/除外アプリ）
+  case cacheInvalidated
+  /// 自動更新タイマーの再起動が必要な変更（キャッシュ更新設定）
+  case updateScheduleChanged
+}
+
 // MARK: - SettingsViewModel
 
 /// 設定画面のビューモデル。
@@ -29,7 +41,7 @@ public final class SettingsViewModel {
   // MARK: - Callbacks
 
   /// 設定が保存された後に呼ばれるコールバック
-  public var onSettingsChanged: (() -> Void)?
+  public var onSettingsChanged: ((SettingsChange) -> Void)?
 
   // MARK: - State
 
@@ -94,7 +106,7 @@ public final class SettingsViewModel {
   public func setDefaultEditor(_ editor: EditorType) throws {
     settingsManager.settings.defaultEditor = editor
     try settingsManager.save()
-    onSettingsChanged?()
+    onSettingsChanged?(.reloadOnly)
   }
 
   /// デフォルトターミナルを変更する。
@@ -104,7 +116,7 @@ public final class SettingsViewModel {
   public func setDefaultTerminal(_ terminal: TerminalType) throws {
     settingsManager.settings.defaultTerminal = terminal
     try settingsManager.save()
-    onSettingsChanged?()
+    onSettingsChanged?(.reloadOnly)
   }
 
   /// キャッシュ更新設定を変更する。
@@ -114,7 +126,7 @@ public final class SettingsViewModel {
   public func setCacheUpdateSettings(_ cacheSettings: CacheUpdateSettings) throws {
     settingsManager.settings.cacheUpdate = cacheSettings
     try settingsManager.save()
-    onSettingsChanged?()
+    onSettingsChanged?(.updateScheduleChanged)
   }
 
   // MARK: - Directory Tab
@@ -140,6 +152,7 @@ public final class SettingsViewModel {
       scanForApps: scanForApps
     )
     try settingsManager.addDirectory(dir)
+    onSettingsChanged?(.cacheInvalidated)
   }
 
   /// 指定インデックスのディレクトリを削除する。
@@ -150,6 +163,7 @@ public final class SettingsViewModel {
     guard settingsManager.settings.registeredDirectories.indices.contains(index) else { return }
     settingsManager.settings.registeredDirectories.remove(at: index)
     try settingsManager.save()
+    onSettingsChanged?(.cacheInvalidated)
   }
 
   /// 指定インデックスのディレクトリを更新する。
@@ -162,6 +176,7 @@ public final class SettingsViewModel {
     guard settingsManager.settings.registeredDirectories.indices.contains(index) else { return }
     settingsManager.settings.registeredDirectories[index] = directory
     try settingsManager.save()
+    onSettingsChanged?(.cacheInvalidated)
   }
 
   // MARK: - Command Tab
@@ -184,6 +199,7 @@ public final class SettingsViewModel {
       workingDirectory: workingDirectory
     )
     try settingsManager.addCommand(cmd)
+    onSettingsChanged?(.reloadOnly)
   }
 
   /// 指定インデックスのコマンドを削除する。
@@ -194,6 +210,7 @@ public final class SettingsViewModel {
     guard settingsManager.settings.customCommands.indices.contains(index) else { return }
     settingsManager.settings.customCommands.remove(at: index)
     try settingsManager.save()
+    onSettingsChanged?(.reloadOnly)
   }
 
   /// 指定インデックスのコマンドを更新する。
@@ -206,6 +223,7 @@ public final class SettingsViewModel {
     guard settingsManager.settings.customCommands.indices.contains(index) else { return }
     settingsManager.settings.customCommands[index] = command
     try settingsManager.save()
+    onSettingsChanged?(.reloadOnly)
   }
 
   // MARK: - Excluded Apps Tab
@@ -222,6 +240,7 @@ public final class SettingsViewModel {
       settingsManager.settings.excludedApps.append(appName)
     }
     try settingsManager.save()
+    onSettingsChanged?(.cacheInvalidated)
   }
 
   /// アプリが除外リストに含まれているかどうかを返す。
