@@ -340,4 +340,3 @@ struct WindowManagerCallbackTests {
     #expect(manager.isLauncherVisible == false)
   }
 }
-
