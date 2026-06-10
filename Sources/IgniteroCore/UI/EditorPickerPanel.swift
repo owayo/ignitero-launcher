@@ -189,6 +189,9 @@ public final class EditorPickerPanel: NSPanel {
   /// ピッカーの選択状態
   public let pickerState: EditorPickerState
 
+  /// エディタ選択確定時のコールバック
+  public var onSelect: ((EditorType) -> Void)?
+
   /// パネルが閉じた時のコールバック
   public var onDismiss: (() -> Void)?
 
@@ -244,8 +247,9 @@ public final class EditorPickerPanel: NSPanel {
       HapticService.selectionChanged()
     case 36:  // Enter / Return
       pickerState.confirm()
-      if pickerState.confirmedEditor != nil {
+      if let editor = pickerState.confirmedEditor {
         HapticService.confirmed()
+        onSelect?(editor)
         dismissPanel()
       }
     case 53:  // Escape
@@ -314,9 +318,8 @@ public final class EditorPickerPanel: NSPanel {
 
   /// パネルを非表示にする。
   ///
-  /// pickerState の isDismissed をセットしてから orderOut → onDismiss の順で実行する。
-  /// これにより、外部からの dismissPanel() 呼び出し（onCloseAllPickers 等）でも
-  /// ポーリングタスクが正しく終了する。
+  /// 確定済みでない場合は pickerState を dismiss 状態にしてから
+  /// orderOut → onDismiss の順で実行する。
   public func dismissPanel() {
     if !pickerState.isDismissed && pickerState.confirmedEditor == nil {
       pickerState.dismiss()

@@ -1247,17 +1247,16 @@ struct AppCoordinatorWindowManagerTests {
   }
 }
 
-// MARK: - エディタピッカー観測タスク管理テスト
+// MARK: - エディタピッカー確定コールバックテスト
 
-@Suite("AppCoordinator Editor Picker Observation")
-struct AppCoordinatorEditorPickerObservationTests {
+@Suite("AppCoordinator Editor Picker Selection")
+struct AppCoordinatorEditorPickerSelectionTests {
 
   @Test("showEditorPicker の連続呼び出しでクラッシュしない")
   @MainActor
   func consecutiveShowEditorPickerDoesNotCrash() {
     let coordinator = makeCoordinator()
 
-    // 連続呼び出しで前回タスクがキャンセルされ、新タスクに置き換わることを検証
     coordinator.showEditorPicker(for: "/tmp/dir1")
     coordinator.showEditorPicker(for: "/tmp/dir2")
     coordinator.showEditorPicker(for: "/tmp/dir3")
@@ -1266,21 +1265,38 @@ struct AppCoordinatorEditorPickerObservationTests {
     #expect(coordinator.windowManager.isPickerVisible == true)
   }
 
-  @Test("showEditorPicker 後のキャンセルでクラッシュしない")
+  @Test("エディタ確定で openDirectory が呼ばれ、検索がクリアされる")
   @MainActor
-  func editorPickerCancelDoesNotCrash() async throws {
+  func editorSelectOpensDirectory() async throws {
+    let launchService = MockLaunchService()
+    let coordinator = makeCoordinator(launchService: launchService)
+
+    coordinator.showEditorPicker(for: "/tmp/test")
+    coordinator.launcherViewModel.searchQuery = "query"
+
+    // Enter 確定相当の onSelect コールバックを発火する
+    coordinator.editorPickerPanel.onSelect?(.vscode)
+
+    // 非同期の openDirectory 完了をポーリングで待つ
+    for _ in 0..<1000 where launchService.openDirectoryCalledWith == nil {
+      await Task.yield()
+    }
+    #expect(launchService.openDirectoryCalledWith?.path == "/tmp/test")
+    #expect(launchService.openDirectoryCalledWith?.editor == .vscode)
+    #expect(coordinator.launcherViewModel.searchQuery.isEmpty)
+  }
+
+  @Test("dismissPanel で isPickerVisible が解除される")
+  @MainActor
+  func editorPickerDismissClearsPickerVisible() {
     let coordinator = makeCoordinator()
 
     coordinator.showEditorPicker(for: "/tmp/test")
+    #expect(coordinator.windowManager.isPickerVisible == true)
 
-    // ピッカーを dismiss してタスクの while ループを終了させる
-    coordinator.editorPickerPanel.pickerState.dismiss()
+    coordinator.editorPickerPanel.dismissPanel()
 
-    // タスクが正常終了するまで少し待機
-    try await Task.sleep(nanoseconds: 100_000_000)
-
-    // クラッシュしないことを確認
-    #expect(coordinator.windowManager.isPickerVisible == true || true)
+    #expect(coordinator.windowManager.isPickerVisible == false)
   }
 }
 

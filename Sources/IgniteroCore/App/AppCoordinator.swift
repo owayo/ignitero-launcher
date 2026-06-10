@@ -87,9 +87,6 @@ public final class AppCoordinator {
   /// 起動処理がすべて完了し、操作可能な状態かどうか
   public private(set) var isReady: Bool = false
 
-  /// エディタピッカー確定監視タスク（連続呼び出し時のリーク防止用）
-  private var editorPickerObservationTask: Task<Void, Never>?
-
   // MARK: - 初期化
 
   /// AppCoordinator を初期化し、全コンポーネントを接続する。
@@ -192,10 +189,8 @@ public final class AppCoordinator {
 
     let settingsVM = SettingsViewModel(settingsManager: settings)
     // インストール済みエディタ/ターミナルを設定
-    if let ls = self.launchService as? LaunchService {
-      settingsVM.installedEditors = ls.availableEditors().filter { $0.installed }
-      settingsVM.installedTerminals = ls.availableTerminals().filter { $0.installed }
-    }
+    settingsVM.installedEditors = self.launchService.availableEditors().filter { $0.installed }
+    settingsVM.installedTerminals = self.launchService.availableTerminals().filter { $0.installed }
     self.settingsViewModel = settingsVM
 
     // パネル群を初期化する
@@ -566,8 +561,7 @@ public final class AppCoordinator {
   ///   - directoryPath: 開くディレクトリのパス
   ///   - currentEditor: 初期選択するエディタ（ディレクトリに紐づくエディタ）
   public func showEditorPicker(for directoryPath: String, currentEditor: EditorType? = nil) {
-    let allEditors = (launchService as? LaunchService)?.availableEditors() ?? []
-    let editors = allEditors.filter { $0.installed }
+    let editors = launchService.availableEditors().filter { $0.installed }
     let frame = launcherPanel.frame
 
     // 既定選択: ディレクトリに紐づくエディタ → 設定の既定エディタの順でフォールバックする
@@ -585,13 +579,25 @@ public final class AppCoordinator {
     // ピッカーがキーウィンドウになった後でランチャーを隠す
     windowManager.hideLauncher()
 
+    // エディタ確定時のコールバック（TerminalPickerPanel と同方式）
+    editorPickerPanel.onSelect = { [weak self] editor in
+      guard let self else { return }
+      Task {
+        do {
+          try await self.launchService.openDirectory(directoryPath, editor: editor)
+        } catch {
+          Self.logger.error("Failed to open in editor: \(error.localizedDescription)")
+        }
+      }
+      // エディタ確定時はランチャーの検索もクリアする
+      self.launcherViewModel.clearSearch()
+      self.windowManager.resizeForResults(count: 0)
+    }
+
     // ピッカーを閉じたときのコールバックを設定する
     editorPickerPanel.onDismiss = { [weak self] in
       self?.windowManager.hidePicker()
     }
-
-    // EditorPickerPanel の確定監視を設定する
-    setupEditorPickerObservation(directoryPath: directoryPath)
   }
 
   /// ターミナルピッカーを表示する。
@@ -599,8 +605,7 @@ public final class AppCoordinator {
   /// Tauri と同様のフロー: ランチャーを隠す → ピッカーを最前面に表示。
   /// - Parameter directoryPath: 開くディレクトリのパス
   public func showTerminalPicker(for directoryPath: String) {
-    let allTerminals = (launchService as? LaunchService)?.availableTerminals() ?? []
-    let terminals = allTerminals.filter { $0.installed }
+    let terminals = launchService.availableTerminals().filter { $0.installed }
     let frame = launcherPanel.frame
 
     // 既定ターミナルのインデックスを特定する
@@ -788,46 +793,6 @@ public final class AppCoordinator {
     } catch {
       Self.logger.error(
         "Failed to persist dismissed update version: \(error.localizedDescription)")
-    }
-  }
-
-  /// エディタピッカーの確定監視を設定する。
-  private func setupEditorPickerObservation(directoryPath: String) {
-    // 前回のポーリングタスクが残っている場合はキャンセルする
-    editorPickerObservationTask?.cancel()
-
-    // エディタピッカーの状態変化をポーリングで監視するタスク
-    editorPickerObservationTask = Task { @MainActor [weak self] in
-      guard let self else { return }
-      let state = self.editorPickerPanel.pickerState
-
-      // 確定またはキャンセルまで待機（タスクキャンセル時も即座に抜ける）
-      while !Task.isCancelled && !state.isDismissed && state.confirmedEditor == nil {
-        try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms
-      }
-      guard !Task.isCancelled else {
-        // キャンセル時もピッカーを確実に閉じて isPickerVisible の固着を防ぐ
-        self.windowManager.hidePicker()
-        return
-      }
-
-      if let editor = state.confirmedEditor {
-        Task {
-          do {
-            try await self.launchService.openDirectory(directoryPath, editor: editor)
-          } catch {
-            Self.logger.error(
-              "Failed to open in editor: \(error.localizedDescription)")
-          }
-        }
-      }
-
-      self.windowManager.hidePicker()
-      if state.confirmedEditor != nil {
-        // エディタ確定時はランチャーの検索もクリア
-        self.launcherViewModel.clearSearch()
-        self.windowManager.resizeForResults(count: 0)
-      }
     }
   }
 
