@@ -589,6 +589,24 @@ struct AppCoordinatorExecuteResultTests {
     #expect(history.allEntries[0].selectedPath == command.historyIdentifier)
   }
 
+  @Test("Emoji 結果の実行は選択履歴に記録しない")
+  @MainActor
+  func executeEmojiResultDoesNotRecordHistory() async {
+    let history = makeTempSelectionHistory()
+    let coordinator = makeCoordinator(
+      launchService: MockLaunchService(),
+      selectionHistory: history
+    )
+
+    // emoji は keyword ごとに別の空パスエントリを作るため、記録すると履歴枠を圧迫する。
+    // 一過性アクション（emoji/カラーピッカー/Web検索）は履歴に記録しないことを検証する。
+    coordinator.launcherViewModel.searchQuery = "emoji cat"
+    coordinator.executeResult(SearchResult(name: "Emoji ピッカー", kind: .emoji, score: -10))
+
+    #expect(history.allEntries.isEmpty)
+    #expect(coordinator.launcherViewModel.history.isEmpty)
+  }
+
   @Test("Execute result clears search")
   @MainActor
   func executeResultClearsSearch() async {

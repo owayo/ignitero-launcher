@@ -2,6 +2,21 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-06-12 更新内容（定期メンテナンス）:
+
+- `git fetch origin` を実行し、`main` がリモート最新（`56520f4`）と同期済みであることを確認
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（GRDB.swift / KeyboardShortcuts / Fuse-Swift / EmojiKit の 4 件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app / iTerm2 / Ghostty 1.3.x / cmux 0.64.14: AppleScript 経由のコマンド実行を維持。cmux は `sdef` に `send key` が無く `input text` への改行埋め込みが唯一の確定手段であることを再確認し、コード内コメントの版数を 0.64.10 → 0.64.14 に更新
+  - Warp: 2026-04-28 にオープンソース化されたがソースに AppleScript 辞書（`.sdef`）は存在せず、GitHub Issue #3364 も Open のまま。`do script` 相当は提供されないため `.command` 方式を維持
+- リファクタリング要否を astro-sight で確認（最大循環的複雑度 8、関数は適切に分割済み）。唯一の候補だったピッカーパネル（Editor / Terminal / Emoji）の基盤共通化は、EmojiPickerPanel の styleMask・collectionBehavior・表示処理が他 2 つと大きく異なり共通化がリークするため、過剰リファクタリング回避の観点から見送り
+- コードベース全体レビューを 3 並列のレビューエージェント（ターミナル調査・リファクタ分析・バグ検出）で実施。codex(gpt-5.5) のセカンドオピニオンを併用し、確実なバグ 1 件を修正:
+  - AppCoordinator / SelectionHistory: `executeResult` が結果種別の判定前に無条件で選択履歴を記録していたため、path が空の Emoji / カラーピッカー（および履歴に復元できない Web 検索 URL）まで記録され、`purgeInvalidPaths` が空パスを永久保持する旧仕様（カスタムコマンドが空パスだった頃の名残）と相まって、`emoji <keyword>` のように keyword が毎回変わるたび空パス履歴が際限なく蓄積し、最大 50 件の履歴枠を圧迫して正規のアプリ / ディレクトリ履歴を押し出していた問題を修正。`executeResult` を網羅的 `switch` にして履歴復元可能な app / directory / command のみ記録するよう変更し、`purgeInvalidPaths` を allowlist 方式（`validPaths` に無いエントリと空パス・URL を削除）へ変更して既存の汚染も掃除
+- テスト数を 944 → 947 に増加
+  - AppCoordinator: Emoji 結果の実行で選択履歴に記録しないことを検証する回帰テストを 1 件追加
+  - SelectionHistory: Web 検索 URL のような validPaths 外のパスが purge で削除されることを検証するテストを 1 件追加（既存の「空パス保持」テスト 2 件は「空パス削除」へ期待値を変更）
+  - SearchService: 空パス・Web 検索 URL の履歴が「最近使った項目」に出ないことを検証するテストを 1 件追加
+
 2026-06-09 更新内容（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、`main` が最新であることを確認

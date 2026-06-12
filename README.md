@@ -360,7 +360,7 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 - **データ**: GRDB.swift (SQLite), JSON 永続化
 - **検索**: Fuse-Swift（ファジー検索）
 - **ショートカット**: KeyboardShortcuts (`Option` + `Space`)
-- **テスト**: Swift Testing (944テスト)
+- **テスト**: Swift Testing (947テスト)
 - **パッケージ**: Swift Package Manager
 - **最小OS**: macOS 26
 

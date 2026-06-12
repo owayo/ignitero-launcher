@@ -389,20 +389,19 @@ struct SelectionHistoryTests {
     #expect(history.entries(for: "dir1").count == 1)
   }
 
-  @Test("空パスのエントリは purge で削除されない")
-  func purgeKeepsEmptyPathEntries() throws {
+  @Test("空パスのエントリは purge で削除される")
+  func purgeRemovesEmptyPathEntries() throws {
     let path = makeTempFilePath()
     defer { cleanup(path) }
 
     let history = SelectionHistory(filePath: path)
-    history.record(keyword: "cmd", path: "")  // コマンド（空パス）
+    history.record(keyword: "emoji cat", path: "")  // emoji/カラーピッカー由来の空パス
     history.record(keyword: "app", path: "/Applications/App.app")
 
     history.purgeInvalidPaths([])
 
-    // 空パスのエントリは残る、App は削除される
-    #expect(history.allEntries.count == 1)
-    #expect(history.entries(for: "cmd").count == 1)
+    // 空パスのエントリも App（validPaths 未含有）もどちらも削除される
+    #expect(history.allEntries.isEmpty)
   }
 
   // MARK: - command:// 識別子の purge
@@ -443,26 +442,47 @@ struct SelectionHistoryTests {
     #expect(history.entries(for: "app").isEmpty)
   }
 
-  // MARK: - 複数の空パスエントリの purge 保持
+  // MARK: - 複数の空パスエントリの purge 削除
 
-  @Test("複数の空パスエントリがすべて purge で保持される")
-  func purgeKeepsMultipleEmptyPathEntries() throws {
+  @Test("複数の空パスエントリはすべて purge で削除される")
+  func purgeRemovesMultipleEmptyPathEntries() throws {
     let path = makeTempFilePath()
     defer { cleanup(path) }
 
     let history = SelectionHistory(filePath: path)
-    history.record(keyword: "cmd1", path: "")
-    history.record(keyword: "cmd2", path: "")
-    history.record(keyword: "cmd3", path: "")
+    history.record(keyword: "emoji cat", path: "")
+    history.record(keyword: "emoji dog", path: "")
+    history.record(keyword: "color", path: "")
     history.record(keyword: "app", path: "/Applications/App.app")
 
-    history.purgeInvalidPaths([])
+    // App のみ有効。空パス3件はすべて削除される。
+    history.purgeInvalidPaths(["/Applications/App.app"])
 
-    // 空パスエントリ3件が全て保持される
-    #expect(history.allEntries.count == 3)
-    #expect(history.entries(for: "cmd1").count == 1)
-    #expect(history.entries(for: "cmd2").count == 1)
-    #expect(history.entries(for: "cmd3").count == 1)
+    #expect(history.allEntries.count == 1)
+    #expect(history.entries(for: "app").count == 1)
+    #expect(history.entries(for: "emoji cat").isEmpty)
+    #expect(history.entries(for: "emoji dog").isEmpty)
+    #expect(history.entries(for: "color").isEmpty)
+  }
+
+  // MARK: - Web 検索 URL の purge
+
+  @Test("Web 検索 URL のような validPaths 外のパスは purge で削除される")
+  func purgeRemovesWebSearchURLEntries() throws {
+    let path = makeTempFilePath()
+    defer { cleanup(path) }
+
+    let history = SelectionHistory(filePath: path)
+    // 旧バージョンで記録された Web 検索 URL 履歴を模す。URL は validPaths に入らない。
+    history.record(keyword: "g swift", path: "https://www.google.com/search?q=swift")
+    history.record(keyword: "app", path: "/Applications/App.app")
+
+    history.purgeInvalidPaths(["/Applications/App.app"])
+
+    // App のみ残り、Web 検索 URL は削除される
+    #expect(history.allEntries.count == 1)
+    #expect(history.entries(for: "app").count == 1)
+    #expect(history.entries(for: "g swift").isEmpty)
   }
 
   // MARK: - command:// パスを validPaths に含めた場合の保持

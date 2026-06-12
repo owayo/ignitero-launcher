@@ -350,21 +350,15 @@ public final class AppCoordinator {
   /// 検索結果を選択実行する。
   ///
   /// 結果の種別に応じてアプリ起動、ディレクトリオープン、コマンド実行を行い、
-  /// 選択履歴を記録してランチャーを非表示にする。
+  /// app/directory/command の選択履歴を記録してランチャーを非表示にする。
+  /// Web検索・Emoji・カラーピッカーは一過性アクションのため履歴に記録しない。
   /// - Parameter result: 実行する検索結果
   public func executeResult(_ result: SearchResult) {
-    // 選択履歴を記録する
-    // 検索時の比較（applyHistoryBoost）と同じ正規化を施して保存する。
-    // 生クエリのまま保存すると "Xcode" と正規化済みクエリ "xcode" が一致せず履歴ブーストが効かない。
-    selectionHistory.record(
-      keyword: SearchQueryNormalizer.normalize(launcherViewModel.searchQuery),
-      path: result.path
-    )
-
-    // ViewModel 側の履歴も即時更新する
-    launcherViewModel.history = selectionHistory.allEntries
-
-    // 即時アクションはアプリがアクティブなうちに同期実行する
+    // 即時アクション（Web検索・Emoji・カラーピッカー）はアプリがアクティブなうちに同期実行し、
+    // 履歴には記録せず早期 return する。
+    // これらは path が空または一過性の URL で、検索結果（appsByPath/dirsByPath/commandsByIdentifier）
+    // へ復元できないため履歴ブースト・最近使った項目に出ない。記録すると keyword ごとに別エントリが
+    // 際限なく蓄積し、最大 50 件の履歴枠を圧迫して正規のアプリ/ディレクトリ履歴を押し出してしまう。
     switch result.kind {
     case .webSearch:
       if let url = URL(string: result.path) {
@@ -383,9 +377,20 @@ public final class AppCoordinator {
         self.showColorPicker()
       }
       return
-    default:
+    case .app, .directory, .command:
       break
     }
+
+    // 選択履歴を記録する（履歴で復元可能な app/directory/command のみ）。
+    // 検索時の比較（applyHistoryBoost）と同じ正規化を施して保存する。
+    // 生クエリのまま保存すると "Xcode" と正規化済みクエリ "xcode" が一致せず履歴ブーストが効かない。
+    selectionHistory.record(
+      keyword: SearchQueryNormalizer.normalize(launcherViewModel.searchQuery),
+      path: result.path
+    )
+
+    // ViewModel 側の履歴も即時更新する
+    launcherViewModel.history = selectionHistory.allEntries
 
     // 非同期アクション（アプリ、ディレクトリ、コマンド）を実行する
     Task {
@@ -410,7 +415,7 @@ public final class AppCoordinator {
               terminal: terminal
             )
           }
-        default:
+        case .webSearch, .emoji, .colorPicker:
           break
         }
       } catch {

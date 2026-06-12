@@ -682,6 +682,26 @@ struct SearchServiceHistoryBoostEdgeCaseTests {
     #expect(results.isEmpty)
   }
 
+  @Test("空パスや Web 検索 URL の履歴は最近使った項目に出ない")
+  func emptyQueryIgnoresEmptyAndURLPathHistory() async {
+    let apps = [AppItem(name: "Safari", path: "/Applications/Safari.app")]
+    // 空パス（emoji/カラーピッカー由来）と Web 検索 URL を高 count で混入させる。
+    let history = [
+      SelectionHistoryEntry(keyword: "emoji cat", selectedPath: "", count: 50),
+      SelectionHistoryEntry(
+        keyword: "g swift", selectedPath: "https://www.google.com/search?q=swift", count: 50),
+      SelectionHistoryEntry(
+        keyword: "safari", selectedPath: "/Applications/Safari.app", count: 1),
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "", apps: apps, directories: [], commands: [], history: history)
+    // 空パス・URL は appsByPath/dirsByPath/commandsByIdentifier に一致しないため、
+    // 高 count でも最近使った項目には現れない。実体のある Safari のみが返る。
+    #expect(results.count == 1)
+    #expect(results[0].path == "/Applications/Safari.app")
+  }
+
   @Test("空クエリ時の履歴結果も最大20件にクランプされる")
   func emptyQueryHistoryRespectsMaxResults() async {
     var apps: [AppItem] = []

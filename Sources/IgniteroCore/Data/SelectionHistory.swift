@@ -81,16 +81,17 @@ public final class SelectionHistory: Sendable {
     try data.write(to: URL(fileURLWithPath: filePath), options: .atomic)
   }
 
-  /// 存在しないパスの履歴エントリを削除する。
+  /// 存在しないパス・識別子の履歴エントリを削除する（allowlist 方式）。
   ///
   /// キャッシュ読み込み後に呼び出して、削除済みアプリ、ディレクトリ、カスタムコマンドの履歴をクリーンアップする。
-  /// 空パスのエントリはファイルシステム上の実体を持たない履歴として削除対象外にする。
-  /// カスタムコマンドは `command://UUID` 形式のため、呼び出し側が validPaths に含めたものだけ保持する。
-  /// - Parameter validPaths: 有効なパスの集合
+  /// `validPaths` は現在復元可能なアプリ・ディレクトリのパスとカスタムコマンド識別子（`command://UUID`）の集合。
+  /// 空パスや Web 検索 URL のように検索結果へ復元できない履歴も削除する
+  /// （これらは履歴ブースト・最近使った項目で何にもマッチせず、エントリ枠だけを消費するため）。
+  /// - Parameter validPaths: 有効なパス・識別子の集合
   public func purgeInvalidPaths(_ validPaths: Set<String>) {
     storage.withLock { entries in
       entries.removeAll { entry in
-        !entry.selectedPath.isEmpty && !validPaths.contains(entry.selectedPath)
+        entry.selectedPath.isEmpty || !validPaths.contains(entry.selectedPath)
       }
     }
   }
