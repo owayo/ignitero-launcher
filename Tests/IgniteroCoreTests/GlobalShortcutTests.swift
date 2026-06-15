@@ -28,15 +28,15 @@ struct KeyboardShortcutsNameTests {
     #expect(name.rawValue == "toggleLauncher")
   }
 
-  @Test func toggleLauncherHasDefaultShortcut() {
+  @Test func toggleLauncherHasInitialShortcut() {
     let name = KeyboardShortcuts.Name.toggleLauncher
-    #expect(name.defaultShortcut != nil)
+    #expect(name.initialShortcut != nil)
   }
 
-  @Test func toggleLauncherDefaultShortcutIsOptionSpace() {
+  @Test func toggleLauncherInitialShortcutIsOptionSpace() {
     let name = KeyboardShortcuts.Name.toggleLauncher
-    guard let shortcut = name.defaultShortcut else {
-      Issue.record("Default shortcut should not be nil")
+    guard let shortcut = name.initialShortcut else {
+      Issue.record("Initial shortcut should not be nil")
       return
     }
     #expect(shortcut.key == .space)

@@ -10,7 +10,7 @@ extension KeyboardShortcuts.Name {
   /// デフォルトは Option+Space（⌥Space）。
   public static let toggleLauncher = Self(
     "toggleLauncher",
-    default: .init(.space, modifiers: .option)
+    initial: .init(.space, modifiers: .option)
   )
 }
 
@@ -127,7 +127,7 @@ public final class GlobalShortcutManager {
     // KeyboardShortcuts の設定からショートカットを取得
     let shortcut =
       KeyboardShortcuts.Name.toggleLauncher.shortcut
-      ?? KeyboardShortcuts.Name.toggleLauncher.defaultShortcut
+      ?? KeyboardShortcuts.Name.toggleLauncher.initialShortcut
 
     guard let shortcut else {
       Self.logger.error("No shortcut configured for toggleLauncher")
