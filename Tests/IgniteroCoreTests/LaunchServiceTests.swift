@@ -206,7 +206,18 @@ struct LaunchServiceAppleScriptTests {
       command: "npm run dev",
       workingDirectory: "/Users/test/app"
     )
-    #expect(script.contains("cd '/Users/test/app' && npm run dev"))
+    #expect(script.contains("cd -- '/Users/test/app' && npm run dev"))
+  }
+
+  @Test("ハイフン始まりの作業ディレクトリは cd -- でオプション誤認を防ぐ（AppleScript）")
+  func appleScriptHyphenLeadingDirectoryUsesDoubleDash() {
+    let script = LaunchService.appleScript(
+      for: .terminal,
+      command: "echo test",
+      workingDirectory: "-weird"
+    )
+    // `cd '-weird'` はシェルによってはオプション誤認で失敗するため、`cd --` で防ぐ
+    #expect(script.contains("cd -- '-weird' && echo test"))
   }
 
   @Test func iterm2AppleScriptWithWorkingDirectory() {
@@ -215,7 +226,7 @@ struct LaunchServiceAppleScriptTests {
       command: "make build",
       workingDirectory: "/Users/test/project"
     )
-    #expect(script.contains("cd '/Users/test/project' && make build"))
+    #expect(script.contains("cd -- '/Users/test/project' && make build"))
   }
 
   @Test func ghosttyAppleScriptWithWorkingDirectory() {
@@ -225,7 +236,7 @@ struct LaunchServiceAppleScriptTests {
       workingDirectory: "/Users/test/app"
     )
     #expect(script.contains("tell application \"Ghostty\""))
-    #expect(script.contains("input text \"cd '/Users/test/app' && npm run dev\\n\""))
+    #expect(script.contains("input text \"cd -- '/Users/test/app' && npm run dev\\n\""))
     #expect(script.contains("focused terminal of selected tab of w"))
   }
 
@@ -237,7 +248,7 @@ struct LaunchServiceAppleScriptTests {
     )
     #expect(script.contains("tell application \"cmux\""))
     #expect(script.contains("set w to new window"))
-    #expect(script.contains("input text \"cd '/Users/test/app' && npm run dev\\n\""))
+    #expect(script.contains("input text \"cd -- '/Users/test/app' && npm run dev\\n\""))
     #expect(script.contains("focused terminal of selected tab of w"))
   }
 
@@ -265,7 +276,7 @@ struct LaunchServiceAppleScriptTests {
       command: "pwd",
       workingDirectory: "/Users/test/O'Neil Project"
     )
-    #expect(script.contains("cd '/Users/test/O'\\\"'\\\"'Neil Project' && pwd"))
+    #expect(script.contains("cd -- '/Users/test/O'\\\"'\\\"'Neil Project' && pwd"))
   }
 
   @Test func cmuxAppleScriptEscapesWorkingDirectoryWithSingleQuote() {
@@ -274,7 +285,7 @@ struct LaunchServiceAppleScriptTests {
       command: "pwd",
       workingDirectory: "/Users/test/O'Neil Project"
     )
-    #expect(script.contains("cd '/Users/test/O'\\\"'\\\"'Neil Project' && pwd\\n"))
+    #expect(script.contains("cd -- '/Users/test/O'\\\"'\\\"'Neil Project' && pwd\\n"))
   }
 }
 
@@ -318,7 +329,7 @@ struct LaunchServiceAppleScriptEscapingEdgeCaseTests {
       command: "echo test",
       workingDirectory: "/Users/test/O'Neil's"
     )
-    #expect(script.contains("cd '/Users/test/O'\"'\"'Neil'\"'\"'s'"))
+    #expect(script.contains("cd -- '/Users/test/O'\"'\"'Neil'\"'\"'s'"))
   }
 
   @Test func shellEscapesEmptyWorkingDirectory() {
@@ -326,7 +337,7 @@ struct LaunchServiceAppleScriptEscapingEdgeCaseTests {
       command: "echo test",
       workingDirectory: ""
     )
-    #expect(script.contains("cd ''"))
+    #expect(script.contains("cd -- ''"))
   }
 
   @Test func ghosttyAppleScript() {
@@ -383,7 +394,7 @@ struct LaunchServiceCommandScriptTests {
       workingDirectory: "/Users/test/app"
     )
     #expect(script.contains("#!/bin/bash"))
-    #expect(script.contains("cd '/Users/test/app'"))
+    #expect(script.contains("cd -- '/Users/test/app'"))
     #expect(script.contains("npm run dev"))
   }
 
@@ -392,7 +403,7 @@ struct LaunchServiceCommandScriptTests {
       command: "npm run dev",
       workingDirectory: "/Users/test/My Project"
     )
-    #expect(script.contains("cd '/Users/test/My Project'"))
+    #expect(script.contains("cd -- '/Users/test/My Project'"))
   }
 
   @Test func commandScriptEscapesSingleQuoteInWorkingDirectory() {
@@ -400,7 +411,7 @@ struct LaunchServiceCommandScriptTests {
       command: "pwd",
       workingDirectory: "/Users/test/O'Neil/project"
     )
-    #expect(script.contains("cd '/Users/test/O'\"'\"'Neil/project'"))
+    #expect(script.contains("cd -- '/Users/test/O'\"'\"'Neil/project'"))
   }
 
   @Test func commandScriptEndsWithExit() {
@@ -419,7 +430,18 @@ struct LaunchServiceCommandScriptTests {
     )
     // 作業ディレクトリが消えている場合に $HOME 等の別 cwd で
     // コマンドが実行されないこと（AppleScript 経路の && と同等の挙動）
-    #expect(script.contains("cd '/Users/test/app' || exit 1"))
+    #expect(script.contains("cd -- '/Users/test/app' || exit 1"))
+  }
+
+  @Test("ハイフン始まりの作業ディレクトリは cd -- でオプション誤認を防ぐ")
+  func commandScriptHyphenLeadingDirectoryUsesDoubleDash() {
+    let script = LaunchService.commandScript(
+      command: "echo test",
+      workingDirectory: "-weird"
+    )
+    // `cd '-weird'` は bash が `-w` をオプション扱いして失敗するため、`cd --` で防ぐ
+    #expect(script.contains("cd -- '-weird' || exit 1"))
+    #expect(!script.contains("cd '-weird'"))
   }
 
   @Test("作業ディレクトリなしの場合は cd 行を含まない")
@@ -677,7 +699,7 @@ struct LaunchServiceAppleScriptCoverageTests {
 
     // cmux 0.64.10 の辞書には new surface configuration がないため、入力注入方式だけに留める。
     #expect(script.contains("set w to new window"))
-    #expect(script.contains("input text \"cd '/tmp/cmux project' && echo cmux\\n\""))
+    #expect(script.contains("input text \"cd -- '/tmp/cmux project' && echo cmux\\n\""))
     #expect(!script.contains("new surface configuration"))
     #expect(!script.contains("with configuration"))
   }
@@ -695,7 +717,7 @@ struct LaunchServiceAppleScriptCoverageTests {
     )
 
     #expect(appleScript.isEmpty)
-    #expect(commandScript.contains("cd '/tmp/work dir'"))
+    #expect(commandScript.contains("cd -- '/tmp/work dir'"))
     #expect(commandScript.contains("echo fallback"))
   }
 }
@@ -888,7 +910,7 @@ struct LaunchServiceAppleScriptUnicodeTests {
       command: "ls",
       workingDirectory: "/Users/test/プロジェクト"
     )
-    #expect(script.contains("cd '/Users/test/プロジェクト'"))
+    #expect(script.contains("cd -- '/Users/test/プロジェクト'"))
   }
 
   @Test func appleScriptWithLongCommand() {
@@ -1149,7 +1171,7 @@ struct LaunchServiceCommandScriptBoundaryTests {
       command: "ls",
       workingDirectory: "/"
     )
-    #expect(script.contains("cd '/'"))
+    #expect(script.contains("cd -- '/'"))
   }
 
   @Test("コマンドに改行を含む場合")
@@ -1222,7 +1244,7 @@ struct LaunchServiceAppleScriptPropertiesTests {
         command: "echo done",
         workingDirectory: "/tmp/work"
       )
-      #expect(script.contains("cd '/tmp/work'"), "\(terminal) は cd 句を含むべき")
+      #expect(script.contains("cd -- '/tmp/work'"), "\(terminal) は cd 句を含むべき")
       #expect(script.contains("echo done"), "\(terminal) は本体コマンドを含むべき")
     }
   }

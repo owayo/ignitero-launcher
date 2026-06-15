@@ -2,6 +2,20 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-06-15 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新と同期済みであることを確認
+- `depup --install --include-pinned` を実行し、KeyboardShortcuts を 2.4.0 → 3.0.0（メジャー）へ更新。破壊的変更（`Name` の `default:` パラメータ → `initial:`、`defaultShortcut` → `initialShortcut`）に追従。残り 3 件（GRDB.swift / Fuse-Swift / EmojiKit）は最新。`make build` と全テスト通過を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app / iTerm2 / Ghostty / cmux: AppleScript 経由のコマンド実行を維持
+  - Warp: GitHub Issue #1228（AppleScript 要望）は General Scriptability の discussion への重複として Close、#3364 は Open のままで `do script` 相当は未提供。Web 調査でも AppleScript 辞書なしを再確認し `.command` 方式を維持
+- リファクタリング要否を astro-sight で確認（`dead-code` で未参照シンボルゼロ、責務は分割済みのため大規模リファクタリングは不要）
+- コードベース全体レビューを実施。codex が利用不可だったため agy（Gemini 3.1 Pro）でセカンドオピニオンを取得し、全指摘を実証検証のうえ確実なバグ 2 件を修正:
+  - LaunchService: 作業ディレクトリがハイフン始まり（例: `-weird`）のとき `cd '-weird'` が bash で `-w` をオプション扱いして失敗する問題を、AppleScript / `.command` / cmux CLI の全経路で `cd --` を付与して修正
+  - LaunchService: `executeCmuxCLI` で 2 つ目の `FileHandle` 生成が失敗すると 1 つ目のハンドルの `defer` が未登録となり FD・一時ファイルがリークする問題を、各ハンドル取得直後に `defer` を登録するよう修正
+- テスト数を 947 → 949 に増加
+  - LaunchService: ハイフン始まりの作業ディレクトリで `cd --` が付与されることを検証する回帰テストを `.command` / AppleScript 経路に 1 件ずつ追加（既存の `cd '...'` 期待値 17 箇所は `cd -- '...'` へ更新）
+
 2026-06-12 更新内容（定期メンテナンス）:
 
 - `git fetch origin` を実行し、`main` がリモート最新（`56520f4`）と同期済みであることを確認

@@ -124,7 +124,8 @@ public struct LaunchService: Launching, Sendable {
   ) -> String {
     let fullCommand: String
     if let wd = workingDirectory {
-      fullCommand = "cd \(shellEscaped(wd)) && \(command)"
+      // `cd --` で `-` 始まりのディレクトリ名が cd のオプションと誤認されるのを防ぐ。
+      fullCommand = "cd -- \(shellEscaped(wd)) && \(command)"
     } else {
       fullCommand = command
     }
@@ -184,7 +185,8 @@ public struct LaunchService: Launching, Sendable {
     if let wd = workingDirectory {
       // 作業ディレクトリが消えている場合に別の cwd（通常 $HOME）でコマンドが
       // 実行されるのを防ぐ。AppleScript 経路の `cd ... && ...` と挙動を揃える。
-      lines.append("cd \(shellEscaped(wd)) || exit 1")
+      // `cd --` で `-` 始まりのディレクトリ名が bash で cd のオプションと誤認されるのを防ぐ。
+      lines.append("cd -- \(shellEscaped(wd)) || exit 1")
     }
     lines.append(command)
     lines.append("exit")
@@ -441,7 +443,8 @@ public struct LaunchService: Launching, Sendable {
     try await Self.ensureCmuxRunning()
     let fullCommand: String
     if let wd = workingDirectory {
-      fullCommand = "cd \(Self.shellEscaped(wd)) && \(command)"
+      // `cd --` で `-` 始まりのディレクトリ名が cd のオプションと誤認されるのを防ぐ。
+      fullCommand = "cd -- \(Self.shellEscaped(wd)) && \(command)"
     } else {
       fullCommand = command
     }
@@ -530,12 +533,17 @@ public struct LaunchService: Launching, Sendable {
     let stderrURL = tempDir.appendingPathComponent("ignitero-cmux-stderr-\(UUID().uuidString).log")
     _ = fm.createFile(atPath: stdoutURL.path, contents: nil)
     _ = fm.createFile(atPath: stderrURL.path, contents: nil)
+    // 各ハンドルは取得直後に defer を登録する。
+    // stdout 取得後・stderr 取得前に throw すると、両者をまとめた単一 defer では
+    // stdout ハンドルの defer が未登録となり FD と一時ファイルがリークするため。
     let stdoutHandle = try FileHandle(forWritingTo: stdoutURL)
-    let stderrHandle = try FileHandle(forWritingTo: stderrURL)
     defer {
       try? stdoutHandle.close()
-      try? stderrHandle.close()
       try? fm.removeItem(at: stdoutURL)
+    }
+    let stderrHandle = try FileHandle(forWritingTo: stderrURL)
+    defer {
+      try? stderrHandle.close()
       try? fm.removeItem(at: stderrURL)
     }
 
