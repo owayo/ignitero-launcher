@@ -43,7 +43,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - 💻 **ターミナル統合**: `→`キーでディレクトリをターミナルで開く
 - ✏️ **エディタ選択**: `←`キーで任意のエディタを選んでディレクトリを開く
 - 🔑 **グローバルホットキー**: `Option` + `Space`で検索窓を呼び出し
-- 🖱️ **ドラッグ移動**: ウィンドウを自由に移動でき、位置を記憶
+- 🖱️ **ドラッグ移動**: ウィンドウを自由に移動でき、表示のたびに画面中央へ戻す
 - 🔄 **自動キャッシュ更新**: 起動時・定期的な自動更新に対応
 - 📌 **メニューバー常駐**: バックグラウンドで常に利用可能
 - 🚫 **アプリ除外機能**: 不要なアプリを表示名・バンドル名・パスで検索結果から除外
@@ -77,13 +77,13 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-06-09確認）
+#### ターミナル自動化方式（2026-06-16確認）
 
 - macOSターミナル: AppleScript（`do script`）
-- iTerm2 3.6.10: AppleScript（`create window` + `write text`。現行ドキュメントでは AppleScript は Deprecated 扱いだが辞書は利用可能）
-- Warp 0.2026.06.03.09.49.01（ローカル確認）: 公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内。ローカルの Warp.app は AppleScript 辞書を取得できないため `.command` ファイル方式
+- iTerm2 3.6.11: AppleScript（`create window` + `write text`。現行ドキュメントでは AppleScript は Deprecated 扱いだが辞書は利用可能）
+- Warp 0.2026.06.10.09.27.01（ローカル確認）: 公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内。ローカルの Warp.app は AppleScript 辞書を取得できないため `.command` ファイル方式
 - Ghostty: AppleScript（Ghostty 1.3.1 で確認: `new window` + `input text "...\n"`）。AppleScript が無効な環境では `.command` ファイル方式へフォールバック
-- cmux: AppleScript（cmux 0.64.14 で確認: `new window` + `input text "...\n"`）でカスタムコマンドを実行。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュを防ぎ、正常終了のみ成功扱い
+- cmux: AppleScript（cmux 0.64.16 で確認: `new window` + `input text "...\n"`）でカスタムコマンドを実行。`send key` は辞書にないため改行込みの `input text` で実行を確定する。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュを防ぎ、正常終了のみ成功扱い
   - **注意**: ディレクトリを cmux で開く場合は Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
 
 ### アップデート通知
@@ -141,7 +141,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
   - `←`キーでディレクトリのエディタを選択
   - `Escape`で閉じる
 - `Option` + `Space`で即座にアクセス
-- **ドラッグ移動**: ウィンドウをドラッグして好きな位置に移動可能（位置は自動保存）
+- **ドラッグ移動**: ウィンドウをドラッグして好きな位置に移動可能（次回表示時は画面中央へ戻る）
 - macOS標準のぼかし効果（window-vibrancy）
 - ツールチップ付きアイコンボタン（キャッシュ更新・設定）
 
@@ -201,6 +201,8 @@ make build
 # .appバンドル作成
 make bundle
 ```
+
+`make build` は Swift 6.3.2 の release optimizer が KeyboardShortcuts 3.0.0 のビルド中にクラッシュする環境を避けるため、Swift 最適化を無効化して release 出力を生成します。
 
 ### アプリケーションのインストール
 
@@ -360,7 +362,7 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 - **データ**: GRDB.swift (SQLite), JSON 永続化
 - **検索**: Fuse-Swift（ファジー検索）
 - **ショートカット**: KeyboardShortcuts (`Option` + `Space`)
-- **テスト**: Swift Testing (949テスト)
+- **テスト**: Swift Testing (950テスト)
 - **パッケージ**: Swift Package Manager
 - **最小OS**: macOS 26
 

@@ -2,6 +2,22 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-06-16 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新と同期済みであることを確認
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（4件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app: Apple Support とローカル辞書で `do script` を確認
+  - iTerm2 3.6.11: 公式ドキュメントとローカル辞書で `create window with default profile` / `write text` を確認
+  - Ghostty 1.3.1: 公式 AppleScript ドキュメントとローカル辞書で `new window` / `input text` を確認
+  - cmux 0.64.16: ローカル辞書で `new window` / `input text` を確認。`send key` は辞書にないため、改行込みの `input text` で実行確定する方式を維持
+  - Warp 0.2026.06.10.09.27.01: 公式ドキュメントは URI Scheme を自動化手段として案内し、ローカルの Warp.app は AppleScript 辞書を取得できないため `.command` 方式を維持
+- リファクタリング要否を astro-sight で確認（`dead-code` で未参照公開シンボルゼロ、`LaunchService` は複雑度が高いが責務分割済みのため大規模リファクタリングは見送り）
+- コードベース全体レビューを実施。確実な実装バグは検出されず、現行実装とずれていた README のパネル位置説明を修正
+- Swift 6.3.2 の release optimizer が KeyboardShortcuts 3.0.0 のビルド中に `swift-frontend` signal 11 でクラッシュすることを確認し、`make build` の release 出力生成時だけ `-Xswiftc -Onone` を付与して回避
+- テスト数を 949 → 950 に増加
+  - LaunchService: cmux の AppleScript が `send key` に依存せず、改行込みの `input text` でコマンド実行を確定することを検証
+
 2026-06-15 更新内容（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新と同期済みであることを確認

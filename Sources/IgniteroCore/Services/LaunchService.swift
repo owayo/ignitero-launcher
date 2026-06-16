@@ -160,7 +160,7 @@ public struct LaunchService: Launching, Sendable {
         end tell
         """
     case .cmux:
-      // cmux 0.64.14 で確認した AppleScript API を使用する。
+      // cmux 0.64.16 で確認した AppleScript API を使用する。
       // cmux の sdef には Ghostty のような `send key` が無いため、`input text` に改行を含めて確定する。
       return """
         tell application "cmux"

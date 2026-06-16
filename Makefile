@@ -7,6 +7,9 @@ DEBUG_BIN := $(BUILD_DIR)/debug/$(EXEC_NAME)
 BUNDLE_DIR := $(BUILD_DIR)/$(APP_NAME).app
 INSTALL_DIR := /Applications
 EMOJI_KEYWORDS := Sources/IgniteroCore/Resources/emoji_keywords_ja.json
+# Swift 6.3.2 の release 最適化で KeyboardShortcuts 3.0.0 のコンパイル中に
+# swift-frontend がクラッシュするため、最適化だけを無効化して release 出力を生成する。
+RELEASE_SWIFT_FLAGS := -Xswiftc -Onone
 
 .PHONY: build build-debug bundle install run dev clean test log emoji-keywords
 
@@ -14,7 +17,7 @@ emoji-keywords:
 	@python3 scripts/update_emoji_keywords.py
 
 build: emoji-keywords
-	swift build -c release
+	swift build -c release $(RELEASE_SWIFT_FLAGS)
 
 build-debug:
 	swift build -c debug

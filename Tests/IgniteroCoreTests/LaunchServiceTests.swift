@@ -697,11 +697,23 @@ struct LaunchServiceAppleScriptCoverageTests {
       workingDirectory: "/tmp/cmux project"
     )
 
-    // cmux 0.64.10 の辞書には new surface configuration がないため、入力注入方式だけに留める。
+    // cmux 0.64.16 の辞書には new surface configuration がないため、入力注入方式だけに留める。
     #expect(script.contains("set w to new window"))
     #expect(script.contains("input text \"cd -- '/tmp/cmux project' && echo cmux\\n\""))
     #expect(!script.contains("new surface configuration"))
     #expect(!script.contains("with configuration"))
+  }
+
+  @Test("cmux は send key に依存せず input text の改行で実行を確定する")
+  func cmuxAppleScriptDoesNotRequireSendKey() {
+    let script = LaunchService.appleScript(
+      for: .cmux,
+      command: "echo cmux",
+      workingDirectory: nil
+    )
+
+    #expect(script.contains("input text \"echo cmux\\n\" to term"))
+    #expect(!script.contains("send key"))
   }
 
   @Test("AppleScript 非対応ターミナルは .command フォールバックでコマンドを保持する")
