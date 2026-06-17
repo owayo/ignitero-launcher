@@ -2,6 +2,20 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-06-18 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新と同期済みであることを確認
+- `depup --install --include-pinned` を実行し、KeyboardShortcuts を 3.0.0 → 3.0.1（パッチ）へ更新。残り 3 件（GRDB.swift / Fuse-Swift / EmojiKit）は最新。`make build` と全テスト通過を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app / iTerm2: 公式辞書で `do script` / `create window` を確認
+  - Ghostty 1.3.0（2026-03-09 リリース）: 公式 AppleScript ドキュメントが拡張され `new terminal command "..." directory "..."` のような新 API が利用可能になったが、現行の `new window` + `input text` 方式は引き続き有効のため変更なし
+  - cmux 0.64.16: 現行コードのまま AppleScript 優先、CLI / Socket フォールバック
+  - Warp: GitHub Issue #3364 は Open のまま、AppleScript dictionary は依然非対応。`.command` 方式を維持
+- リファクタリング要否を astro-sight で確認（最大循環的複雑度 9 = `AppCoordinator.loadCacheDataIntoViewModel`、責務分割済みのため大規模リファクタリングは見送り）
+- コードベース全体レビューを 4 並列のレビューエージェント（LaunchService / AppCoordinator・GlobalShortcutManager・CacheBootstrap・MenuBarActions / Data 層 / Services・UI 層）で実施。報告された指摘を実コードで実証検証のうえ、誤検出（actor の async プロトコル準拠、AppleScript エスケープ順序、TOCTOU 等）を除外して確実なバグ 1 件を修正:
+  - LaunchService: `executeAppleScript` で `stderrPipe.fileHandleForReading` を `defer` で close せず、`waitUntilExit` 後に明示的に閉じていなかったため、頻繁な AppleScript 実行で FD リークが発生し得る問題を修正。既存の cmux CLI 経路と同じ `defer { try? stderrHandle.close() }` パターンへ統一
+- テスト数 950 件は維持（外部から観察される振る舞いに変更なしのため新規テスト追加なし）
+
 2026-06-16 更新内容（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新と同期済みであることを確認

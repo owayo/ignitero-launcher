@@ -73,16 +73,17 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - AppleScript実行失敗時はエラーを検出し、Ghostty は `.command` 方式、cmux は CLI 方式へ自動フォールバック
 - cmux CLI は実行ファイルの存在と実行権限を確認してから ping し、CLI 起動失敗時もアプリ本体がクラッシュしないように処理
 - cmux CLI の stdout/stderr は一時ファイルに分けて回収し、大きな stderr 出力でもデッドロックしないように処理
+- AppleScript 実行（`osascript`）の stderr Pipe ハンドルは取得直後に `defer` で close し、cmux CLI 経路と同じく FD リークを防止
 - デフォルトターミナル（macOSターミナル / iTerm2 / Warp / Ghostty / cmux）で実行
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-06-16確認）
+#### ターミナル自動化方式（2026-06-18確認）
 
 - macOSターミナル: AppleScript（`do script`）
-- iTerm2 3.6.11: AppleScript（`create window` + `write text`。現行ドキュメントでは AppleScript は Deprecated 扱いだが辞書は利用可能）
-- Warp 0.2026.06.10.09.27.01（ローカル確認）: 公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内。ローカルの Warp.app は AppleScript 辞書を取得できないため `.command` ファイル方式
-- Ghostty: AppleScript（Ghostty 1.3.1 で確認: `new window` + `input text "...\n"`）。AppleScript が無効な環境では `.command` ファイル方式へフォールバック
+- iTerm2: AppleScript（`create window` + `write text`。現行ドキュメントでは AppleScript は Deprecated 扱いだが辞書は利用可能）
+- Warp: GitHub Issue #3364 が Open のままで AppleScript dictionary 非対応。公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内し、`.command` ファイル方式を維持
+- Ghostty: AppleScript（Ghostty 1.3.0 で公式ドキュメントが拡張され `new terminal command "..." directory "..."` のような新 API も利用可能だが、現行の `new window` + `input text "...\n"` 方式で安定動作のため変更なし）。AppleScript が無効な環境では `.command` ファイル方式へフォールバック
 - cmux: AppleScript（cmux 0.64.16 で確認: `new window` + `input text "...\n"`）でカスタムコマンドを実行。`send key` は辞書にないため改行込みの `input text` で実行を確定する。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュを防ぎ、正常終了のみ成功扱い
   - **注意**: ディレクトリを cmux で開く場合は Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
 
