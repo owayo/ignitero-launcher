@@ -384,8 +384,11 @@ public struct LaunchService: Launching, Sendable {
     // stdout を破棄してカーネルバッファ溢れによるデッドロックを防ぐ
     process.standardOutput = FileHandle.nullDevice
     process.standardError = stderrPipe
+    // エラー時の FD リークを防ぐため、ハンドル取得直後に defer で閉じる（cmux CLI 経路と同じ方針）。
+    let stderrHandle = stderrPipe.fileHandleForReading
+    defer { try? stderrHandle.close() }
     try process.run()
-    let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+    let stderrData = stderrHandle.readDataToEndOfFile()
     process.waitUntilExit()
     guard process.terminationStatus == 0 else {
       let stderrText = String(data: stderrData, encoding: .utf8)?
