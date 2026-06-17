@@ -1,4 +1,3 @@
-import KeyboardShortcuts
 import SwiftUI
 
 // MARK: - SettingsView
@@ -59,10 +58,7 @@ struct GeneralSettingsTab: View {
       }
 
       Section("ショートカット") {
-        KeyboardShortcuts.Recorder("ランチャー表示", name: .toggleLauncher)
-        Button("デフォルトに戻す") {
-          KeyboardShortcuts.reset(.toggleLauncher)
-        }
+        ShortcutRecorderSettingRow()
       }
 
       Section("デフォルトエディタ") {
