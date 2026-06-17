@@ -191,7 +191,7 @@ private final class ShortcutRecorderButton: NSButton {
       title = "未設定"
     }
     toolTip = "クリックしてショートカットを記録"
-    accessibilityLabel = "ランチャー表示ショートカット"
+    setAccessibilityLabel("ランチャー表示ショートカット")
   }
 
   private func isValidShortcutEvent(_ event: NSEvent) -> Bool {

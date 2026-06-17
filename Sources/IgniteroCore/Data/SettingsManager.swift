@@ -162,7 +162,20 @@ public struct Settings: Codable, Sendable {
     self.updateCache = updateCache
   }
 
-  public static let `default` = Settings()
+  public static var defaultRegisteredDirectories: [RegisteredDirectory] {
+    [
+      RegisteredDirectory(
+        path: FileManager.default.homeDirectoryForCurrentUser
+          .appendingPathComponent("Applications/Chrome Apps.localized").path,
+        parentOpenMode: .none,
+        subdirsOpenMode: .none,
+        scanForApps: true
+      )
+    ]
+  }
+
+  public static let `default` = Settings(
+    registeredDirectories: Settings.defaultRegisteredDirectories)
 
   enum CodingKeys: String, CodingKey {
     case registeredDirectories = "registered_directories"
@@ -179,7 +192,7 @@ public struct Settings: Codable, Sendable {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     registeredDirectories =
       try container.decodeIfPresent([RegisteredDirectory].self, forKey: .registeredDirectories)
-      ?? []
+      ?? Settings.defaultRegisteredDirectories
     customCommands =
       try container.decodeIfPresent([CustomCommand].self, forKey: .customCommands) ?? []
     defaultEditor =

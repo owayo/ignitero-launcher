@@ -3,6 +3,18 @@ import Testing
 
 @testable import IgniteroCore
 
+private func defaultChromeAppsPath() -> String {
+  FileManager.default.homeDirectoryForCurrentUser
+    .appendingPathComponent("Applications/Chrome Apps.localized").path
+}
+
+private func expectDefaultChromeAppsDirectory(_ directory: RegisteredDirectory) {
+  #expect(directory.path == defaultChromeAppsPath())
+  #expect(directory.parentOpenMode == .none)
+  #expect(directory.subdirsOpenMode == .none)
+  #expect(directory.scanForApps == true)
+}
+
 // MARK: - Settings Codable Tests
 
 @Suite("Settings JSON Encode/Decode")
@@ -129,7 +141,8 @@ struct SettingsCodableTests {
 
   @Test func defaultSettingsValues() {
     let settings = Settings.default
-    #expect(settings.registeredDirectories.isEmpty)
+    #expect(settings.registeredDirectories.count == 1)
+    expectDefaultChromeAppsDirectory(settings.registeredDirectories[0])
     #expect(settings.customCommands.isEmpty)
     #expect(settings.defaultTerminal == .terminal)
     #expect(settings.cacheUpdate.updateOnStartup == true)
@@ -277,7 +290,8 @@ struct SettingsManagerTests {
 
     // Should use default settings, not throw
     #expect(manager.settings.defaultTerminal == .terminal)
-    #expect(manager.settings.registeredDirectories.isEmpty)
+    #expect(manager.settings.registeredDirectories.count == 1)
+    expectDefaultChromeAppsDirectory(manager.settings.registeredDirectories[0])
   }
 
   @Test func loadFromCorruptedFileRestoresDefaults() throws {
@@ -292,7 +306,8 @@ struct SettingsManagerTests {
 
     // Corrupted: should fall back to defaults
     #expect(manager.settings.defaultTerminal == .terminal)
-    #expect(manager.settings.registeredDirectories.isEmpty)
+    #expect(manager.settings.registeredDirectories.count == 1)
+    expectDefaultChromeAppsDirectory(manager.settings.registeredDirectories[0])
 
     // Backup file should have been created
     let backupExists = FileManager.default.fileExists(
@@ -327,6 +342,7 @@ struct SettingsManagerTests {
     defer { cleanup(dir) }
 
     let manager = SettingsManager(configDirectory: dir)
+    manager.settings.registeredDirectories = []
     let newDir = RegisteredDirectory(
       path: "/Users/test/workspace",
       parentOpenMode: .editor,
@@ -352,6 +368,7 @@ struct SettingsManagerTests {
     defer { cleanup(dir) }
 
     let manager = SettingsManager(configDirectory: dir)
+    manager.settings.registeredDirectories = []
     let first = RegisteredDirectory(
       path: "/path/dup",
       parentOpenMode: .none,
@@ -379,6 +396,7 @@ struct SettingsManagerTests {
     defer { cleanup(dir) }
 
     let manager = SettingsManager(configDirectory: dir)
+    manager.settings.registeredDirectories = []
     let dir1 = RegisteredDirectory(
       path: "/path/a",
       parentOpenMode: .none,
@@ -461,7 +479,8 @@ struct SettingsManagerTests {
     try manager.load()
 
     #expect(manager.settings.defaultTerminal == .terminal)
-    #expect(manager.settings.registeredDirectories.isEmpty)
+    #expect(manager.settings.registeredDirectories.count == 1)
+    expectDefaultChromeAppsDirectory(manager.settings.registeredDirectories[0])
 
     let backupExists = FileManager.default.fileExists(
       atPath: dir.appendingPathComponent("settings.json.backup").path

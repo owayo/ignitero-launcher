@@ -10,7 +10,9 @@ private func makeTempSettingsManager() throws -> SettingsManager {
   let dir = FileManager.default.temporaryDirectory
     .appendingPathComponent("ignitero-settings-vm-\(UUID().uuidString)")
   try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-  return SettingsManager(configDirectory: dir)
+  let manager = SettingsManager(configDirectory: dir)
+  manager.settings = Settings()
+  return manager
 }
 
 // MARK: - SettingsTab Tests
@@ -372,6 +374,7 @@ struct SettingsViewModelDirectoryTests {
     defer { try? FileManager.default.removeItem(at: dir) }
 
     let manager = SettingsManager(configDirectory: dir)
+    manager.settings = Settings()
     let vm = SettingsViewModel(settingsManager: manager)
     try vm.addDirectory(
       path: "/persist/test", parentOpenMode: .editor, subdirsOpenMode: .none, scanForApps: true)
