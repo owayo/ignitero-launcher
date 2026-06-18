@@ -236,7 +236,12 @@ public struct SearchService: Sendable {
       if $0.lastUsed != $1.lastUsed {
         return $0.lastUsed > $1.lastUsed
       }
-      return $0.result.name.localizedCaseInsensitiveCompare($1.result.name) == .orderedAscending
+      let nameOrder = $0.result.name.localizedCaseInsensitiveCompare($1.result.name)
+      if nameOrder != .orderedSame {
+        return nameOrder == .orderedAscending
+      }
+      // 同名・同 lastUsed の別パスが Dictionary 反復順で前後しないよう、path で決定的に並べる
+      return $0.result.path < $1.result.path
     }
     return Array(results.prefix(Self.maxResults).map(\.result))
   }

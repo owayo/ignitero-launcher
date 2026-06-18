@@ -89,6 +89,59 @@ struct IconCacheManagerTests {
     #expect(hashPart.allSatisfy { $0.isHexDigit })
   }
 
+  @Test("ソース .icns がキャッシュ PNG より新しい場合は再生成する")
+  func cacheIconRegeneratesWhenSourceIsNewer() throws {
+    let tmpDir = try makeTempDir()
+    defer { cleanup(tmpDir) }
+
+    // 既存システムアイコン (.icns)。Terminal が安定して存在する。
+    let icnsPath = "/System/Applications/Utilities/Terminal.app/Contents/Resources/Terminal.icns"
+    guard FileManager.default.fileExists(atPath: icnsPath) else { return }
+
+    let manager = IconCacheManager(cacheDirectory: tmpDir)
+    let appPath = "/Applications/MtimeTest.app"
+    let cachedPath = manager.cachedIconPath(for: appPath)
+
+    // 古い偽キャッシュ PNG を作成。
+    // システム .icns の mtime は OS インストール時の値（数年前）が入り得るため、
+    // キャッシュ側を確実に古く見せるべく 1970-01-01 に設定する。
+    try "stale-png".write(toFile: cachedPath, atomically: true, encoding: .utf8)
+    let veryOld = Date(timeIntervalSince1970: 0)
+    try FileManager.default.setAttributes(
+      [.modificationDate: veryOld], ofItemAtPath: cachedPath)
+
+    // 古い内容を取得
+    let staleContent = try String(contentsOfFile: cachedPath, encoding: .utf8)
+    #expect(staleContent == "stale-png")
+
+    // ソース .icns はキャッシュより新しいので再生成されるはず
+    _ = try manager.cacheIcon(from: icnsPath, for: appPath)
+
+    let data = try Data(contentsOf: URL(fileURLWithPath: cachedPath))
+    let pngMagic: [UInt8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+    #expect(data.prefix(pngMagic.count) == Data(pngMagic))
+  }
+
+  @Test("ソース .icns が存在しない（mtime 取得不能）場合は既存キャッシュをそのまま使う")
+  func cacheIconKeepsExistingWhenSourceMtimeMissing() throws {
+    let tmpDir = try makeTempDir()
+    defer { cleanup(tmpDir) }
+
+    let manager = IconCacheManager(cacheDirectory: tmpDir)
+    let appPath = "/Applications/MissingSource.app"
+    let cachedPath = manager.cachedIconPath(for: appPath)
+
+    // 既存キャッシュ
+    try "existing-png".write(toFile: cachedPath, atomically: true, encoding: .utf8)
+
+    // ソースが存在しないパスでも既存キャッシュを返す
+    let result = try manager.cacheIcon(from: "/nonexistent/icon.icns", for: appPath)
+    #expect(result == cachedPath)
+
+    let content = try String(contentsOfFile: cachedPath, encoding: .utf8)
+    #expect(content == "existing-png")
+  }
+
   @Test("並行 cacheIcon でも生成された PNG は壊れない（アトミック書き込み）")
   func concurrentCacheIconProducesValidPNG() async throws {
     let tmpDir = try makeTempDir()

@@ -178,11 +178,14 @@ public final class CacheBootstrap {
 
     // データベースに保存（saveApps/saveDirectories は DELETE+INSERT を
     // 同一トランザクションで行うため、置換はアトミック）
+    // 保存失敗時は ViewModel への通知を行わず、古いキャッシュとスキャン結果の
+    // 整合性が崩れたまま「成功」と扱われるのを防ぐ。
     do {
       try cacheDatabase.saveApps(allApps)
       try cacheDatabase.saveDirectories(allDirectories)
     } catch {
       Self.logger.error("Failed to save scan results: \(error.localizedDescription)")
+      return false
     }
 
     Self.logger.info(

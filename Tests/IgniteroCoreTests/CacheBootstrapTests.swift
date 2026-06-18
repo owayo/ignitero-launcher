@@ -5,6 +5,8 @@ import Testing
 
 // MARK: - モック CacheDatabase
 
+private struct CacheBootstrapTestError: Error {}
+
 private final class CacheBootstrapMockDB: CacheDatabaseProtocol, @unchecked Sendable {
   var isEmptyResult: Bool
   var saveAppsCalled = false
@@ -16,6 +18,10 @@ private final class CacheBootstrapMockDB: CacheDatabaseProtocol, @unchecked Send
   var loadedApps: [AppItem] = []
   var savedDirectories: [DirectoryItem] = []
   var loadedDirectories: [DirectoryItem] = []
+  /// テスト用: saveApps 呼び出し時に投げるエラー
+  var saveAppsError: Error?
+  /// テスト用: saveDirectories 呼び出し時に投げるエラー
+  var saveDirectoriesError: Error?
 
   init(isEmpty: Bool = true) {
     self.isEmptyResult = isEmpty
@@ -27,6 +33,7 @@ private final class CacheBootstrapMockDB: CacheDatabaseProtocol, @unchecked Send
 
   func saveApps(_ apps: [AppItem]) throws {
     saveAppsCalled = true
+    if let saveAppsError { throw saveAppsError }
     savedApps = apps
   }
 
@@ -37,6 +44,7 @@ private final class CacheBootstrapMockDB: CacheDatabaseProtocol, @unchecked Send
 
   func saveDirectories(_ dirs: [DirectoryItem]) throws {
     saveDirectoriesCalled = true
+    if let saveDirectoriesError { throw saveDirectoriesError }
     savedDirectories = dirs
   }
 
@@ -239,6 +247,64 @@ struct CacheBootstrapTests {
     #expect(mockDB.savedApps.contains { $0.name == "DirApp" })
     #expect(mockDB.savedDirectories.count == 1)
     #expect(mockDB.savedDirectories[0].name == "project")
+  }
+
+  @Test("saveApps が失敗した場合は onScanCompleted を呼ばずに false を返す")
+  @MainActor
+  func saveAppsFailureSkipsOnScanCompleted() async throws {
+    let mockDB = CacheBootstrapMockDB(isEmpty: true)
+    mockDB.saveAppsError = CacheBootstrapTestError()
+    let mockAppScanner = CacheBootstrapMockAppScanner(apps: [
+      AppItem(name: "App", path: "/Applications/App.app")
+    ])
+    let mockDirScanner = CacheBootstrapMockDirScanner()
+    let settings = makeSettingsManager(updateOnStartup: true)
+
+    let bootstrap = CacheBootstrap(
+      settingsManager: settings,
+      cacheDatabase: mockDB,
+      appScanner: mockAppScanner,
+      directoryScanner: mockDirScanner
+    )
+
+    var notifiedAppsCount: Int?
+    bootstrap.onScanCompleted = { apps in
+      notifiedAppsCount = apps.count
+    }
+
+    let result = await bootstrap.performInitialScan()
+    #expect(result == false)
+    // 保存失敗時は完了通知を行わない（ViewModel の再読込で古いキャッシュと
+    // スキャン結果の整合性が崩れるのを防ぐ）
+    #expect(notifiedAppsCount == nil)
+  }
+
+  @Test("saveDirectories が失敗した場合も onScanCompleted を呼ばずに false を返す")
+  @MainActor
+  func saveDirectoriesFailureSkipsOnScanCompleted() async throws {
+    let mockDB = CacheBootstrapMockDB(isEmpty: true)
+    mockDB.saveDirectoriesError = CacheBootstrapTestError()
+    let mockAppScanner = CacheBootstrapMockAppScanner(apps: [
+      AppItem(name: "App", path: "/Applications/App.app")
+    ])
+    let mockDirScanner = CacheBootstrapMockDirScanner()
+    let settings = makeSettingsManager(updateOnStartup: true)
+
+    let bootstrap = CacheBootstrap(
+      settingsManager: settings,
+      cacheDatabase: mockDB,
+      appScanner: mockAppScanner,
+      directoryScanner: mockDirScanner
+    )
+
+    var notified = false
+    bootstrap.onScanCompleted = { _ in
+      notified = true
+    }
+
+    let result = await bootstrap.performInitialScan()
+    #expect(result == false)
+    #expect(notified == false)
   }
 
   // MARK: - isScanning Flag Tests

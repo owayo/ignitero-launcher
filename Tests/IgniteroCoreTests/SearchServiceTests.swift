@@ -642,6 +642,40 @@ struct SearchServiceHistoryAggregationTests {
     #expect(results[0].name == "Alpha")
     #expect(results[1].name == "Zulu")
   }
+
+  @Test("同名・同 count・同 lastUsed なら path 順で決定的に並ぶ")
+  func emptyQueryPathFallbackForSameNameCountAndDate() async {
+    // 同名で別パスのアプリ（例: /Applications/Slack と ~/Applications/Slack）。
+    // Dictionary の反復順に依存しないことを保証するため、複数回呼び出して順序が変わらないことも確認する。
+    let apps = [
+      AppItem(name: "Slack", path: "/zzz/Slack.app"),
+      AppItem(name: "Slack", path: "/aaa/Slack.app"),
+    ]
+    let sameDate = Date(timeIntervalSince1970: 1_700_000_000)
+    let history = [
+      SelectionHistoryEntry(
+        keyword: "slack", selectedPath: "/zzz/Slack.app",
+        count: 1, lastUsed: sameDate),
+      SelectionHistoryEntry(
+        keyword: "slack", selectedPath: "/aaa/Slack.app",
+        count: 1, lastUsed: sameDate),
+    ]
+    let service = SearchService()
+
+    let first = service.search(
+      query: "", apps: apps, directories: [], commands: [], history: history)
+    #expect(first.count == 2)
+    // path 順で /aaa が先
+    #expect(first[0].path == "/aaa/Slack.app")
+    #expect(first[1].path == "/zzz/Slack.app")
+
+    // 反復順に依存しない決定性の確認
+    for _ in 0..<5 {
+      let next = service.search(
+        query: "", apps: apps, directories: [], commands: [], history: history)
+      #expect(next.map(\.path) == first.map(\.path))
+    }
+  }
 }
 
 // MARK: - 履歴ブーストの細かな挙動

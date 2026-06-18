@@ -2,6 +2,23 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-06-18 更新内容（定期メンテナンス、追加レビュー）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新（`fd63f54`）と同期済みであることを確認
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（4 件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app / iTerm2 / Ghostty 1.3.1 / cmux 0.64.16: 現行コードのまま AppleScript を維持。Ghostty 1.4 は AppleScript API のブレーキング・チェンジが予告されているが、現時点（2026-06-18）で未リリースのため対応不要
+  - Warp: GitHub Issue #3364 は依然 Open。AppleScript 辞書は未提供のため `.command` 方式を維持
+- リファクタリング要否を astro-sight で確認（最大循環的複雑度 9 = `AppCoordinator.loadCacheDataIntoViewModel`、責務分割済みのため大規模リファクタリングは見送り）
+- コードベース全体レビューを root-cause-analyst エージェントで実施。報告された指摘を実コードで実証検証のうえ、不確実な指摘を除外して確実なバグ 3 件を修正:
+  - CacheBootstrap: `runScan` で `saveApps` / `saveDirectories` の失敗を `catch` で握りつぶし、その後の `onScanCompleted` 通知と `return true` まで継続していた。DB 保存に失敗してもスキャン結果は「成功」として扱われ、ViewModel が古いキャッシュをロードしつつ設定画面の `allApps` には新スキャン結果が入る整合性のない状態が発生し得たため、保存失敗時は `return false` で完了通知を抑止するよう修正
+  - IconCacheManager: `cacheIcon` が同名キャッシュ PNG の存在チェックだけで早期 return していたため、アプリ更新で `.icns` の中身が変わってもキャッシュが無効化されず古いアイコンを表示し続けていた問題を、ソース mtime とキャッシュ mtime を比較してソースが新しければ再生成するロジックへ修正。ソース mtime が取得できない場合（テスト用の存在しないパス等）は既存キャッシュをそのまま使い、無用な再生成は行わない
+  - SearchService: 空クエリ時の `recentHistoryResults` で集約後の sort が `score → lastUsed → name` の 3 段までで tie-break しており、同名で別パス（例: `/Applications/Slack.app` と `~/Applications/Slack.app`）かつ同 count・同 lastUsed の場合に Dictionary 反復順に依存して非決定的な順序になり得た問題を、最終 tie-break として `path` を追加して決定的な順序を保証するよう修正
+- テスト数を 950 → 955 に増加
+  - IconCacheManager: ソース .icns がキャッシュより新しい場合の再生成検証と、ソース mtime 取得不能時の既存キャッシュ保持の回帰テストを追加
+  - CacheBootstrap: `saveApps` 失敗時に `onScanCompleted` が呼ばれず `false` を返すこと、`saveDirectories` 失敗時も同様であることの回帰テストを追加
+  - SearchService: 同名・同 count・同 lastUsed の別パス 2 件で path 順に決定的に並び、複数回呼び出しても順序が変動しないことを検証する回帰テストを追加
+
 2026-06-18 更新内容（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新と同期済みであることを確認

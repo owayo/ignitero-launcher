@@ -28,7 +28,10 @@ public struct IconCacheManager: Sendable {
   public func cacheIcon(from icnsPath: String, for appPath: String) throws -> String {
     let outputPath = cachedIconPath(for: appPath)
 
-    if FileManager.default.fileExists(atPath: outputPath) {
+    // アプリ更新で .icns の中身だけ変わった場合に古いキャッシュを返さないよう、
+    // ソースの更新日時がキャッシュより新しければ再生成する。
+    // ソース mtime が取得できない場合は既存キャッシュをそのまま使う。
+    if Self.cacheIsUpToDate(cachePath: outputPath, sourcePath: icnsPath) {
       return outputPath
     }
 
@@ -77,6 +80,35 @@ public struct IconCacheManager: Sendable {
     // 一時ファイル + リネームで原子的に書き込み、中途半端な PNG が残らないようにする。
     try pngData.write(to: URL(fileURLWithPath: outputPath), options: .atomic)
     return outputPath
+  }
+}
+
+extension IconCacheManager {
+  /// キャッシュ PNG がソース .icns に対して最新かを判定する。
+  ///
+  /// - ソースの mtime が取れない（テスト用の存在しないパス等）→ キャッシュをそのまま使う
+  /// - キャッシュの mtime が取れない → 再生成
+  /// - ソースが新しければ → 再生成
+  fileprivate static func cacheIsUpToDate(cachePath: String, sourcePath: String) -> Bool {
+    let fm = FileManager.default
+    guard fm.fileExists(atPath: cachePath) else { return false }
+
+    guard
+      let srcAttrs = try? fm.attributesOfItem(atPath: sourcePath),
+      let srcMtime = srcAttrs[.modificationDate] as? Date
+    else {
+      // ソース更新日時が分からない場合は無用な再生成を避け、既存キャッシュを返す
+      return true
+    }
+
+    guard
+      let cacheAttrs = try? fm.attributesOfItem(atPath: cachePath),
+      let cacheMtime = cacheAttrs[.modificationDate] as? Date
+    else {
+      return false
+    }
+
+    return srcMtime <= cacheMtime
   }
 }
 
