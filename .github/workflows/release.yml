@@ -87,19 +87,26 @@ jobs:
       matrix:
         include:
           - arch: arm64
-            swift_arch_flag: ""
+            runner: macos-26
           - arch: x86_64
-            swift_arch_flag: "--arch x86_64"
-    runs-on: macos-15
+            runner: macos-26-intel
+    # 各アーキを Apple Silicon / Intel のネイティブランナーで直接ビルドする。
+    # Package.swift の platforms: [.macOS(.v26)] と整合させるため Xcode 26 / macOS 26 SDK
+    # を持つ macos-26 系を使用する。
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ needs.prepare-release.outputs.tag }}
 
-      - name: Setup Swift
-        uses: swift-actions/setup-swift@v3
-        with:
-          swift-version: '6.2'
+      - name: Verify Xcode and Swift
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          swift --version
+          sdk_version="$(xcrun --sdk macosx --show-sdk-version)"
+          echo "macOS SDK: ${sdk_version}"
+          [[ "${sdk_version}" == 26.* ]]
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -110,9 +117,9 @@ jobs:
         run: python3 scripts/update_emoji_keywords.py
 
       - name: Build release binary
-        # Swift 6.2/6.3 系の release 最適化で KeyboardShortcuts の SIL シリアライズが
+        # Swift 6.3 系の release 最適化で KeyboardShortcuts の SIL シリアライズが
         # crash するため、Makefile と同様に -Onone を付与して回避する。
-        run: swift build -c release ${{ matrix.swift_arch_flag }} -Xswiftc -Onone
+        run: swift build -c release -Xswiftc -Onone
 
       - name: Create app bundle
         run: |
