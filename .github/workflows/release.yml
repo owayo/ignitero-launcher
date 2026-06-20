@@ -110,7 +110,9 @@ jobs:
         run: python3 scripts/update_emoji_keywords.py
 
       - name: Build release binary
-        run: swift build -c release ${{ matrix.swift_arch_flag }}
+        # Swift 6.2/6.3 系の release 最適化で KeyboardShortcuts の SIL シリアライズが
+        # crash するため、Makefile と同様に -Onone を付与して回避する。
+        run: swift build -c release ${{ matrix.swift_arch_flag }} -Xswiftc -Onone
 
       - name: Create app bundle
         run: |
