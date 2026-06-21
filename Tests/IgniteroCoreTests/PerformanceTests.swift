@@ -84,6 +84,28 @@ struct SearchServicePerformanceTests {
     }
     #expect(ms < 2000)  // 500 items should still be under 2 seconds
   }
+
+  @Test("履歴 50 件 + 500 アプリの検索が許容範囲内に収まる（normalize 重複防止のリグレッション）")
+  func searchPerformanceWithMaxHistoryAnd500Items() {
+    let service = SearchService()
+    var apps: [AppItem] = []
+    for i in 0..<500 {
+      apps.append(AppItem(name: "Application \(i)", path: "/Applications/App\(i).app"))
+    }
+    var history: [SelectionHistoryEntry] = []
+    for i in 0..<50 {
+      history.append(
+        SelectionHistoryEntry(
+          keyword: "app\(i)", selectedPath: "/Applications/App\(i).app", count: i + 1))
+    }
+    let ms = PerformanceMonitor.measure("search-500-items-with-history") {
+      _ = service.search(
+        query: "app", apps: apps, directories: [], commands: [], history: history)
+    }
+    // 履歴ありでもマージン込みで 3 秒未満（applyHistoryBoost の事前正規化キャッシュが
+    // 効いていれば数百ミリ秒に収まる想定）。
+    #expect(ms < 3000)
+  }
 }
 
 // MARK: - CalculatorEngine Performance Tests

@@ -2,6 +2,23 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-06-21 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新（`4a3315f`、v26.6.0 リリース反映）と同期済みであることを確認
+- `depup --install --include-pinned` を実行し、GRDB.swift を 7.11.0 → 7.11.1（パッチ）へ更新。残り 3 件（KeyboardShortcuts / Fuse-Swift / EmojiKit）は最新。`make build` と全テスト通過を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app / iTerm2 / Ghostty 1.3.1 / cmux 0.64.16: AppleScript 経由のコマンド実行を維持
+  - Warp: 2026 年時点でも AppleScript 辞書は未提供。GitHub Issue #3364 は依然 Open で、公式は URL Scheme / Launch Configuration / Warp API を自動化手段として案内。Warp Bridge（VS Code 拡張）も MCP 経由で、AppleScript 辞書とは別系統。`.command` 方式を維持
+- リファクタリング要否を astro-sight で確認（最大循環的複雑度 9 = `AppCoordinator.loadCacheDataIntoViewModel`、責務分割済みのため大規模リファクタリングは見送り）
+- コードベース全体レビューを 4 並列のレビューエージェント（正確性 / セキュリティ / エラー & リソース管理 / パフォーマンス）で実施。報告された指摘を実コードで実証検証のうえ、誤検出（`AppCoordinator.start` 側で `if !didScan { loadCacheDataIntoViewModel() }` フォールバック済みの「runScan 失敗時の通知漏れ」、現状の呼び出し経路では起き得ない `IMEController.DispatchQueue.main.sync` デッドロック、メモリ逼迫時の `fatalError`、Carbon EventHandler の防御的二重解放等）を除外し、確実な性能ロス 2 件と握りつぶし 2 件を修正:
+  - SearchService: `fuseScore` で `text.lowercased()` を呼んでから Fuse へ渡していたが、Fuse は `isCaseSensitive=false`（デフォルト）で内部でも `text.lowercased()` を呼ぶため lowercased が二重に走り、毎キー入力で R 件 × 2 種類（name / originalName）のホットパス上に無駄な String アロケーションが発生していた問題を、外側の lowercased を削除して解消
+  - SearchService: `applyHistoryBoost` が結果 R 件 × 履歴 H 件の二重ループで `first(where:)` 述語内に `SearchQueryNormalizer.normalize($0.keyword)` を毎回呼んでいたため、最悪 R × 2 × H 回の正規化（500 件超）がキー 1 打ごとに走っていた問題を、入口で履歴を 1 回だけ正規化済みのタプル配列に変換してキャッシュするよう修正。挙動は変えず O(H) 回の正規化に圧縮
+  - SettingsManager: `load()` で JSON 破損検出時のバックアップ作成（`try? fm.removeItem` / `try? fm.copyItem`）が失敗してもログ無しで黙殺していたため、ディスク満杯やパーミッションエラーで `settings.json.backup` が作れないケースを `do { ... } catch { logger.warning(...) }` でログに残すよう変更（既存テスト `loadFromCorruptedFileOverwritesExistingBackup` の挙動は維持）
+  - UpdateChecker: `updateCache()` の `try? settingsManager.save()` で保存エラーを完全に黙殺していたため、`dismissedVersion` が永続化できずアップデートバナーが毎回再表示される原因がログに残らなかった問題を `do { ... } catch { logger.warning(...) }` へ修正
+- テスト数を 955 → 957 に増加
+  - PerformanceTests: 履歴 50 件 + アプリ 500 件の検索が許容時間内（3 秒未満）に収まることを検証するリグレッションテストを追加。`applyHistoryBoost` の事前正規化キャッシュが破綻すると失敗する想定
+  - SearchServiceTests: 同一パスに対し `keyword="safari"`（完全一致候補）と `keyword="saf"`（前方一致候補）の両方の履歴がある場合、完全一致のブースト（スコア -1.0 以下）が選ばれることを検証する回帰テストを追加
+
 2026-06-18 更新内容（定期メンテナンス、追加レビュー）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新（`fd63f54`）と同期済みであることを確認

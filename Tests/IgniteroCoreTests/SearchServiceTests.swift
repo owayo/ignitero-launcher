@@ -736,6 +736,30 @@ struct SearchServiceHistoryBoostEdgeCaseTests {
     #expect(results[0].path == "/Applications/Safari.app")
   }
 
+  @Test("同一パスに対し完全一致と前方一致の履歴が両方ある場合、完全一致が優先される")
+  func samePathHasExactAndPrefixHistoryUsesExact() async {
+    // 同じ Safari アプリに対して、過去に "safari"（完全一致候補）と
+    // "saf"（前方一致候補）の両方の検索ワードで履歴が積まれているケース。
+    let apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app"),
+      AppItem(name: "Slack", path: "/Applications/Slack.app"),
+    ]
+    let history = [
+      // count を意図的に逆転させ、ブースト幅ではなく一致種別で並びが決まることを確認する。
+      SelectionHistoryEntry(
+        keyword: "safari", selectedPath: "/Applications/Safari.app", count: 1),
+      SelectionHistoryEntry(
+        keyword: "saf", selectedPath: "/Applications/Safari.app", count: 100),
+    ]
+    let service = SearchService()
+    let results = service.search(
+      query: "safari", apps: apps, directories: [], commands: [], history: history)
+    #expect(!results.isEmpty)
+    #expect(results[0].path == "/Applications/Safari.app")
+    // 完全一致が選ばれていればスコアは -1.0 を下回る（前方一致だけだと -0.5 程度）
+    #expect(results[0].score < -1.0)
+  }
+
   @Test("空クエリ時の履歴結果も最大20件にクランプされる")
   func emptyQueryHistoryRespectsMaxResults() async {
     var apps: [AppItem] = []

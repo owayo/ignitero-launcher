@@ -285,8 +285,14 @@ public struct UpdateChecker: Sendable {
       dismissedVersion: settingsManager.settings.updateCache?.dismissedVersion,
       downloadURL: downloadURL
     )
-    // 保存エラーは黙殺
-    try? settingsManager.save()
+    // 保存に失敗しても以後のチェック動作は継続するが、dismissedVersion が永続化できないと
+    // バナー閉操作が次回起動時に消える原因になるため、追跡用にログを残す。
+    do {
+      try settingsManager.save()
+    } catch {
+      Self.logger.warning(
+        "Failed to persist update cache: \(error.localizedDescription, privacy: .public)")
+    }
   }
 
   /// バージョン文字列から "v" プレフィックスを除去する。

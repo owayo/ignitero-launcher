@@ -247,7 +247,10 @@ public struct SearchService: Sendable {
   }
 
   private func fuseScore(fuse: Fuse, pattern: String, text: String) -> Double? {
-    fuse.search(pattern, in: text.lowercased())?.score
+    // Fuse は isCaseSensitive=false（デフォルト）で内部に text を lowercased する。
+    // 呼び出し側で再度 lowercased すると同じ処理が二重に走り、毎キー入力で無駄な
+    // String アロケーションが大量発生するため、ここでは lowercased しない。
+    fuse.search(pattern, in: text)?.score
   }
 
   private func applyHistoryBoost(
@@ -257,19 +260,29 @@ public struct SearchService: Sendable {
   ) {
     guard !history.isEmpty else { return }
 
+    // 履歴の keyword 正規化は path に関係なく結果が同じため、入口で一度だけ実施して
+    // (R × H) 回の重複正規化を避ける。旧バージョンの未正規化キーワードも救済する。
+    let normalizedHistory: [(normalizedKeyword: String, path: String, count: Int)] =
+      history.map {
+        (
+          normalizedKeyword: SearchQueryNormalizer.normalize($0.keyword),
+          path: $0.selectedPath,
+          count: $0.count
+        )
+      }
+
     for i in results.indices {
       let path = results[i].path
 
       // 完全一致の履歴エントリ
-      // 旧バージョンが生クエリ（未正規化）で保存した履歴も救済するため、比較時にも keyword を正規化する。
-      if let exactEntry = history.first(where: {
-        SearchQueryNormalizer.normalize($0.keyword) == query && $0.selectedPath == path
+      if let exactEntry = normalizedHistory.first(where: {
+        $0.normalizedKeyword == query && $0.path == path
       }) {
         // 完全一致は最高優先度: スコアを大幅に下げる（負のスコアを許可）
         let countBoost = min(Double(exactEntry.count) * 0.01, 0.5)
         results[i].score -= 1.0 + countBoost
-      } else if let prefixEntry = history.first(where: {
-        SearchQueryNormalizer.normalize($0.keyword).hasPrefix(query) && $0.selectedPath == path
+      } else if let prefixEntry = normalizedHistory.first(where: {
+        $0.normalizedKeyword.hasPrefix(query) && $0.path == path
       }) {
         // 前方一致は中程度の優先度
         let countBoost = min(Double(prefixEntry.count) * 0.005, 0.2)

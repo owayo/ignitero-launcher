@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 // MARK: - 列挙型
 
@@ -215,6 +216,9 @@ public struct Settings: Codable, Sendable {
 @MainActor
 @Observable
 public final class SettingsManager: @unchecked Sendable {
+  private static let logger = Logger(
+    subsystem: "com.ignitero.launcher", category: "SettingsManager")
+
   public var settings: Settings
 
   private let configDirectory: URL
@@ -257,8 +261,18 @@ public final class SettingsManager: @unchecked Sendable {
     } catch is DecodingError {
       // JSON が破損: バックアップを作成しデフォルト値に復元
       let backupPath = configDirectory.appendingPathComponent("\(fileName).backup")
-      try? fm.removeItem(at: backupPath)
-      try? fm.copyItem(at: filePath, to: backupPath)
+      // 既存バックアップ削除と新規バックアップ作成は失敗してもデフォルト復元を続けるが、
+      // ディスク満杯やパーミッションエラーで証跡が残らない事故を防ぐためログを残す。
+      do {
+        if fm.fileExists(atPath: backupPath.path) {
+          try fm.removeItem(at: backupPath)
+        }
+        try fm.copyItem(at: filePath, to: backupPath)
+      } catch {
+        Self.logger.warning(
+          "Failed to back up corrupted settings file: \(error.localizedDescription, privacy: .public)"
+        )
+      }
       settings = .default
     } catch {
       // I/O エラーは呼び出し側へ伝播する
