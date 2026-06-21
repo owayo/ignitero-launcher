@@ -186,7 +186,13 @@ private final class ShortcutRecorderButton: NSButton {
     if isRecording {
       title = "キー入力待ち..."
     } else if let shortcut {
-      title = String(describing: shortcut)
+      // `String(describing:)` は `KeyboardShortcuts.Shortcut.description` を呼ぶが、
+      // 内部で `"space_key".localized` 経由で `Bundle.module`（KeyboardShortcuts の
+      // SwiftPM リソースバンドル）を初期化する。`.app` 内のリソースバンドル解決に
+      // 失敗する環境では `assertionFailure` でアプリ全体がクラッシュする
+      // （既定の Option+Space では必ず .space ケースを通り 100% 再現）。
+      // ここでは `Bundle.module` を一切踏まない自前フォーマッタを使う。
+      title = ShortcutDisplayFormatter.string(for: shortcut)
     } else {
       title = "未設定"
     }
