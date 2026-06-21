@@ -98,16 +98,10 @@ struct ShortcutDisplayFormatterTests {
 
   @Test("修飾キー＋特殊キーの組み合わせ表示")
   func 修飾キー付きの特殊キー表示() {
-    let escape = KeyboardShortcuts.Shortcut(
-      carbonKeyCode: kVK_Escape,
-      carbonModifiers: NSEvent.ModifierFlags([.command]).carbon
-    )
+    let escape = KeyboardShortcuts.Shortcut(.escape, modifiers: [.command])
     #expect(ShortcutDisplayFormatter.string(for: escape) == "⌘⎋")
 
-    let f1 = KeyboardShortcuts.Shortcut(
-      carbonKeyCode: kVK_F1,
-      carbonModifiers: NSEvent.ModifierFlags([.control, .shift]).carbon
-    )
+    let f1 = KeyboardShortcuts.Shortcut(.f1, modifiers: [.control, .shift])
     #expect(ShortcutDisplayFormatter.string(for: f1) == "⌃⇧F1")
   }
 
@@ -121,22 +115,19 @@ struct ShortcutDisplayFormatterTests {
   /// `assertionFailure` で落ちて回帰を検知する。
   @Test("全特殊キーの組み合わせをフォーマットしても Bundle.module を踏まない")
   func 全特殊キーをフォーマットしてもクラッシュしない() {
-    let specialKeyCodes: [Int] = [
-      kVK_Space, kVK_Return, kVK_Tab,
-      kVK_Delete, kVK_ForwardDelete, kVK_Escape,
-      kVK_Home, kVK_End, kVK_PageUp, kVK_PageDown,
-      kVK_UpArrow, kVK_DownArrow, kVK_LeftArrow, kVK_RightArrow,
-      kVK_F1, kVK_F2, kVK_F3, kVK_F4, kVK_F5, kVK_F6,
-      kVK_F7, kVK_F8, kVK_F9, kVK_F10, kVK_F11, kVK_F12,
-      kVK_F13, kVK_F14, kVK_F15, kVK_F16, kVK_F17, kVK_F18, kVK_F19, kVK_F20,
+    let specialKeys: [KeyboardShortcuts.Key] = [
+      .space, .return, .tab,
+      .delete, .deleteForward, .escape,
+      .home, .end, .pageUp, .pageDown,
+      .upArrow, .downArrow, .leftArrow, .rightArrow,
+      .f1, .f2, .f3, .f4, .f5, .f6,
+      .f7, .f8, .f9, .f10, .f11, .f12,
+      .f13, .f14, .f15, .f16, .f17, .f18, .f19, .f20,
     ]
-    for keyCode in specialKeyCodes {
-      let shortcut = KeyboardShortcuts.Shortcut(
-        carbonKeyCode: keyCode,
-        carbonModifiers: NSEvent.ModifierFlags([.option]).carbon
-      )
+    for key in specialKeys {
+      let shortcut = KeyboardShortcuts.Shortcut(key, modifiers: [.option])
       let formatted = ShortcutDisplayFormatter.string(for: shortcut)
-      #expect(!formatted.isEmpty, "keyCode=\(keyCode) format result must not be empty")
+      #expect(!formatted.isEmpty, "key=\(key.rawValue) format result must not be empty")
     }
   }
 }
