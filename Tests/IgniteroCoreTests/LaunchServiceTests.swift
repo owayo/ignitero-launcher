@@ -716,6 +716,18 @@ struct LaunchServiceAppleScriptCoverageTests {
     #expect(!script.contains("send key"))
   }
 
+  @Test("Ghostty は input text の改行で実行を確定し、追加の send key に依存しない")
+  func ghosttyAppleScriptDoesNotRequireSendKey() {
+    let script = LaunchService.appleScript(
+      for: .ghostty,
+      command: "echo ghostty",
+      workingDirectory: nil
+    )
+
+    #expect(script.contains("input text \"echo ghostty\\n\" to term"))
+    #expect(!script.contains("send key"))
+  }
+
   @Test("AppleScript 非対応ターミナルは .command フォールバックでコマンドを保持する")
   func unsupportedAppleScriptTerminalKeepsCommandScriptFallback() {
     let appleScript = LaunchService.appleScript(
@@ -731,6 +743,23 @@ struct LaunchServiceAppleScriptCoverageTests {
     #expect(appleScript.isEmpty)
     #expect(commandScript.contains("cd -- '/tmp/work dir'"))
     #expect(commandScript.contains("echo fallback"))
+  }
+
+  @Test("Warp の .command フォールバックは cd 失敗時にコマンドを実行しない")
+  func warpCommandScriptFallbackAbortsWhenCdFails() {
+    let appleScript = LaunchService.appleScript(
+      for: .warp,
+      command: "rm -rf build",
+      workingDirectory: "/tmp/missing work dir"
+    )
+    let commandScript = LaunchService.commandScript(
+      command: "rm -rf build",
+      workingDirectory: "/tmp/missing work dir"
+    )
+
+    #expect(appleScript.isEmpty)
+    #expect(commandScript.contains("cd -- '/tmp/missing work dir' || exit 1"))
+    #expect(commandScript.contains("rm -rf build"))
   }
 }
 

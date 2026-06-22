@@ -78,12 +78,12 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-06-18確認）
+#### ターミナル自動化方式（2026-06-23確認）
 
 - macOSターミナル: AppleScript（`do script`）
 - iTerm2: AppleScript（`create window` + `write text`。現行ドキュメントでは AppleScript は Deprecated 扱いだが辞書は利用可能）
-- Warp: GitHub Issue #3364 が Open のままで AppleScript dictionary 非対応。公式ドキュメントは URI Scheme / Launch Configurations と `.command` スクリプト実行を案内し、`.command` ファイル方式を維持
-- Ghostty: AppleScript（Ghostty 1.3.0 で公式ドキュメントが拡張され `new terminal command "..." directory "..."` のような新 API も利用可能だが、現行の `new window` + `input text "...\n"` 方式で安定動作のため変更なし）。AppleScript が無効な環境では `.command` ファイル方式へフォールバック
+- Warp: AppleScript dictionary 非対応。公式ドキュメントは URI Scheme / Launch Configurations を案内し、ローカルの `Warp.app` も `sdef` がエラー -192 で辞書を取得できないため `.command` ファイル方式を維持
+- Ghostty: AppleScript（Ghostty 1.3.1 で確認: `new window` + `input text "...\n"`）。辞書には `send key` もあるが、現行実装は cmux と同じく改行込みの `input text` で実行を確定する。AppleScript が無効な環境では `.command` ファイル方式へフォールバック
 - cmux: AppleScript（cmux 0.64.16 で確認: `new window` + `input text "...\n"`）でカスタムコマンドを実行。`send key` は辞書にないため改行込みの `input text` で実行を確定する。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュを防ぎ、正常終了のみ成功扱い
   - **注意**: ディレクトリを cmux で開く場合は Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
 

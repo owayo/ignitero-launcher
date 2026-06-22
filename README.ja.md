@@ -2,6 +2,22 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-06-23 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新（`749b24e`）と同期済みであることを確認
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（4 件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app: ローカル辞書で `do script` を確認
+  - iTerm2 3.6.11: 公式ドキュメントとローカル辞書で `create window with default profile` / `write text` を確認
+  - Ghostty 1.3.1: 公式ドキュメントとローカル辞書で `new window` / `input text` / `send key` を確認。現行実装は cmux と同じく改行込みの `input text` で実行を確定する方式を維持
+  - cmux 0.64.16: ローカル辞書で `new window` / `input text` を確認。`send key` は辞書にないため、改行込みの `input text` で実行を確定する方式を維持。公式 CLI ドキュメントでは `new-workspace --cwd --command` も自動化経路として案内されているが、現行コードは AppleScript 優先、失敗時とディレクトリオープンは CLI / Socket API のまま維持
+  - Warp 0.2026.06.10.09.27.01: 公式ドキュメントは URI Scheme / Launch Configuration を自動化手段として案内し、ローカルの `Warp.app` は `sdef` がエラー -192 で AppleScript 辞書を取得できないため `.command` 方式を維持
+- リファクタリング要否を astro-sight で確認（`dead-code` で未参照公開シンボルゼロ、最大循環的複雑度 9 は既存の `AppCoordinator.loadCacheDataIntoViewModel` で責務分割済みのため大規模リファクタリングは見送り）
+- コードベース全体レビューを実施。確実な実装バグは検出されず、AppleScript 対応状況とフォールバック安全性の回帰テスト・ドキュメントを更新
+- テスト数を 966 → 968 に増加
+  - LaunchService: Ghostty が `send key` に依存せず、改行込みの `input text` でコマンド実行を確定することを検証
+  - LaunchService: Warp の `.command` フォールバックが `cd -- ... || exit 1` を含み、作業ディレクトリ消失時に別 cwd で危険なコマンドを実行しないことを検証
+
 2026-06-21 更新内容（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新（`4a3315f`、v26.6.0 リリース反映）と同期済みであることを確認
