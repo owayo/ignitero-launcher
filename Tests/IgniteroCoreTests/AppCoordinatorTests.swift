@@ -45,6 +45,11 @@ private final class MockCacheDB: CacheDatabaseProtocol, @unchecked Sendable {
     return loadedDirectories
   }
 
+  func saveAppsAndDirectories(apps: [AppItem], directories: [DirectoryItem]) throws {
+    try saveApps(apps)
+    try saveDirectories(directories)
+  }
+
   func clearCache() throws {
     clearCacheCalled = true
   }

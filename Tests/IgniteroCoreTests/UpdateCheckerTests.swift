@@ -737,6 +737,79 @@ struct UpdateCheckerErrorHandlingTests {
     #expect(result != nil)
     #expect(result?.latestVersion == "2.0.0")
   }
+
+  // GitHub Releases API はレート制限超過時に HTTP 403 と JSON 辞書本文を返す。
+  // 以前はステータスを検証せずにそのままデコードしていたため、配列ではない本文で
+  // 「JSON エラー」が出るだけで、原因が分かりにくいログになっていた。
+  // HTTPURLResponse のステータスコードを早期に確認することを保証する回帰テスト。
+  @Test func returnsNilOnHTTP403RateLimit() async {
+    let mockSession = MockURLSession()
+    let url = URL(string: "https://api.github.com/repos/test/test-repo/releases")!
+    mockSession.responseToReturn = HTTPURLResponse(
+      url: url, statusCode: 403, httpVersion: nil, headerFields: nil)!
+    // レート制限超過時に GitHub が返すような JSON 本文
+    mockSession.dataToReturn = #"{"message":"API rate limit exceeded","documentation_url":"x"}"#
+      .data(using: .utf8)
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    let result = await checker.checkForUpdate(currentVersion: "1.0.0")
+    // 403 は HTTP ステータス検査でエラーとして扱われ、キャッシュも無いので nil
+    #expect(result == nil)
+  }
+
+  @Test func returnsNilOnHTTP500ServerError() async {
+    let mockSession = MockURLSession()
+    let url = URL(string: "https://api.github.com/repos/test/test-repo/releases")!
+    mockSession.responseToReturn = HTTPURLResponse(
+      url: url, statusCode: 500, httpVersion: nil, headerFields: nil)!
+    // 5xx でも JSON 本文が返るとは限らないため、空 Data を渡す
+    mockSession.dataToReturn = Data()
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    let result = await checker.checkForUpdate(currentVersion: "1.0.0")
+    #expect(result == nil)
+  }
+
+  @Test func usesCachedValueOnHTTPErrorStatus() async {
+    let mockSession = MockURLSession()
+    let url = URL(string: "https://api.github.com/repos/test/test-repo/releases")!
+    mockSession.responseToReturn = HTTPURLResponse(
+      url: url, statusCode: 403, httpVersion: nil, headerFields: nil)!
+    mockSession.dataToReturn = #"{"message":"API rate limit exceeded"}"#.data(using: .utf8)
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    // 期限切れキャッシュがある状態で HTTP 403 が返ってきた場合、
+    // キャッシュ値が利用される（ネットワークエラー時と同等の挙動）
+    settingsManager.settings.updateCache = UpdateCache(
+      latestVersion: "5.0.0",
+      checkedAt: Date().addingTimeInterval(-24 * 3600)
+    )
+
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    let result = await checker.checkForUpdate(currentVersion: "1.0.0")
+    #expect(result != nil)
+    #expect(result?.latestVersion == "5.0.0")
+  }
 }
 
 // MARK: - UpdateChecker API URL テスト

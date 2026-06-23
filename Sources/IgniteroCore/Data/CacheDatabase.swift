@@ -9,6 +9,10 @@ public protocol CacheDatabaseProtocol: Sendable {
   func loadApps() async throws -> [AppItem]
   func saveDirectories(_ dirs: [DirectoryItem]) throws
   func loadDirectories() async throws -> [DirectoryItem]
+  // アプリとディレクトリの両方を 1 つのトランザクションで置換する。
+  // 片方だけ成功して片方が失敗した場合に、apps と directories の世代がずれた
+  // 不整合キャッシュが残らないようにするために使う。
+  func saveAppsAndDirectories(apps: [AppItem], directories: [DirectoryItem]) throws
   func clearCache() throws
 }
 
@@ -116,6 +120,48 @@ public actor CacheDatabase: CacheDatabaseProtocol {
   public func loadDirectories() throws -> [DirectoryItem] {
     try dbQueue.read { db in
       try DirectoryItem.fetchAll(db)
+    }
+  }
+
+  // MARK: - Combined Save
+
+  /// アプリとディレクトリを 1 つの SQLite トランザクション内で置換する。
+  /// 個別の `saveApps` / `saveDirectories` を続けて呼ぶと、片方の `write` が
+  /// 成功してもう片方が失敗した瞬間に「新しい apps + 古い directories」という
+  /// 不整合キャッシュが残ってしまう。そのため、スキャン結果の置換ではこちらを使う。
+  nonisolated public func saveAppsAndDirectories(
+    apps: [AppItem],
+    directories: [DirectoryItem]
+  ) throws {
+    try dbQueue.write { db in
+      let now = ISO8601DateFormatter().string(from: Date())
+
+      try db.execute(sql: "DELETE FROM apps")
+      for app in apps {
+        try db.execute(
+          sql: """
+            INSERT OR REPLACE INTO apps (name, path, icon_path, original_name, last_updated)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+          arguments: [app.name, app.path, app.iconPath, app.originalName, now]
+        )
+      }
+
+      try db.execute(sql: "DELETE FROM directories")
+      for dir in directories {
+        try db.execute(
+          sql: """
+            INSERT OR REPLACE INTO directories (name, path, editor, last_updated)
+            VALUES (?, ?, ?, ?)
+            """,
+          arguments: [dir.name, dir.path, dir.editor, now]
+        )
+      }
+
+      try db.execute(
+        sql: "INSERT OR REPLACE INTO metadata (key, value) VALUES ('last_updated', ?)",
+        arguments: [now]
+      )
     }
   }
 

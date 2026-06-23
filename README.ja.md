@@ -2,6 +2,23 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-06-24 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新（`ea22218`）と同期済みであることを確認
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（4 件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app / iTerm2 / Ghostty / cmux: AppleScript 経由の `do script` / `input text` で実装維持
+  - Warp（2026 年時点）: AppleScript 辞書は未提供のまま。公式は URL Scheme / Launch Configuration を自動化手段として案内しており `.command` 方式を維持
+- リファクタリング要否を astro-sight で確認（全体構造は責務分割済みで、最大複雑度の関数も既存のレビュー済み箇所のため大規模リファクタリングは見送り）
+- コードベース全体レビューを root-cause-analyst エージェントで実施。報告された 7 件のうち、確実なバグと断定できる 3 件を修正:
+  - CacheDatabase / CacheBootstrap: `saveApps` と `saveDirectories` を別 `dbQueue.write` で順に呼んでいたため、ディスク I/O 失敗などで片方だけ成功した瞬間に「新世代の apps + 旧世代の directories」という整合性のないキャッシュが残り得た問題を、`saveAppsAndDirectories(apps:directories:)` を CacheDatabaseProtocol に追加し 1 つの SQLite トランザクションで両テーブルを置換するよう修正。CacheBootstrap.runScan は新 API を使う
+  - CacheBootstrap: `runScan` の `defer { isScanning = false; lastScanDate = Date() }` でスキャン失敗時にも `lastScanDate` を更新していたため、メニュー表示で「直前に成功した」かのように振る舞っていた問題を、保存成功後にのみ `lastScanDate` を更新するよう修正
+  - UpdateChecker: GitHub Releases API のレスポンスを HTTP ステータス無検査で `JSONDecoder` に渡していたため、レート制限超過の HTTP 403 + 辞書本文が「不正な JSON」として失敗していた問題を、200 番台以外を `HTTPURLResponse.statusCode` で早期に検出してステータスコードを含む warning ログを残すよう修正
+- テスト数を 968 → 975 に増加
+  - CacheDatabase: `saveAppsAndDirectories` が両テーブルを 1 トランザクションで置換すること、空配列でもエラーにならないことを検証
+  - CacheBootstrap: `saveApps` / `saveDirectories` 失敗時に `lastScanDate` が更新されないことを検証する回帰テスト 2 件を追加
+  - UpdateChecker: HTTP 403 / HTTP 500 が返った場合に `nil` が返ること、HTTP エラー時もキャッシュ値にフォールバックすることを検証する回帰テスト 3 件を追加
+
 2026-06-23 更新内容（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新（`749b24e`）と同期済みであることを確認

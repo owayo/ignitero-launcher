@@ -53,6 +53,14 @@ private final class CacheBootstrapMockDB: CacheDatabaseProtocol, @unchecked Send
     return loadedDirectories
   }
 
+  /// テスト用: 結合保存 API。CacheBootstrap が利用する経路。
+  /// 実装側は単一トランザクションだが、モックでは saveApps / saveDirectories の
+  /// 順に呼び出してそれぞれの失敗注入と呼び出し記録を流用する。
+  func saveAppsAndDirectories(apps: [AppItem], directories: [DirectoryItem]) throws {
+    try saveApps(apps)
+    try saveDirectories(directories)
+  }
+
   func clearCache() throws {
     clearCacheCalled = true
   }
@@ -356,6 +364,57 @@ struct CacheBootstrapTests {
     await bootstrap.performInitialScan()
 
     #expect(bootstrap.lastScanDate != nil)
+  }
+
+  // saveApps が失敗した経路でも defer 内で lastScanDate を更新してしまうと、
+  // メニュー表示などで「直前に成功した」かのように振る舞ってしまう。
+  // 失敗時には lastScanDate が更新されないことを保証する回帰テスト。
+  @Test("saveApps が失敗した場合は lastScanDate が更新されない")
+  @MainActor
+  func lastScanDateRemainsUnchangedOnSaveAppsFailure() async throws {
+    let mockDB = CacheBootstrapMockDB(isEmpty: true)
+    mockDB.saveAppsError = CacheBootstrapTestError()
+    let mockAppScanner = CacheBootstrapMockAppScanner(apps: [
+      AppItem(name: "App", path: "/Applications/App.app")
+    ])
+    let mockDirScanner = CacheBootstrapMockDirScanner()
+    let settings = makeSettingsManager(updateOnStartup: true)
+
+    let bootstrap = CacheBootstrap(
+      settingsManager: settings,
+      cacheDatabase: mockDB,
+      appScanner: mockAppScanner,
+      directoryScanner: mockDirScanner
+    )
+
+    #expect(bootstrap.lastScanDate == nil)
+    let result = await bootstrap.performInitialScan()
+    #expect(result == false)
+    #expect(bootstrap.lastScanDate == nil)
+  }
+
+  @Test("saveDirectories が失敗した場合も lastScanDate が更新されない")
+  @MainActor
+  func lastScanDateRemainsUnchangedOnSaveDirectoriesFailure() async throws {
+    let mockDB = CacheBootstrapMockDB(isEmpty: true)
+    mockDB.saveDirectoriesError = CacheBootstrapTestError()
+    let mockAppScanner = CacheBootstrapMockAppScanner(apps: [
+      AppItem(name: "App", path: "/Applications/App.app")
+    ])
+    let mockDirScanner = CacheBootstrapMockDirScanner()
+    let settings = makeSettingsManager(updateOnStartup: true)
+
+    let bootstrap = CacheBootstrap(
+      settingsManager: settings,
+      cacheDatabase: mockDB,
+      appScanner: mockAppScanner,
+      directoryScanner: mockDirScanner
+    )
+
+    #expect(bootstrap.lastScanDate == nil)
+    let result = await bootstrap.performInitialScan()
+    #expect(result == false)
+    #expect(bootstrap.lastScanDate == nil)
   }
 
   // MARK: - Auto Update Tests

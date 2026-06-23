@@ -141,10 +141,7 @@ public final class CacheBootstrap {
       return false
     }
     isScanning = true
-    defer {
-      isScanning = false
-      lastScanDate = Date()
-    }
+    defer { isScanning = false }
 
     let settings = settingsManager.settings
 
@@ -176,17 +173,23 @@ public final class CacheBootstrap {
       return false
     }
 
-    // データベースに保存（saveApps/saveDirectories は DELETE+INSERT を
-    // 同一トランザクションで行うため、置換はアトミック）
+    // アプリとディレクトリを 1 つのトランザクションで置換する。
+    // 別 API（saveApps + saveDirectories）に分けると、saveApps 成功後に
+    // saveDirectories が失敗した瞬間に「新世代の apps + 旧世代の directories」
+    // という不整合キャッシュが残ってしまう。
     // 保存失敗時は ViewModel への通知を行わず、古いキャッシュとスキャン結果の
     // 整合性が崩れたまま「成功」と扱われるのを防ぐ。
     do {
-      try cacheDatabase.saveApps(allApps)
-      try cacheDatabase.saveDirectories(allDirectories)
+      try cacheDatabase.saveAppsAndDirectories(apps: allApps, directories: allDirectories)
     } catch {
       Self.logger.error("Failed to save scan results: \(error.localizedDescription)")
       return false
     }
+
+    // 「最後にキャッシュ更新が成功した時刻」を残す。
+    // defer 内で更新するとスキャン失敗時にも更新されてしまい、メニュー等の
+    // 表示で「直前に成功した」という誤情報をユーザーに与えてしまう。
+    lastScanDate = Date()
 
     Self.logger.info(
       "Scan completed: \(allApps.count) apps, \(allDirectories.count) directories")

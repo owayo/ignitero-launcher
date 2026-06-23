@@ -130,3 +130,44 @@ import Testing
   let _ = try CacheDatabase(path: dbPath)
   #expect(FileManager.default.fileExists(atPath: dbPath))
 }
+
+// MARK: - saveAppsAndDirectories の結合保存
+
+@Test func cacheDatabaseSaveAppsAndDirectoriesReplacesBoth() async throws {
+  let db = try CacheDatabase(inMemory: true)
+
+  // 初期データ
+  try await db.saveAppsAndDirectories(
+    apps: [
+      AppItem(name: "OldApp", path: "/Applications/OldApp.app")
+    ],
+    directories: [
+      DirectoryItem(name: "old-dir", path: "/Users/dev/old", editor: "vscode")
+    ]
+  )
+
+  // まったく異なる世代のデータで置換
+  try await db.saveAppsAndDirectories(
+    apps: [
+      AppItem(name: "NewApp", path: "/Applications/NewApp.app", iconPath: "/i.png")
+    ],
+    directories: [
+      DirectoryItem(name: "new-dir", path: "/Users/dev/new", editor: "cursor")
+    ]
+  )
+
+  let apps = try await db.loadApps()
+  let dirs = try await db.loadDirectories()
+
+  #expect(apps.count == 1)
+  #expect(apps.first?.name == "NewApp")
+  #expect(dirs.count == 1)
+  #expect(dirs.first?.editor == "cursor")
+}
+
+@Test func cacheDatabaseSaveAppsAndDirectoriesHandlesEmptyArrays() async throws {
+  let db = try CacheDatabase(inMemory: true)
+  try await db.saveAppsAndDirectories(apps: [], directories: [])
+  let empty = try await db.isEmpty()
+  #expect(empty == true)
+}

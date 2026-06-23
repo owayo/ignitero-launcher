@@ -221,7 +221,16 @@ public struct UpdateChecker: Sendable {
     request.timeoutInterval = Self.requestTimeout
     request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
 
-    let (data, _) = try await session.data(for: request)
+    let (data, response) = try await session.data(for: request)
+
+    // 200 番台以外は本文が配列ではなくエラー JSON（レート制限超過の 403 等）が返るため、
+    // そのまま JSONDecoder に渡すと「不正な JSON」として読みづらいエラーが出る。
+    // 早期に HTTP ステータスを確認し、ステータスコードを含めて警告ログを残す。
+    if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+      Self.logger.warning(
+        "GitHub Releases API returned HTTP \(http.statusCode); skipping update check")
+      throw URLError(.badServerResponse)
+    }
 
     let releases = try JSONDecoder().decode([GitHubRelease].self, from: data)
 
