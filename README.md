@@ -71,20 +71,20 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - 空クエリでは最近使ったカスタムコマンドも履歴候補として再表示
 - カスタムコマンド履歴は `command://UUID` 識別子で管理し、現在登録されているコマンドだけ起動時クリーンアップで保持
 - AppleScript実行失敗時はエラーを検出し、Ghostty は `.command` 方式、cmux は CLI 方式へ自動フォールバック
-- cmux CLI は実行ファイルの存在と実行権限を確認してから ping し、CLI 起動失敗時もアプリ本体がクラッシュしないように処理
+- cmux CLI は実行ファイルの存在と実行権限を確認してから ping し、CLI 起動失敗時や ping 無応答時もアプリ本体がクラッシュ・ハングしないように処理
 - cmux CLI の stdout/stderr は一時ファイルに分けて回収し、大きな stderr 出力でもデッドロックしないように処理
 - AppleScript 実行（`osascript`）の stderr Pipe ハンドルは取得直後に `defer` で close し、cmux CLI 経路と同じく FD リークを防止
 - デフォルトターミナル（macOSターミナル / iTerm2 / Warp / Ghostty / cmux）で実行
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-06-23確認）
+#### ターミナル自動化方式（2026-06-25確認）
 
 - macOSターミナル: AppleScript（`do script`）
 - iTerm2: AppleScript（`create window` + `write text`。現行ドキュメントでは AppleScript は Deprecated 扱いだが辞書は利用可能）
 - Warp: AppleScript dictionary 非対応。公式ドキュメントは URI Scheme / Launch Configurations を案内し、ローカルの `Warp.app` も `sdef` がエラー -192 で辞書を取得できないため `.command` ファイル方式を維持
 - Ghostty: AppleScript（Ghostty 1.3.1 で確認: `new window` + `input text "...\n"`）。辞書には `send key` もあるが、現行実装は cmux と同じく改行込みの `input text` で実行を確定する。AppleScript が無効な環境では `.command` ファイル方式へフォールバック
-- cmux: AppleScript（cmux 0.64.16 で確認: `new window` + `input text "...\n"`）でカスタムコマンドを実行。`send key` は辞書にないため改行込みの `input text` で実行を確定する。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュを防ぎ、正常終了のみ成功扱い
+- cmux: AppleScript（cmux 0.64.17 で確認: `new window` + `input text "...\n"`）でカスタムコマンドを実行。`send key` は辞書にないため改行込みの `input text` で実行を確定する。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュと無応答時のハングを防ぎ、正常終了のみ成功扱い
   - **注意**: ディレクトリを cmux で開く場合は Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
 
 ### アップデート通知

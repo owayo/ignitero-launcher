@@ -456,6 +456,7 @@ public struct LaunchService: Launching, Sendable {
 
   private static let cmuxBundleID = "com.cmuxterm.app"
   private static let cmuxSocketTimeout: TimeInterval = 10
+  private static let cmuxPingTimeout: TimeInterval = 1
   private static let cmuxSocketPollInterval: useconds_t = 200_000  // 200ミリ秒
 
   /// cmux が起動していなければ起動し、CLI の ping で疎通確認する。
@@ -485,7 +486,7 @@ public struct LaunchService: Launching, Sendable {
     // 協調スレッドプールをブロックしないよう Task.sleep を使用する。
     let deadline = Date().addingTimeInterval(cmuxSocketTimeout)
     while Date() < deadline {
-      if runCmuxPing() {
+      if runCmuxPing(timeout: cmuxPingTimeout) {
         return
       }
       try? await Task.sleep(nanoseconds: UInt64(cmuxSocketPollInterval) * 1000)
@@ -499,7 +500,10 @@ public struct LaunchService: Launching, Sendable {
   ///
   /// `Process.run()` に失敗したタスクで `waitUntilExit()` や `terminationStatus` を呼ぶと
   /// Foundation の例外でプロセスが終了するため、起動成功時だけ終了状態を確認する。
-  static func runCmuxPing(cliPath: String = cmuxCLIPath) -> Bool {
+  static func runCmuxPing(
+    cliPath: String = cmuxCLIPath,
+    timeout: TimeInterval = cmuxPingTimeout
+  ) -> Bool {
     guard FileManager.default.isExecutableFile(atPath: cliPath) else {
       return false
     }
@@ -517,7 +521,15 @@ public struct LaunchService: Launching, Sendable {
       return false
     }
 
-    process.waitUntilExit()
+    let deadline = Date().addingTimeInterval(max(timeout, 0.01))
+    while process.isRunning {
+      if Date() >= deadline {
+        logger.debug("cmux ping timed out after \(timeout, privacy: .public)s")
+        process.terminate()
+        return false
+      }
+      Thread.sleep(forTimeInterval: 0.02)
+    }
     return process.terminationStatus == 0
   }
 

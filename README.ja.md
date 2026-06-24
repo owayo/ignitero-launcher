@@ -2,6 +2,21 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-06-25 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新（`ddcc14e`）と同期済みであることを確認
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（4 件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app / iTerm2 / Ghostty / cmux: AppleScript 経由の `do script` / `input text` で実装維持
+  - Ghostty 1.3.1: 公式ドキュメントとローカル辞書で `new window` / `input text` / `send key` を確認。現行実装は cmux と同じく改行込みの `input text` で実行確定
+  - cmux 0.64.17: ローカル辞書で `new window` / `input text` を確認。`send key` は辞書にないため、改行込みの `input text` 方式を維持
+  - Warp 0.2026.06.10.09.27.01: 公式ドキュメントは URI Scheme / Launch Configuration / Tab Config を自動化手段として案内し、ローカルの `Warp.app` は `sdef` がエラー -192 で AppleScript 辞書を取得できないため `.command` 方式を維持
+- リファクタリング要否を astro-sight で確認（全体 `dead-code` は未参照公開シンボルゼロ、最大循環的複雑度 9 の既存構造は責務分割済みのため大規模リファクタリングは見送り）
+- コードベース全体レビューを実施し、確実なバグ 1 件を修正:
+  - LaunchService: `ensureCmuxRunning()` は 10 秒タイムアウトを持つ一方、内側の `runCmuxPing()` が `waitUntilExit()` で無期限待機していたため、`cmux ping` がハングするとタイムアウトが効かずアプリ側のコマンド実行も戻らない問題を修正。`runCmuxPing(timeout:)` を追加し、ping プロセスが応答しない場合は 1 秒で terminate して `false` を返すようにした
+- テスト数を 975 → 976 に増加
+  - LaunchService: cmux CLI ping が応答しない場合にタイムアウトして `false` を返す回帰テストを追加
+
 2026-06-24 更新内容（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新（`ea22218`）と同期済みであることを確認

@@ -839,6 +839,19 @@ struct LaunchServiceCmuxCLIPingTests {
 
     #expect(LaunchService.runCmuxPing(cliPath: fileURL.path) == false)
   }
+
+  @Test("CLI ping が応答しない場合はタイムアウトして false を返す")
+  func executableCLIPathThatHangsReturnsFalse() throws {
+    let fileURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("ignitero-cmux-hang-\(UUID().uuidString)")
+    try "#!/bin/sh\nsleep 5\nexit 0\n".write(to: fileURL, atomically: true, encoding: .utf8)
+    defer { try? FileManager.default.removeItem(at: fileURL) }
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fileURL.path)
+
+    let start = Date()
+    #expect(LaunchService.runCmuxPing(cliPath: fileURL.path, timeout: 0.2) == false)
+    #expect(Date().timeIntervalSince(start) < 2)
+  }
 }
 
 // MARK: - cmux CLI 実行テスト
