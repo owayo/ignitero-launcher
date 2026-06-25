@@ -2,6 +2,20 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-06-26 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、リベース対象のリモート差分がない（ローカル `main` が先行）ことを確認。push は git-sc フックに委譲
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（GRDB.swift / KeyboardShortcuts / Fuse-Swift / EmojiKit の 4 件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app / iTerm2 / Ghostty 1.3.1 / cmux 0.64.17: AppleScript 経由の `do script` / `input text` を維持
+  - Warp: 2026-06 時点でもネイティブ AppleScript 辞書は未提供。`sdef /Applications/Warp.app`（Warp 0.2026.06.10）は失敗し、公式は URI Scheme / Launch Configuration / Tab Config を自動化手段として案内。`.command` 方式を維持（公開ドキュメント調査と別組織 AI モデルのクロスチェックで再確認）
+- リファクタリング要否を astro-sight で確認（最大循環的複雑度 9 = `AppCoordinator.loadCacheDataIntoViewModel`、cx≥10 はゼロ、ファイル構成も責務分割済みのため大規模リファクタリングは見送り）
+- コードベース全体レビューを security / correctness / error-handling・performance の 3 エージェントで並列実施し、各エージェントを別組織 AI モデルでクロスチェック。確実な正確性・セキュリティ・クラッシュ・リークのバグは検出されず、パフォーマンス改善 1 件を適用:
+  - AppScanner: `scanApplications` がアプリ 1 件ごとに `Info.plist` を `plistNames`（名前抽出）と `iconFilePath`（アイコン解決）で別々に読み込み・パースし、除外設定時はさらに `isExcluded` でも読み込んでいたため、数百アプリの走査で同一ファイルに対し 2〜3N 回の重複ディスク I/O とパースが発生していた。スキャンループ内で `loadInfoPlist` により 1 回だけ読み込み・パースし、3 経路で共有するよう変更（public な `plistNames` / `iconFilePath` / `extractAppInfo` は読み込み済み plist を受け取る private 版へ委譲し、既存 API と全挙動を維持）
+  - レビューで挙がった uncertain（`runCmuxPing` の協調スレッド上 `Thread.sleep`、`CacheDatabase.loadApps/loadDirectories` の actor 隔離同期 read 等）は「確実なバグではない」ため、方針どおり指摘のみで未修整
+- テスト数 985（`swift test --no-parallel` 実測）。AppScanner の共有 `Info.plist` 読み込みで名前とアイコンの両方が解決されることの回帰テストを 1 件追加
+- ドキュメント更新: AGENTS.md の AppScanner 説明・テスト数（985）と、LaunchService のコードコメント（cmux 0.64.16 → 0.64.17）を実態に合わせて更新
+
 2026-06-25 更新内容（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新（`ddcc14e`）と同期済みであることを確認

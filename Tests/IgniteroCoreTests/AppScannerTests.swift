@@ -69,6 +69,17 @@ private func createLocalizedApp(
   return appPath
 }
 
+/// NSImage が読み込める最小の有効 PNG（1x1 透明）を書き出す。
+/// cacheIcon が成功し、スキャン結果の AppItem.iconPath が設定される状態を作る。
+private func writeMinimalValidIcon(to path: String) throws {
+  let base64 =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+  guard let data = Data(base64Encoded: base64) else {
+    throw NSError(domain: "AppScannerTests", code: 1)
+  }
+  try data.write(to: URL(fileURLWithPath: path))
+}
+
 // MARK: - プロトコル準拠テスト
 
 @Suite("AppScanner Protocol")
@@ -781,6 +792,47 @@ struct AppScannerFullScanTests {
     let results = try await scanner.scanApplications(excludedApps: [])
 
     #expect(results.isEmpty)
+  }
+
+  /// scanApplications は 1 アプリにつき Info.plist を 1 回だけ読み込み、その共有データから
+  /// 名前（extractAppInfo）とアイコン（iconFilePath）の両方を解決する。
+  /// 共有読み込みへの変更で、名前とアイコンのどちらかが欠落しないことを保証する回帰テスト。
+  @Test("共有 Info.plist 読み込みで名前とアイコンの両方が解決される")
+  func resolvesNameAndIconFromSharedInfoPlist() async throws {
+    let tmpDir = try makeTempDir()
+    defer { cleanup(tmpDir) }
+
+    // displayName・bundleName・アイコン参照を 1 つの Info.plist にまとめた擬似アプリ
+    let appPath = try createFakeApp(
+      at: tmpDir, name: "Shared.app",
+      displayName: "Shared Display",
+      bundleName: "SharedBundle",
+      iconFile: "AppIcon"
+    )
+    let resourcesPath = (appPath as NSString).appendingPathComponent("Contents/Resources")
+    try FileManager.default.createDirectory(
+      atPath: resourcesPath, withIntermediateDirectories: true)
+    let icnsPath = (resourcesPath as NSString).appendingPathComponent("AppIcon.icns")
+    try writeMinimalValidIcon(to: icnsPath)
+
+    // アイコンキャッシュをテスト用ディレクトリに隔離する
+    let cacheDir = (tmpDir as NSString).appendingPathComponent("iconcache")
+    let scanner = AppScanner(
+      scanTargets: [AppScanner.ScanTarget(path: tmpDir, maxDepth: 1)],
+      iconCacheManager: IconCacheManager(cacheDirectory: cacheDir)
+    )
+
+    let results = try await scanner.scanApplications(excludedApps: [])
+    let app = try #require(results.first { $0.path == appPath })
+
+    // 名前は共有 Info.plist 経由で解決される（システムのローカライズ名があればそれを優先）。
+    let systemName = scanner.localizedSystemName(for: appPath)
+    #expect(app.name == (systemName ?? "Shared Display"))
+    // ローカライズ名/表示名と異なる CFBundleName は originalName として共有データから読まれる。
+    #expect(app.originalName == "SharedBundle")
+    // アイコンも同じ共有 Info.plist から解決・キャッシュされ、AppItem に反映される。
+    #expect(app.iconPath != nil)
+    #expect(app.iconPath?.hasSuffix(".png") == true)
   }
 }
 

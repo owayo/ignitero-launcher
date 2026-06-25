@@ -94,22 +94,32 @@ public struct AppScanner: AppScannerProtocol, Sendable {
         guard !seenPaths.contains(bundlePath) else { continue }
         seenPaths.insert(bundlePath)
 
+        // Info.plist は除外判定・名前抽出・アイコン解決で共有するため 1 回だけ読み込む
+        // （以前は plistNames と iconFilePath が同一ファイルを別々に読み込み、
+        //  アプリ 1 件につき 2〜3 回の読み込み・パースが発生していた）。
+        let infoPlist = loadInfoPlist(for: bundlePath)
+
         // 除外アプリフィルタ（既存設定のパス指定もここで扱う）
-        guard !isExcluded(bundlePath: bundlePath, appItem: nil, excludedSet: excludedSet) else {
+        guard
+          !isExcluded(
+            bundlePath: bundlePath, appItem: nil, plist: infoPlist, excludedSet: excludedSet)
+        else {
           Self.logger.debug("Excluded app: \(bundlePath)")
           continue
         }
 
-        if var appItem = extractAppInfo(from: bundlePath) {
+        if var appItem = extractAppInfo(from: bundlePath, plist: infoPlist) {
           // 設定画面は表示名を保存するため、AppItem 生成後にも除外判定する。
-          guard !isExcluded(bundlePath: bundlePath, appItem: appItem, excludedSet: excludedSet)
+          guard
+            !isExcluded(
+              bundlePath: bundlePath, appItem: appItem, plist: infoPlist, excludedSet: excludedSet)
           else {
             Self.logger.debug("Excluded app: \(bundlePath)")
             continue
           }
 
           // アイコンキャッシュ生成
-          if let iconSrc = iconFilePath(for: bundlePath) {
+          if let iconSrc = iconFilePath(for: bundlePath, plist: infoPlist) {
             do {
               let cachedPath = try iconCacheManager.cacheIcon(
                 from: iconSrc, for: bundlePath)
@@ -141,15 +151,20 @@ public struct AppScanner: AppScannerProtocol, Sendable {
   public func isExcluded(_ app: AppItem, excludedApps: [String]) -> Bool {
     guard !excludedApps.isEmpty else { return false }
     let excludedSet = Set(excludedApps)
-    if isExcluded(bundlePath: app.path, appItem: app, excludedSet: excludedSet) {
+    // appItem ありの判定は Info.plist を参照しないため plist: nil で済む。
+    if isExcluded(bundlePath: app.path, appItem: app, plist: nil, excludedSet: excludedSet) {
       return true
     }
-    return isExcluded(bundlePath: app.path, appItem: nil, excludedSet: excludedSet)
+    // 名前ベースの除外判定でのみ Info.plist が必要になるため、ここで 1 回だけ読み込む。
+    return isExcluded(
+      bundlePath: app.path, appItem: nil, plist: loadInfoPlist(for: app.path),
+      excludedSet: excludedSet)
   }
 
   private func isExcluded(
     bundlePath: String,
     appItem: AppItem?,
+    plist: [String: Any]?,
     excludedSet: Set<String>
   ) -> Bool {
     guard !excludedSet.isEmpty else { return false }
@@ -164,7 +179,7 @@ public struct AppScanner: AppScannerProtocol, Sendable {
     }
 
     guard let appItem else {
-      let names = plistNames(for: bundlePath)
+      let names = plistNames(from: plist)
       if let displayName = names.displayName, excludedSet.contains(displayName) {
         return true
       }
@@ -237,26 +252,9 @@ public struct AppScanner: AppScannerProtocol, Sendable {
 
   // MARK: - Info.plist Extraction
 
-  /// Info.plist から CFBundleDisplayName と CFBundleName を抽出する
-  public func plistNames(for appPath: String) -> (
-    displayName: String?, bundleName: String?
-  ) {
-    let plistPath = (appPath as NSString).appendingPathComponent("Contents/Info.plist")
-    guard let plistData = FileManager.default.contents(atPath: plistPath),
-      let plist =
-        try? PropertyListSerialization.propertyList(
-          from: plistData, options: [], format: nil) as? [String: Any]
-    else {
-      return (nil, nil)
-    }
-
-    let displayName = plist["CFBundleDisplayName"] as? String
-    let bundleName = plist["CFBundleName"] as? String
-    return (displayName, bundleName)
-  }
-
-  /// Info.plist からアイコンファイルのパスを解決する
-  public func iconFilePath(for appPath: String) -> String? {
+  /// Info.plist を 1 回だけ読み込み・パースして辞書として返す。
+  /// 名前抽出・除外判定・アイコン解決で同一ファイルを共有し、二重読み込みを避ける。
+  private func loadInfoPlist(for appPath: String) -> [String: Any]? {
     let plistPath = (appPath as NSString).appendingPathComponent("Contents/Info.plist")
     guard let plistData = FileManager.default.contents(atPath: plistPath),
       let plist =
@@ -265,6 +263,34 @@ public struct AppScanner: AppScannerProtocol, Sendable {
     else {
       return nil
     }
+    return plist
+  }
+
+  /// Info.plist から CFBundleDisplayName と CFBundleName を抽出する
+  public func plistNames(for appPath: String) -> (
+    displayName: String?, bundleName: String?
+  ) {
+    plistNames(from: loadInfoPlist(for: appPath))
+  }
+
+  /// 読み込み済み Info.plist から CFBundleDisplayName と CFBundleName を抽出する
+  private func plistNames(from plist: [String: Any]?) -> (
+    displayName: String?, bundleName: String?
+  ) {
+    guard let plist else { return (nil, nil) }
+    let displayName = plist["CFBundleDisplayName"] as? String
+    let bundleName = plist["CFBundleName"] as? String
+    return (displayName, bundleName)
+  }
+
+  /// Info.plist からアイコンファイルのパスを解決する
+  public func iconFilePath(for appPath: String) -> String? {
+    iconFilePath(for: appPath, plist: loadInfoPlist(for: appPath))
+  }
+
+  /// 読み込み済み Info.plist からアイコンファイルのパスを解決する
+  private func iconFilePath(for appPath: String, plist: [String: Any]?) -> String? {
+    guard let plist else { return nil }
 
     let fm = FileManager.default
     let resourcesPath = (appPath as NSString).appendingPathComponent("Contents/Resources")
@@ -378,7 +404,12 @@ public struct AppScanner: AppScannerProtocol, Sendable {
 
   /// .app バンドルから AppItem を組み立てる
   public func extractAppInfo(from appPath: String) -> AppItem? {
-    let (displayName, bundleName) = plistNames(for: appPath)
+    extractAppInfo(from: appPath, plist: loadInfoPlist(for: appPath))
+  }
+
+  /// 読み込み済み Info.plist から AppItem を組み立てる
+  private func extractAppInfo(from appPath: String, plist: [String: Any]?) -> AppItem? {
+    let (displayName, bundleName) = plistNames(from: plist)
 
     // ローカライズ名の取得を試行
     let localizedName =
