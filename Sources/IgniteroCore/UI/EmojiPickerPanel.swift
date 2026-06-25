@@ -31,7 +31,11 @@ private struct CategoryTabButton: View {
         .clipShape(RoundedRectangle(cornerRadius: 6))
     }
     .buttonStyle(.plain)
-    .help(cat.localizedName)
+    // EmojiCategory.localizedName / labelText は EmojiKit 内で Bundle.module を
+    // 参照しており、.app 配置時に SwiftPM のリソースバンドル解決が失敗して
+    // assertionFailure → SIGTRAP でアプリ全体がクラッシュするため使用禁止。
+    // 詳細は CLAUDE.md の EmojiKit クラッシュ回避ルールを参照。
+    .help(EmojiCategoryDisplayName.text(for: cat))
   }
 }
 
@@ -124,7 +128,16 @@ private struct EmojiPickerContentView: View {
             action: { emoji in
               onSelect?(emoji.char)
             },
-            sectionTitle: { $0.view },
+            // デフォルトの `$0.view` (= Emoji.GridSectionTitle) は内部で
+            // `category.labelText(for:)` → `localizedName(in:)` を呼び、EmojiKit の
+            // Bundle.module を踏んで .app 配置時にクラッシュする。
+            // 自前の Text で代替する（フォント/色は EmojiGridSectionTitle 準拠）。
+            sectionTitle: { params in
+              Text(EmojiCategoryDisplayName.text(for: params.category).uppercased())
+                .font(.callout)
+                .foregroundColor(.secondary)
+                .padding(4)
+            },
             gridItem: { $0.view }
           )
         }

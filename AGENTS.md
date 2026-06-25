@@ -88,5 +88,29 @@ make clean        # ビルドキャッシュ削除
 
 回帰テスト: `Tests/IgniteroCoreTests/ShortcutDisplayFormatterTests.swift` が Option+Space を含む全特殊キー組み合わせで `Bundle.module` 経由のクラッシュが起きないことを保証する。
 
+### EmojiKit（過去 1 度の Emoji ピッカー起動時クラッシュ原因）
+
+以下の API を呼ぶと EmojiKit 内の `Localizable.localizedName` / `localizedText` がデフォルト引数の `Bundle.module` を解決しに行き、`.app` 配置時の SwiftPM リソースバンドル解決失敗で `assertionFailure` → SIGTRAP（Emoji ピッカーを開いた瞬間にアプリ全体クラッシュ）。**いかなる呼び出しも禁止**。
+
+- `EmojiCategory.localizedName` / `localizedName(in:)` — 既定 `bundle: .module`
+- `EmojiCategory.labelText` / `labelText(for:)` — 内部で `localizedName` を呼ぶ
+- `EmojiCategory.label` / `label(for:)` — 同上
+- `Emoji.GridSectionTitle(_:)` — 内部で `category.labelText(for:)` を呼ぶ
+- `EmojiGrid(..., sectionTitle: { $0.view })` — デフォルト `view` は `GridSectionTitle`
+- `Localizable.localizedText(for:in:)`（バンドル省略形） — 全 `Localizable` 適合型で同根
+
+代替実装:
+- カテゴリ表示名: 自前の `EmojiCategoryDisplayName`（`Sources/IgniteroCore/UI/`）
+- セクションタイトル: `Text(EmojiCategoryDisplayName.text(for: params.category).uppercased())` を `sectionTitle:` クロージャで直接構築
+
+呼んでよい API:
+- `EmojiCategory.id` / `symbolIconName` / `symbolIcon` / `emojis` / `hasEmojis` / `hasEmoji(_:)`
+- `EmojiCategory.smileysAndPeople` 等の standard ケース、`.persisted(_:)` / `.custom(...)`
+- `Collection.standardGrid` / `standardCategories`
+- `EmojiGrid` 本体（`sectionTitle:` を自前 View で渡せば安全）
+- `Localizable.localizedName(in:bundle:)` / `localizedText(for:in:bundle:)` — bundle を明示すれば `.module` を踏まない
+
+回帰テスト: `Tests/IgniteroCoreTests/EmojiCategoryDisplayNameTests.swift` が `standardGrid` 全カテゴリで `Bundle.module` を踏まずに表示名が返ることを保証する。
+
 # currentDate
 Today's date is 2026-06-16.
