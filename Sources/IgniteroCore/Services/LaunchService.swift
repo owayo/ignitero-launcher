@@ -214,6 +214,44 @@ public struct LaunchService: Launching, Sendable {
       .replacingOccurrences(of: "\r", with: "")
   }
 
+  /// Process の stdout/stderr 破棄用に、各プロセス専用の書き込みハンドルを開く。
+  ///
+  /// `FileHandle.nullDevice` は読み取り用ハンドルとして扱われる環境があり、stdout/stderr
+  /// に渡すと子プロセスが終了しないことがあるため使わない。
+  private static func nullDeviceForWriting() throws -> FileHandle {
+    try FileHandle(forWritingTo: URL(fileURLWithPath: "/dev/null"))
+  }
+
+  private static func discardedOutputHandles() throws -> (
+    standardOutput: FileHandle, standardError: FileHandle
+  ) {
+    let standardOutput = try nullDeviceForWriting()
+    do {
+      let standardError = try nullDeviceForWriting()
+      return (standardOutput, standardError)
+    } catch {
+      try? standardOutput.close()
+      throw error
+    }
+  }
+
+  private static func discardOutput(for process: Process) throws {
+    let handles = try discardedOutputHandles()
+    process.standardOutput = handles.standardOutput
+    process.standardError = handles.standardError
+  }
+
+  private static func closeFileHandle(_ handle: Any?) {
+    if let handle = handle as? FileHandle {
+      try? handle.close()
+    }
+  }
+
+  private static func closeDiscardedOutputHandles(for process: Process) {
+    closeFileHandle(process.standardOutput)
+    closeFileHandle(process.standardError)
+  }
+
   /// 一時 .command ファイルの増殖を防ぐため、古いスクリプトを削除する。
   @discardableResult
   static func cleanupStaleCommandScripts(
@@ -382,7 +420,8 @@ public struct LaunchService: Launching, Sendable {
     process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
     process.arguments = ["-e", script]
     // stdout を破棄してカーネルバッファ溢れによるデッドロックを防ぐ
-    process.standardOutput = FileHandle.nullDevice
+    process.standardOutput = try nullDeviceForWriting()
+    defer { closeFileHandle(process.standardOutput) }
     process.standardError = stderrPipe
     // エラー時の FD リークを防ぐため、ハンドル取得直後に defer で閉じる（cmux CLI 経路と同じ方針）。
     let stderrHandle = stderrPipe.fileHandleForReading
@@ -456,7 +495,8 @@ public struct LaunchService: Launching, Sendable {
 
   private static let cmuxBundleID = "com.cmuxterm.app"
   private static let cmuxSocketTimeout: TimeInterval = 10
-  private static let cmuxPingTimeout: TimeInterval = 1
+  // macOS 26 の SwiftPM 並列テスト環境では短命プロセスの終了検出が数秒遅れることがある。
+  private static let cmuxPingTimeout: TimeInterval = 5
   private static let cmuxSocketPollInterval: useconds_t = 200_000  // 200ミリ秒
 
   /// cmux が起動していなければ起動し、CLI の ping で疎通確認する。
@@ -511,8 +551,14 @@ public struct LaunchService: Launching, Sendable {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: cliPath)
     process.arguments = ["ping"]
-    process.standardOutput = FileHandle.nullDevice
-    process.standardError = FileHandle.nullDevice
+    do {
+      try discardOutput(for: process)
+    } catch {
+      logger.debug(
+        "cmux ping failed to open /dev/null: \(error.localizedDescription, privacy: .public)")
+      return false
+    }
+    defer { closeDiscardedOutputHandles(for: process) }
 
     do {
       try process.run()
@@ -622,18 +668,17 @@ public struct LaunchService: Launching, Sendable {
     let activateProcess = Process()
     activateProcess.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
     activateProcess.arguments = ["-e", "tell application \"cmux\" to activate"]
-    activateProcess.standardOutput = FileHandle.nullDevice
-    activateProcess.standardError = FileHandle.nullDevice
 
     do {
+      try discardOutput(for: activateProcess)
+      defer { closeDiscardedOutputHandles(for: activateProcess) }
       try activateProcess.run()
+      activateProcess.waitUntilExit()
     } catch {
       logger.debug(
         "cmux activation failed to launch: \(error.localizedDescription, privacy: .public)")
       return
     }
-
-    activateProcess.waitUntilExit()
   }
 
   public func availableEditors() -> [EditorInfo] {

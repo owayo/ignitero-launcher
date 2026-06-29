@@ -2,6 +2,24 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-06-29 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新であることを確認
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（GRDB.swift / KeyboardShortcuts / Fuse-Swift / EmojiKit の 4 件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app: ローカル辞書で `do script` を確認
+  - iTerm2: ローカル辞書で `create window with default profile` / `write text` を確認
+  - Ghostty 1.3.1: ローカル辞書で `new window` / `input text` / `send key` を確認。現行実装は cmux と同じく改行込みの `input text` で実行確定
+  - cmux 0.64.17: ローカル辞書で `new window` / `input text` を確認。`send key` は辞書にないため、改行込みの `input text` 方式を維持
+  - Warp: `sdef /Applications/Warp.app` がエラー -192 で AppleScript 辞書を取得できず、公式は URI Scheme / Launch Configurations を自動化手段として案内しているため `.command` 方式を維持
+- リファクタリング要否を astro-sight で確認（最大循環的複雑度 9 = `AppCoordinator.loadCacheDataIntoViewModel`、cx≥10 はゼロのため大規模リファクタリングは見送り）
+- コードベース全体レビューを実施。`astro-sight review --dir . --git` は missing cochange / API 変更 / dead symbols なし。CodeRabbit CLI は free 枠の rate limit で利用できなかったため、手元の解析とテストで確認し、確実なバグ 1 件を修正:
+  - LaunchService: `Process` の stdout/stderr 破棄に `FileHandle.nullDevice` を渡すと、macOS 26.5.1 / Swift 6.3.3 環境で短命の CLI プロセス終了検出が進まず `runCmuxPing` が正常終了スクリプトを false negative にする問題を修正。各プロセス専用に書き込み用 `/dev/null` ハンドルを開き、終了後に閉じるよう変更
+  - LaunchService: `cmuxPingTimeout` を 1 秒から 5 秒へ拡張し、SwiftPM テスト環境で短命プロセスの終了検出が 1 秒を超えるケースでも正常終了を成功扱いできるようにした
+- テスト数を 985 → 986 に増加
+  - LaunchService: cmux CLI ping が stdout/stderr を出しても破棄して `true` を返す回帰テストを追加
+- `swift-format lint --recursive Sources Tests`、`make test`、`make build` の通過を確認
+
 2026-06-26 更新内容（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、リベース対象のリモート差分がない（ローカル `main` が先行）ことを確認。push は git-sc フックに委譲

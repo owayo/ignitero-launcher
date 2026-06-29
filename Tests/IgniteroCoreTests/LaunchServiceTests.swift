@@ -829,6 +829,23 @@ struct LaunchServiceCmuxCLIPingTests {
     #expect(LaunchService.runCmuxPing(cliPath: fileURL.path) == true)
   }
 
+  @Test("CLI ping が stdout/stderr を出しても破棄して true を返す")
+  func executableCLIPathWithOutputReturningZeroReturnsTrue() throws {
+    let fileURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("ignitero-cmux-output-\(UUID().uuidString)")
+    try """
+    #!/bin/sh
+    echo stdout
+    echo stderr >&2
+    exit 0
+
+    """.write(to: fileURL, atomically: true, encoding: .utf8)
+    defer { try? FileManager.default.removeItem(at: fileURL) }
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fileURL.path)
+
+    #expect(LaunchService.runCmuxPing(cliPath: fileURL.path) == true)
+  }
+
   @Test("CLI ping が異常終了したら false を返す")
   func executableCLIPathReturningNonZeroReturnsFalse() throws {
     let fileURL = FileManager.default.temporaryDirectory
