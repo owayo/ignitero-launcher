@@ -52,12 +52,20 @@ private struct Parser {
   // term       = factor (('*' | '/' | '%') factor)*
   // factor     = '-'? (number | '(' expression ')')
 
-  mutating func parseExpression() -> Double? {
-    guard var result = parseTerm() else { return nil }
+  /// 括弧のネスト深さの上限。
+  ///
+  /// 括弧付き式は再帰下降でパースするため、`(((…` のように極端に深くネストした入力
+  /// （検索欄への大量貼り付け等）はスタックオーバーフローを起こし、アプリ全体が SIGSEGV で
+  /// クラッシュする。正当な計算式がこの深さを超えることはないため、上限を超えたら無効な式として
+  /// nil を返す（`+`/`*`/単項マイナスをループ化してスタック消費を抑えているのと同じ方針）。
+  private static let maxParenDepth = 256
+
+  mutating func parseExpression(depth: Int = 0) -> Double? {
+    guard var result = parseTerm(depth: depth) else { return nil }
 
     while let op = peekOperator(), op == "+" || op == "-" {
       advance()  // 演算子を消費
-      guard let right = parseTerm() else { return nil }
+      guard let right = parseTerm(depth: depth) else { return nil }
       if op == "+" {
         result += right
       } else {
@@ -67,12 +75,12 @@ private struct Parser {
     return result
   }
 
-  private mutating func parseTerm() -> Double? {
-    guard var result = parseFactor() else { return nil }
+  private mutating func parseTerm(depth: Int) -> Double? {
+    guard var result = parseFactor(depth: depth) else { return nil }
 
     while let op = peekOperator(), op == "*" || op == "/" || op == "%" {
       advance()  // 演算子を消費
-      guard let right = parseFactor() else { return nil }
+      guard let right = parseFactor(depth: depth) else { return nil }
       if op == "*" {
         result *= right
       } else if op == "/" {
@@ -86,7 +94,7 @@ private struct Parser {
     return result
   }
 
-  private mutating func parseFactor() -> Double? {
+  private mutating func parseFactor(depth: Int) -> Double? {
     skipWhitespace()
 
     // 単項マイナスは連続しても再帰させずループで処理（長い `---...` 入力でもスタック消費を O(1) に抑える）
@@ -100,8 +108,11 @@ private struct Parser {
     let value: Double?
     // 括弧
     if peek() == "(" {
+      // 括弧は再帰下降でパースするため、深いネストはスタックオーバーフローになる。
+      // 正当な式では到達し得ない深さに達したら無効な式として nil を返す。
+      guard depth < Self.maxParenDepth else { return nil }
       advance()  // '(' を消費
-      guard let inner = parseExpression() else { return nil }
+      guard let inner = parseExpression(depth: depth + 1) else { return nil }
       skipWhitespace()
       guard peek() == ")" else { return nil }
       advance()  // ')' を消費

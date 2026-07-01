@@ -2,6 +2,22 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-07-02 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新（`9b4ee3c`）と同期済みであることを確認
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（GRDB.swift / KeyboardShortcuts / Fuse-Swift / EmojiKit の 4 件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app / iTerm2 / Ghostty 1.3.1 / cmux 0.64.17: AppleScript 経由の `do script` / `input text` を維持
+  - Ghostty: 公式ドキュメントで AppleScript は 1.3.0 導入・現行 1.3.1 であること、`focused terminal of selected tab of window` への `input text` が現行 API であることを再確認
+  - Warp: 2026-07 時点でもネイティブ AppleScript 辞書は未提供。ローカルの Warp 0.2026.06.24 は `.sdef` / `NSAppleScriptEnabled` / `OSAScriptingDefinition` を持たず `sdef /Applications/Warp.app` も失敗し、GitHub の要望 Issue #3364 も OPEN のまま。公式は URI Scheme / Tab Configs / Launch Configurations を自動化手段として案内しているため `.command` 方式を維持（Web ドキュメント調査と別組織 AI モデルによるローカルバンドル検査でクロスチェック）
+- リファクタリング要否を astro-sight で確認（cx≥8 の関数は `AppCoordinator.loadCacheDataIntoViewModel`（9）と `SearchService.search`（8）の 2 件のみ、cx≥10 はゼロ。いずれも直線的で責務分割済みのため大規模リファクタリングは見送り）
+- コードベース全体レビューを astro-sight（`review` / `symbols` / `refs` / `calls`）と各コアロジックの精読で実施。`astro-sight review --dir . --git` は missing cochange / API 変更 / dead symbols なし。確実なバグ 1 件を修正:
+  - CalculatorEngine: 再帰下降パーサーの括弧処理に深さ上限が無く、演算子を含む極端に深いネスト入力（例: 検索欄への `(((…1+1` の大量貼り付け。演算子を含むため `checkForCalculatorExpression` 経由で `evaluate` が呼ばれる）で `parseFactor`→`parseExpression` の再帰がスタックを溢れさせ、アプリ全体が SIGSEGV でクラッシュする問題を修正。`+`/`*`/単項マイナスは既にループ化済みだったが括弧だけ未対応だった。標準ツールチェーンのビルドで深さ 50000 の入力が exit 139（SIGSEGV）でクラッシュすること・深さ上限追加後は `nil` を返してクラッシュしないことを実測確認したうえで、`maxParenDepth = 256` を超えたら無効な式として `nil` を返すよう変更（正当な計算式のネストには影響しない）
+- テスト数を 986 → 989 に増加
+  - CalculatorEngine: 深くネストした開き括弧・開閉バランス括弧（各 10 万段）でクラッシュせず `nil` を返すこと、上限内（50 段）のネストは通常どおり評価されることの回帰テストを 3 件追加
+- ドキュメント更新: AGENTS.md の CalculatorEngine 説明（括弧の深さ上限）とテスト数（989）を更新
+- `swift build`（デバッグ）と `swift test --no-parallel`（989 テスト）、`make build`（`-Xswiftc -Onone`）の通過を確認
+
 2026-06-29 更新内容（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新であることを確認

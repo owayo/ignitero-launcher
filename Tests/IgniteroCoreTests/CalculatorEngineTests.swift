@@ -329,6 +329,32 @@ struct CalculatorEngineSpecialPatternTests {
     let expr = Array(repeating: "1", count: n).joined(separator: "*")
     #expect(engine.evaluate(expr) == 1.0)
   }
+
+  @Test("深くネストした開き括弧でクラッシュしない (括弧再帰の深さ上限回帰防止)")
+  func deeplyNestedOpenParenthesesDoNotCrash() {
+    // 括弧は再帰下降でパースするため、深さ上限が無いと `(((…` の大量入力で
+    // スタックオーバーフロー（SIGSEGV）になる。演算子を含むため、ランチャーの
+    // checkForCalculatorExpression（演算子ありでのみ evaluate を呼ぶ）と同じ経路を通る。
+    // 深さ上限により、クラッシュせず無効な式として nil を返す。
+    let expr = String(repeating: "(", count: 100_000) + "1+1"
+    #expect(engine.evaluate(expr) == nil)
+  }
+
+  @Test("深くネストした括弧（開閉バランス）でクラッシュしない")
+  func deeplyNestedBalancedParenthesesDoNotCrash() {
+    // 開き括弧と閉じ括弧が釣り合っていても、深さ自体が上限を超えれば nil を返す。
+    let expr =
+      String(repeating: "(", count: 100_000) + "1" + String(repeating: ")", count: 100_000)
+    #expect(engine.evaluate(expr) == nil)
+  }
+
+  @Test("上限内の括弧ネストは通常どおり評価される")
+  func moderatelyNestedParenthesesStillEvaluate() {
+    // 深さ上限は正当な入力に影響しない。数十段程度のネストは問題なく評価できる。
+    let depth = 50
+    let expr = String(repeating: "(", count: depth) + "1+2" + String(repeating: ")", count: depth)
+    #expect(engine.evaluate(expr) == 3.0)
+  }
 }
 
 // MARK: - NaN / Infinity 検出
