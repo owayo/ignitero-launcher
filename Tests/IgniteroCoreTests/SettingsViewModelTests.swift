@@ -3,7 +3,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - Test Helpers
+// MARK: - テストヘルパー
 
 @MainActor
 private func makeTempSettingsManager() throws -> SettingsManager {
@@ -15,7 +15,41 @@ private func makeTempSettingsManager() throws -> SettingsManager {
   return manager
 }
 
-// MARK: - SettingsTab Tests
+private enum MockLaunchAtLoginError: Error {
+  case failed
+}
+
+private actor MockLaunchAtLoginManager: LaunchAtLoginManaging {
+  private var enabled: Bool
+  private var shouldFailOnSet = false
+  private var requestedValues: [Bool] = []
+
+  init(enabled: Bool) {
+    self.enabled = enabled
+  }
+
+  func isEnabled() async -> Bool {
+    enabled
+  }
+
+  func setEnabled(_ enabled: Bool) async throws {
+    requestedValues.append(enabled)
+    if shouldFailOnSet {
+      throw MockLaunchAtLoginError.failed
+    }
+    self.enabled = enabled
+  }
+
+  func setShouldFailOnSet(_ shouldFailOnSet: Bool) {
+    self.shouldFailOnSet = shouldFailOnSet
+  }
+
+  func requests() -> [Bool] {
+    requestedValues
+  }
+}
+
+// MARK: - 設定タブのテスト
 
 @Suite("SettingsTab Enum")
 struct SettingsTabTests {
@@ -37,7 +71,7 @@ struct SettingsTabTests {
   }
 }
 
-// MARK: - SettingsViewModel Initial State Tests
+// MARK: - ビューモデル初期状態のテスト
 
 @Suite("SettingsViewModel Initial State")
 @MainActor
@@ -73,7 +107,70 @@ struct SettingsViewModelInitialStateTests {
   }
 }
 
-// MARK: - Tab Selection Tests
+// MARK: - ログイン時起動のテスト
+
+@Suite("SettingsViewModel Launch at Login")
+@MainActor
+struct SettingsViewModelLaunchAtLoginTests {
+
+  @MainActor
+  @Test func refreshLaunchAtLoginReadsManagerState() async throws {
+    let manager = try makeTempSettingsManager()
+    let loginManager = MockLaunchAtLoginManager(enabled: true)
+    let vm = SettingsViewModel(
+      settingsManager: manager,
+      launchAtLoginManager: loginManager
+    )
+
+    #expect(vm.launchAtLogin == false)
+
+    await vm.refreshLaunchAtLogin()
+
+    #expect(vm.launchAtLogin == true)
+    #expect(vm.isUpdatingLaunchAtLogin == false)
+  }
+
+  @MainActor
+  @Test func setLaunchAtLoginUpdatesManagerAndCachedState() async throws {
+    let manager = try makeTempSettingsManager()
+    let loginManager = MockLaunchAtLoginManager(enabled: false)
+    let vm = SettingsViewModel(
+      settingsManager: manager,
+      launchAtLoginManager: loginManager
+    )
+
+    try await vm.setLaunchAtLogin(true)
+
+    #expect(vm.launchAtLogin == true)
+    #expect(vm.isUpdatingLaunchAtLogin == false)
+    #expect(await loginManager.requests() == [true])
+  }
+
+  @MainActor
+  @Test func setLaunchAtLoginRestoresPreviousStateOnFailure() async throws {
+    let manager = try makeTempSettingsManager()
+    let loginManager = MockLaunchAtLoginManager(enabled: true)
+    let vm = SettingsViewModel(
+      settingsManager: manager,
+      launchAtLoginManager: loginManager
+    )
+    await vm.refreshLaunchAtLogin()
+    await loginManager.setShouldFailOnSet(true)
+
+    do {
+      try await vm.setLaunchAtLogin(false)
+      Issue.record("ログイン項目更新の失敗が送出されませんでした")
+    } catch MockLaunchAtLoginError.failed {
+      // 期待したエラー
+    }
+
+    #expect(vm.launchAtLogin == true)
+    #expect(vm.isUpdatingLaunchAtLogin == false)
+    #expect(await loginManager.requests() == [false])
+  }
+}
+
+// MARK: - タブ選択のテスト
 
 @Suite("SettingsViewModel Tab Selection")
 @MainActor
@@ -113,7 +210,7 @@ struct SettingsViewModelTabSelectionTests {
   }
 }
 
-// MARK: - Default Terminal Tests
+// MARK: - デフォルトターミナルのテスト
 
 @Suite("SettingsViewModel Default Terminal")
 @MainActor
@@ -155,14 +252,14 @@ struct SettingsViewModelDefaultTerminalTests {
     let vm = SettingsViewModel(settingsManager: manager)
     try vm.setDefaultTerminal(.warp)
 
-    // Reload in new manager to verify persistence
+    // 別のマネージャで読み直して永続化を確認する
     let manager2 = SettingsManager(configDirectory: dir)
     try manager2.load()
     #expect(manager2.settings.defaultTerminal == .warp)
   }
 }
 
-// MARK: - Cache Update Settings Tests
+// MARK: - キャッシュ更新設定のテスト
 
 @Suite("SettingsViewModel Cache Update Settings")
 @MainActor
@@ -227,7 +324,7 @@ struct SettingsViewModelCacheUpdateTests {
   }
 }
 
-// MARK: - Directory Management Tests
+// MARK: - ディレクトリ管理のテスト
 
 @Suite("SettingsViewModel Directory Management")
 @MainActor
@@ -359,9 +456,9 @@ struct SettingsViewModelDirectoryTests {
     updated.parentOpenMode = .editor
     try vm.updateDirectory(at: 0, updated)
 
-    // First directory updated
+    // 1 件目のディレクトリだけ更新される
     #expect(vm.settings.registeredDirectories[0].parentOpenMode == .editor)
-    // Second directory unchanged
+    // 2 件目のディレクトリは変更されない
     #expect(vm.settings.registeredDirectories[1].path == "/path/b")
     #expect(vm.settings.registeredDirectories[1].parentOpenMode == .finder)
   }
@@ -386,7 +483,7 @@ struct SettingsViewModelDirectoryTests {
   }
 }
 
-// MARK: - Command Management Tests
+// MARK: - コマンド管理のテスト
 
 @Suite("SettingsViewModel Command Management")
 @MainActor
@@ -507,7 +604,7 @@ struct SettingsViewModelCommandTests {
   }
 }
 
-// MARK: - Excluded Apps Tests
+// MARK: - 除外アプリのテスト
 
 @Suite("SettingsViewModel Excluded Apps")
 @MainActor
@@ -567,7 +664,7 @@ struct SettingsViewModelExcludedAppsTests {
     try vm.toggleExcludedApp("Safari.app")
     try vm.toggleExcludedApp("Mail.app")
 
-    // Remove only Safari
+    // Safari だけ削除する
     try vm.toggleExcludedApp("Safari.app")
 
     #expect(vm.isAppExcluded("Safari.app") == false)
@@ -608,7 +705,7 @@ struct SettingsViewModelExcludedAppsTests {
   }
 }
 
-// MARK: - onSettingsChanged Callback Tests
+// MARK: - onSettingsChanged コールバックのテスト
 
 @Suite("SettingsViewModel onSettingsChanged Callback")
 @MainActor
@@ -790,7 +887,7 @@ struct SettingsViewModelOnSettingsChangedTests {
   }
 }
 
-// MARK: - Version Tests
+// MARK: - バージョンのテスト
 
 @Suite("SettingsViewModel Version")
 @MainActor

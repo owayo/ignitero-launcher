@@ -2,6 +2,23 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-07-06 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新（`e69972b`）と同期済みであることを確認
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（GRDB.swift / KeyboardShortcuts / Fuse-Swift / EmojiKit の 4 件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app: Apple Support とローカル辞書で `do script` を確認
+  - iTerm2: 公式ドキュメントで `create window with default profile` / `write text` を確認。AppleScript はメンテナンスモードだが現行 API として利用可能
+  - Ghostty: 公式ドキュメントで AppleScript は 1.3.0 導入済み、ローカル Ghostty 1.3.1 で `new window` / `input text` / `send key` を確認。現行実装は cmux と同じく改行込みの `input text` で実行確定
+  - cmux 0.64.17: ローカル辞書で `new window` / `input text` を確認。公式の主経路は CLI / Socket API だが、現行の AppleScript 優先 + CLI フォールバックを維持
+  - Warp: 公式ドキュメントは URI Scheme / Launch Configurations / Tab Configs を自動化手段として案内し、ローカル `Warp.app` でもコマンド実行向け AppleScript 辞書を確認できないため `.command` 方式を維持
+- リファクタリング要否を astro-sight で確認（未参照公開シンボルなし、最大複雑度は既存の `AppCoordinator.loadCacheDataIntoViewModel`（9）で、今回の確実な修正に不要な大規模リファクタリングは見送り）
+- コードベース全体レビューを astro-sight（`review` / `dead-code` / `refs` / `calls`）と既知クラッシュAPIの横断確認で実施。CodeRabbit CLI は free 枠の rate limit で利用できなかったため、手元の解析とテストで確認し、確実なバグ 1 件を修正:
+  - SettingsView / SettingsViewModel: 設定画面の「ログイン時に開く」Toggle が Binding getter 経由で `SMAppService.mainApp.status` を View body 再評価中に同期取得していたため、ad-hoc 署名や未承認状態で ServiceManagement の内部 I/O がメインスレッドを塞ぎ、設定画面表示時にハングし得る問題を修正。`LaunchAtLoginManaging` を追加し、状態取得と register/unregister を `Task.detached` 経由の非同期処理に逃がし、View はキャッシュ済み状態だけを読むよう変更
+- テスト数を 989 → 992 に増加
+  - SettingsViewModel: ログイン項目状態の非同期読み込み、更新成功時のキャッシュ反映、更新失敗時のロールバックを検証する回帰テストを 3 件追加
+- ドキュメント更新: AGENTS.md の SettingsView / SettingsViewModel 説明とテスト数、README.md のログイン時起動説明とターミナル自動化方式、README.ja.md のメンテナンス履歴を更新
+
 2026-07-02 更新内容（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新（`9b4ee3c`）と同期済みであることを確認

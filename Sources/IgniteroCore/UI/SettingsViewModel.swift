@@ -1,7 +1,37 @@
 import Foundation
 import ServiceManagement
 
-// MARK: - SettingsTab
+// MARK: - ログイン項目管理
+
+/// ログイン項目の状態取得と更新を抽象化する。
+public protocol LaunchAtLoginManaging: Sendable {
+  func isEnabled() async -> Bool
+  func setEnabled(_ enabled: Bool) async throws
+}
+
+/// SMAppService を使うログイン項目マネージャ。
+public struct SMAppServiceLaunchAtLoginManager: LaunchAtLoginManaging {
+
+  public init() {}
+
+  public func isEnabled() async -> Bool {
+    await Task.detached(priority: .userInitiated) {
+      SMAppService.mainApp.status == .enabled
+    }.value
+  }
+
+  public func setEnabled(_ enabled: Bool) async throws {
+    try await Task.detached(priority: .userInitiated) {
+      if enabled {
+        try SMAppService.mainApp.register()
+      } else {
+        try SMAppService.mainApp.unregister()
+      }
+    }.value
+  }
+}
+
+// MARK: - 設定タブ
 
 /// 設定画面のタブ種別。
 public enum SettingsTab: String, CaseIterable, Sendable {
@@ -11,7 +41,7 @@ public enum SettingsTab: String, CaseIterable, Sendable {
   case excludedApps
 }
 
-// MARK: - SettingsChange
+// MARK: - 設定変更種別
 
 /// 設定変更の種別。変更内容に応じてランチャー側で必要な反映処理が異なる。
 public enum SettingsChange: Sendable, Equatable {
@@ -23,7 +53,7 @@ public enum SettingsChange: Sendable, Equatable {
   case updateScheduleChanged
 }
 
-// MARK: - SettingsViewModel
+// MARK: - 設定画面ビューモデル
 
 /// 設定画面のビューモデル。
 ///
@@ -33,17 +63,20 @@ public enum SettingsChange: Sendable, Equatable {
 @Observable
 public final class SettingsViewModel {
 
-  // MARK: - Dependencies
+  // MARK: - 依存関係
 
   /// 設定の永続化を担う SettingsManager
   public let settingsManager: SettingsManager
 
-  // MARK: - Callbacks
+  /// ログイン項目を操作するマネージャ
+  private let launchAtLoginManager: any LaunchAtLoginManaging
+
+  // MARK: - コールバック
 
   /// 設定が保存された後に呼ばれるコールバック
   public var onSettingsChanged: ((SettingsChange) -> Void)?
 
-  // MARK: - State
+  // MARK: - 状態
 
   /// 現在選択中のタブ
   public var selectedTab: SettingsTab = .general
@@ -57,7 +90,13 @@ public final class SettingsViewModel {
   /// インストール済みターミナル一覧（外部から設定）
   public var installedTerminals: [TerminalInfo] = []
 
-  // MARK: - Computed Properties
+  /// ログイン時に起動するかどうか。
+  public private(set) var launchAtLogin = false
+
+  /// ログイン項目の状態を取得・更新しているかどうか。
+  public private(set) var isUpdatingLaunchAtLogin = false
+
+  // MARK: - 算出プロパティ
 
   /// 現在の設定（SettingsManager のプロキシ）
   public var settings: Settings {
@@ -69,35 +108,50 @@ public final class SettingsViewModel {
     Ignitero.version
   }
 
-  // MARK: - Initialization
+  // MARK: - 初期化
 
   /// SettingsViewModel を初期化する。
   ///
   /// - Parameter settingsManager: 設定の永続化を担う SettingsManager
-  public init(settingsManager: SettingsManager) {
+  /// - Parameter launchAtLoginManager: ログイン項目を操作するマネージャ
+  public init(
+    settingsManager: SettingsManager,
+    launchAtLoginManager: any LaunchAtLoginManaging = SMAppServiceLaunchAtLoginManager()
+  ) {
     self.settingsManager = settingsManager
+    self.launchAtLoginManager = launchAtLoginManager
   }
 
-  // MARK: - Launch at Login
+  // MARK: - ログイン時起動
 
-  /// ログイン時に起動するかどうか（SMAppService の状態を反映）。
-  public var launchAtLogin: Bool {
-    SMAppService.mainApp.status == .enabled
+  /// ログイン項目の現在状態を読み込む。
+  public func refreshLaunchAtLogin() async {
+    isUpdatingLaunchAtLogin = true
+    let enabled = await launchAtLoginManager.isEnabled()
+    launchAtLogin = enabled
+    isUpdatingLaunchAtLogin = false
   }
 
   /// ログイン時起動の有効/無効を切り替える。
   ///
   /// - Parameter enabled: `true` で有効化、`false` で無効化
   /// - Throws: SMAppService の register/unregister に失敗した場合
-  public func setLaunchAtLogin(_ enabled: Bool) throws {
-    if enabled {
-      try SMAppService.mainApp.register()
-    } else {
-      try SMAppService.mainApp.unregister()
+  public func setLaunchAtLogin(_ enabled: Bool) async throws {
+    let previousValue = launchAtLogin
+    launchAtLogin = enabled
+    isUpdatingLaunchAtLogin = true
+    do {
+      try await launchAtLoginManager.setEnabled(enabled)
+      launchAtLogin = await launchAtLoginManager.isEnabled()
+      isUpdatingLaunchAtLogin = false
+    } catch {
+      launchAtLogin = previousValue
+      isUpdatingLaunchAtLogin = false
+      throw error
     }
   }
 
-  // MARK: - General Tab
+  // MARK: - 全般タブ
 
   /// デフォルトエディタを変更する。
   ///
@@ -129,7 +183,7 @@ public final class SettingsViewModel {
     onSettingsChanged?(.updateScheduleChanged)
   }
 
-  // MARK: - Directory Tab
+  // MARK: - ディレクトリタブ
 
   /// ディレクトリを追加する。
   ///
@@ -179,7 +233,7 @@ public final class SettingsViewModel {
     onSettingsChanged?(.cacheInvalidated)
   }
 
-  // MARK: - Command Tab
+  // MARK: - コマンドタブ
 
   /// カスタムコマンドを追加する。
   ///
@@ -226,7 +280,7 @@ public final class SettingsViewModel {
     onSettingsChanged?(.reloadOnly)
   }
 
-  // MARK: - Excluded Apps Tab
+  // MARK: - 除外アプリタブ
 
   /// アプリの除外状態をトグルする。
   ///

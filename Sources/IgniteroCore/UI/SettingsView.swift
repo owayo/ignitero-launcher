@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - SettingsView
+// MARK: - 設定画面
 
 /// 設定画面のメインビュー。
 ///
@@ -36,7 +36,7 @@ public struct SettingsView: View {
   }
 }
 
-// MARK: - GeneralSettingsTab
+// MARK: - 全般タブ
 
 /// 全般タブ: バージョン表示、デフォルトターミナル選択、キャッシュ更新設定。
 struct GeneralSettingsTab: View {
@@ -55,6 +55,7 @@ struct GeneralSettingsTab: View {
 
       Section("起動") {
         Toggle("ログイン時に開く", isOn: launchAtLoginBinding)
+          .disabled(viewModel.isUpdatingLaunchAtLogin)
       }
 
       Section("ショートカット") {
@@ -135,19 +136,24 @@ struct GeneralSettingsTab: View {
     }
     .formStyle(.grouped)
     .padding()
+    .task {
+      await viewModel.refreshLaunchAtLogin()
+    }
   }
 
-  // MARK: - Bindings
+  // MARK: - バインディング
 
   private var launchAtLoginBinding: Binding<Bool> {
     Binding(
       get: { viewModel.launchAtLogin },
       set: { newValue in
-        do {
-          try viewModel.setLaunchAtLogin(newValue)
-          errorMessage = nil
-        } catch {
-          errorMessage = "ログイン項目の設定に失敗しました"
+        Task { @MainActor in
+          do {
+            try await viewModel.setLaunchAtLogin(newValue)
+            errorMessage = nil
+          } catch {
+            errorMessage = "ログイン項目の設定に失敗しました"
+          }
         }
       }
     )
@@ -202,7 +208,7 @@ struct GeneralSettingsTab: View {
   }
 }
 
-// MARK: - DirectoriesSettingsTab
+// MARK: - ディレクトリタブ
 
 /// ディレクトリタブ: 登録ディレクトリの追加・編集・削除。
 struct DirectoriesSettingsTab: View {
@@ -301,7 +307,7 @@ struct DirectoriesSettingsTab: View {
   }
 }
 
-// MARK: - DirectoryRow
+// MARK: - ディレクトリ行
 
 /// ディレクトリ一覧の各行。
 struct DirectoryRow: View {
@@ -366,7 +372,7 @@ struct DirectoryRow: View {
   }
 }
 
-// MARK: - DirectoryEditForm
+// MARK: - ディレクトリ編集フォーム
 
 /// ディレクトリ設定の編集フォーム。
 struct DirectoryEditForm: View {
@@ -445,7 +451,7 @@ struct DirectoryEditForm: View {
   }
 }
 
-// MARK: - CommandFields
+// MARK: - コマンド入力欄
 
 /// コマンド入力フォームの共通コンポーネント。
 /// 追加フォームと編集フォームで共用する。
@@ -522,7 +528,7 @@ private struct CommandFields: View {
   }
 }
 
-// MARK: - CommandsSettingsTab
+// MARK: - コマンドタブ
 
 /// コマンドタブ: カスタムコマンドの追加・編集・削除。
 struct CommandsSettingsTab: View {
@@ -648,7 +654,7 @@ struct CommandsSettingsTab: View {
   }
 }
 
-// MARK: - CommandRow
+// MARK: - コマンド行
 
 /// コマンド一覧の各行。
 struct CommandRow: View {
@@ -749,7 +755,7 @@ struct CommandRow: View {
   }
 }
 
-// MARK: - ExcludedAppsSettingsTab
+// MARK: - 除外アプリタブ
 
 /// 除外アプリタブ: スキャン済みアプリの除外切替。
 struct ExcludedAppsSettingsTab: View {
@@ -804,7 +810,7 @@ struct ExcludedAppsSettingsTab: View {
   }
 }
 
-// MARK: - ExcludedAppRow
+// MARK: - 除外アプリ行
 
 /// 除外アプリ一覧の各行。目のアイコンで表示/非表示を切り替える。
 struct ExcludedAppRow: View {
@@ -860,7 +866,7 @@ struct ExcludedAppRow: View {
   }
 }
 
-// MARK: - EditorTerminalRow
+// MARK: - エディタ・ターミナル行
 
 /// エディタ/ターミナル選択行（アイコン + 名前 + チェックマーク）。
 struct EditorTerminalRow: View {
@@ -902,7 +908,7 @@ struct EditorTerminalRow: View {
   }
 }
 
-// MARK: - Display Name Extensions
+// MARK: - 表示名拡張
 
 extension TerminalType {
   /// ターミナルタイプの表示名。
