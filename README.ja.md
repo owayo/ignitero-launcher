@@ -2,6 +2,22 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-07-06 追記（AppleScript 再確認）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新（`e7b174c`）と同期済みであることを確認
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（GRDB.swift / KeyboardShortcuts / Fuse-Swift / EmojiKit の 4 件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査（実装方針の変更なし）
+  - Terminal.app 2.15: ローカル辞書で `do script` を確認
+  - iTerm2 3.6.11: 公式ドキュメントとローカル辞書で `create window with default profile` / `write text` を確認。AppleScript はメンテナンスモードだが現行 API として利用可能
+  - Ghostty 1.3.1: 公式ドキュメントとローカル辞書で `new window` / `input text` / `send key` を確認。現行実装は cmux と同じく改行込みの `input text` で実行確定
+  - cmux 0.64.17: ローカル辞書で `new window` / `input text` を確認。`send key` は辞書にないため、現行の AppleScript 優先 + CLI フォールバックを維持
+  - Warp 0.2026.06.24.09.19.03: 公式ドキュメントは URI Scheme / Launch Configurations / Tab Configs を自動化手段として案内し、ローカルでも `sdef` がエラー -192 で辞書を取得できないため `.command` 方式を維持
+- リファクタリング要否を astro-sight で確認。`AppCoordinator.loadCacheDataIntoViewModel` の複雑度 9 が最大だが、今回の確実な修正に不要な大規模リファクタリングは見送り
+- コードベース全体レビューを astro-sight（`review` / `dead-code` / `calls`）とビルドログ確認で実施。実装挙動を変える確実なバグは検出されず
+- テスト数を 992 → 993 に増加
+  - LaunchService: ターミナルごとの AppleScript コマンド投入 API が調査結果どおりであることを行列テストで検証
+- ドキュメント更新: README.md の Warp 確認結果、README.ja.md のメンテナンス履歴、AGENTS.md のテスト数と補足を更新
+
 2026-07-06 更新内容（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新（`e69972b`）と同期済みであることを確認

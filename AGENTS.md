@@ -29,9 +29,11 @@ Sources/
   IgniteroLauncher/         # 実行可能ターゲット (@main エントリ)
     IgniteroApp.swift
 Tests/
-  IgniteroCoreTests/        # 992テスト (Swift Testing)
+  IgniteroCoreTests/        # 993テスト (Swift Testing)
 .backup/                    # Tauri v2 旧実装 (参照用)
 ```
+
+補足（2026-07-06）: Warp 0.2026.06.24.09.19.03 は `sdef /Applications/Warp.app` がエラー -192 で AppleScript 辞書を取得できないため、引き続き `.command` ファイル方式を維持する。Terminal.app 2.15 / iTerm2 3.6.11 / Ghostty 1.3.1 / cmux 0.64.17 はローカル辞書で AppleScript 対応を確認済み。
 
 補足（2026-06-29）: LaunchService の `runCmuxPing` は macOS 26 の SwiftPM テスト環境で短命プロセスの終了検出が 1 秒を超えることがあるため、5 秒上限で待機する。`Process` の stdout/stderr 破棄には `FileHandle.nullDevice` を使わず、各プロセス専用に書き込み用 `/dev/null` ハンドルを開いて終了後に閉じる（`FileHandle.nullDevice` を stdout/stderr に渡すと子プロセス終了検出が進まず false negative になる環境がある）。
 

@@ -697,7 +697,7 @@ struct LaunchServiceAppleScriptCoverageTests {
       workingDirectory: "/tmp/cmux project"
     )
 
-    // cmux 0.64.16 の辞書には new surface configuration がないため、入力注入方式だけに留める。
+    // cmux 0.64.17 の辞書には new surface configuration がないため、入力注入方式だけに留める。
     #expect(script.contains("set w to new window"))
     #expect(script.contains("input text \"cd -- '/tmp/cmux project' && echo cmux\\n\""))
     #expect(!script.contains("new surface configuration"))
@@ -1317,6 +1317,64 @@ struct LaunchServiceAppleScriptPropertiesTests {
       )
       #expect(script.contains("cd -- '/tmp/work'"), "\(terminal) は cd 句を含むべき")
       #expect(script.contains("echo done"), "\(terminal) は本体コマンドを含むべき")
+    }
+  }
+
+  @Test("ターミナルごとの AppleScript コマンド投入 API が調査結果と一致する")
+  func appleScriptCommandExecutionAPIMatrix() {
+    let matrix:
+      [(
+        terminal: TerminalType,
+        requiredFragments: [String],
+        forbiddenFragments: [String]
+      )] = [
+        (
+          .terminal,
+          ["tell application \"Terminal\"", "do script \"echo matrix\""],
+          ["write text", "input text"]
+        ),
+        (
+          .iterm2,
+          ["tell application \"iTerm\"", "write text \"echo matrix\""],
+          ["do script", "input text"]
+        ),
+        (
+          .ghostty,
+          ["tell application \"Ghostty\"", "new window", "input text \"echo matrix\\n\" to term"],
+          ["do script", "write text"]
+        ),
+        (
+          .cmux,
+          ["tell application \"cmux\"", "new window", "input text \"echo matrix\\n\" to term"],
+          ["do script", "write text"]
+        ),
+        (
+          .warp,
+          [],
+          ["tell application", "do script", "write text", "input text"]
+        ),
+      ]
+
+    for entry in matrix {
+      let script = LaunchService.appleScript(
+        for: entry.terminal,
+        command: "echo matrix",
+        workingDirectory: nil
+      )
+
+      if entry.terminal == .warp {
+        #expect(script.isEmpty, "Warp は AppleScript 辞書非対応のため空文字列を返すべき")
+      } else {
+        #expect(!script.isEmpty, "\(entry.terminal) は AppleScript を返すべき")
+      }
+
+      for fragment in entry.requiredFragments {
+        #expect(script.contains(fragment), "\(entry.terminal) は \(fragment) を含むべき")
+      }
+
+      for fragment in entry.forbiddenFragments {
+        #expect(!script.contains(fragment), "\(entry.terminal) は \(fragment) に依存しないべき")
+      }
     }
   }
 }
