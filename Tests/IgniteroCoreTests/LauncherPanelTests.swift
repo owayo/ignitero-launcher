@@ -128,4 +128,72 @@ struct LauncherPanelTests {
     panel.setContentView(TestView())
     #expect(panel.contentView is NSHostingView<TestView>)
   }
+
+  // MARK: - SafeHostingView Reentrant Layout Crash Prevention
+  //
+  // 過去に macOS 26 で発生した `-[NSWindow _postWindowNeedsUpdateConstraints]`
+  // NSException (SIGABRT) を再発させないための回帰テスト群。
+  // 発生経路: `NSHostingView.windowDidLayout` → `updateAnimatedWindowSize` →
+  // `_setFrameCommon` → `setFrameSize` KVO → `invalidateSafeAreaInsets` →
+  // SwiftUI ViewGraph 再計算 → `setNeedsUpdateConstraints(true)` の再要求。
+  // 対策: SafeHostingView から SwiftUI → AppKit のサイズフィードバックを完全に切る。
+
+  @Test @MainActor func safeHostingViewDisablesSwiftUISizingFeedback() {
+    let hostingView = SafeHostingView(rootView: TestView())
+
+    #expect(hostingView.sizingOptions.isEmpty)
+    #expect(hostingView.intrinsicContentSize.width == NSView.noIntrinsicMetric)
+    #expect(hostingView.intrinsicContentSize.height == NSView.noIntrinsicMetric)
+    #expect(hostingView.translatesAutoresizingMaskIntoConstraints)
+    #expect(hostingView.autoresizingMask.contains(.width))
+    #expect(hostingView.autoresizingMask.contains(.height))
+  }
+
+  @Test @MainActor func safeHostingViewContentSizeDoesNotResizePanel() {
+    let panel = LauncherPanel()
+    let hostingView = SafeHostingView(
+      rootView: AnyView(Color.clear.frame(width: 100, height: 100))
+    )
+    panel.contentView = hostingView
+    panel.setFrame(NSRect(x: 100, y: 100, width: 680, height: 300), display: false)
+    panel.contentMinSize = NSSize(width: 50, height: 50)
+    panel.contentMaxSize = NSSize(width: 2_000, height: 2_000)
+
+    let expectedFrame = panel.frame
+    let expectedMinSize = panel.contentMinSize
+    let expectedMaxSize = panel.contentMaxSize
+
+    hostingView.rootView = AnyView(Color.clear.frame(width: 1_500, height: 1_500))
+    panel.layoutIfNeeded()
+
+    #expect(panel.frame == expectedFrame)
+    #expect(panel.contentMinSize == expectedMinSize)
+    #expect(panel.contentMaxSize == expectedMaxSize)
+  }
+
+  @Test @MainActor func safeHostingViewSurvivesInterleavedContentAndFrameChanges() {
+    let panel = LauncherPanel()
+    let hostingView = SafeHostingView(rootView: AnyView(EmptyView()))
+    panel.contentView = hostingView
+
+    for index in 0..<120 {
+      let contentHeight: CGFloat = index.isMultiple(of: 2) ? 80 : 900
+      let panelHeight: CGFloat =
+        WindowManager.minHeight + CGFloat(index % 8) * WindowManager.rowHeight
+
+      hostingView.rootView = AnyView(
+        Color.clear.frame(width: WindowManager.width, height: contentHeight)
+      )
+      panel.setFrame(
+        NSRect(x: 100, y: 800 - panelHeight, width: WindowManager.width, height: panelHeight),
+        display: true,
+        animate: false
+      )
+      panel.layoutIfNeeded()
+    }
+
+    // NSException で SIGABRT する経路であればテストプロセスが abort する。
+    // ここまで到達したこと自体が合格条件。frame は AppKit が維持しているはず。
+    #expect(panel.frame.width == WindowManager.width)
+  }
 }

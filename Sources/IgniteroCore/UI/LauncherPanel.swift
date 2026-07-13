@@ -3,24 +3,33 @@ import SwiftUI
 
 // MARK: - SafeHostingView
 
-/// コンストレイント更新の再帰呼び出しを防ぐ `NSHostingView` サブクラス。
+/// SwiftUI 内容を AppKit パネルへ埋め込む `NSHostingView` サブクラス。
 ///
-/// SwiftUI のビューグラフ更新が `updateConstraints()` 内で再帰的に
-/// `setNeedsUpdateConstraints:` をトリガーし、AppKit の
-/// `_postWindowNeedsUpdateConstraints` が NSException を投げるクラッシュを防止する。
+/// SwiftUI 側からウィンドウ／AppKit へのサイズフィードバックを完全に切り、
+/// ウィンドウフレームの所有権を `WindowManager` に一本化する。これにより
+/// macOS 15/26 で発生する再入的レイアウトクラッシュを防ぐ。
 ///
-/// 対策:
-/// 1. `sizingOptions` から自動ウィンドウサイズ管理を除外し、再帰チェーンを断ち切る
-/// 2. ウィンドウ非表示時のコンストレイント更新をスキップし、不要なレイアウト計算を回避
+/// 具体的な症状: `-[NSWindow layoutIfNeeded]` 実行中の `windowDidLayout` 通知で
+/// `NSHostingView.updateAnimatedWindowSize(_:)` が発火し、
+/// `setFrameSize` の KVO → `invalidateSafeAreaInsets` → SwiftUI ViewGraph 再計算 →
+/// `setNeedsUpdateConstraints(true)` の再要求チェーンが起き、
+/// `-[NSWindow _postWindowNeedsUpdateConstraints]` が NSException を投げて SIGABRT。
+///
+/// 対策 (Apple 公開 API のみ、Codex/OpenAI との相談で確定):
+/// 1. `sizingOptions = []` — SwiftUI の min/ideal/max を AppKit/NSWindow に伝えない
+/// 2. `intrinsicContentSize` は `NSView.noIntrinsicMetric` — Auto Layout に intrinsic size を渡さない
+/// 3. `translatesAutoresizingMaskIntoConstraints = true` + `autoresizingMask = [.width, .height]` —
+///    frame は AppKit の autoresizing で駆動し、Auto Layout 経路を回避
+///
+/// `.intrinsicContentSize` 単独では今回のクラッシュ経路 (`updateAnimatedWindowSize`) は塞げない。
 @MainActor
 final class SafeHostingView<Content: View>: NSHostingView<Content> {
 
   required init(rootView: Content) {
     super.init(rootView: rootView)
-    // ウィンドウサイズ極値の自動更新を無効化（WindowManager が手動管理するため不要）。
-    // これにより updateConstraints → minSize → sizeThatFits → graphDidChange →
-    // setNeedsUpdateConstraints の再帰チェーンが発生しなくなる。
-    sizingOptions = [.intrinsicContentSize]
+    sizingOptions = []
+    translatesAutoresizingMaskIntoConstraints = true
+    autoresizingMask = [.width, .height]
   }
 
   @available(*, unavailable)
@@ -28,10 +37,8 @@ final class SafeHostingView<Content: View>: NSHostingView<Content> {
     fatalError("init(coder:) has not been implemented")
   }
 
-  override func updateConstraints() {
-    // AppKit の規約上 super.updateConstraints() は必ず呼ぶ必要がある。
-    // ウィンドウ非表示時は super 呼び出しのみ行い、追加のレイアウト計算を回避する。
-    super.updateConstraints()
+  override var intrinsicContentSize: NSSize {
+    NSSize(width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric)
   }
 }
 
