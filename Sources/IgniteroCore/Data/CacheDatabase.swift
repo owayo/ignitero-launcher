@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 
-// MARK: - CacheDatabaseProtocol
+// MARK: - CacheDatabaseProtocol関連
 
 public protocol CacheDatabaseProtocol: Sendable {
   func isEmpty() throws -> Bool
@@ -16,7 +16,7 @@ public protocol CacheDatabaseProtocol: Sendable {
   func clearCache() throws
 }
 
-// MARK: - CacheDatabase
+// MARK: - CacheDatabase関連
 
 public actor CacheDatabase: CacheDatabaseProtocol {
   private let dbQueue: DatabaseQueue
@@ -67,7 +67,7 @@ public actor CacheDatabase: CacheDatabaseProtocol {
     try migrator.migrate(queue)
   }
 
-  // MARK: - Apps
+  // MARK: - アプリ
 
   nonisolated public func saveApps(_ apps: [AppItem]) throws {
     try dbQueue.write { db in
@@ -95,7 +95,7 @@ public actor CacheDatabase: CacheDatabaseProtocol {
     }
   }
 
-  // MARK: - Directories
+  // MARK: - ディレクトリ
 
   nonisolated public func saveDirectories(_ dirs: [DirectoryItem]) throws {
     try dbQueue.write { db in
@@ -123,7 +123,7 @@ public actor CacheDatabase: CacheDatabaseProtocol {
     }
   }
 
-  // MARK: - Combined Save
+  // MARK: - 一括保存
 
   /// アプリとディレクトリを 1 つの SQLite トランザクション内で置換する。
   /// 個別の `saveApps` / `saveDirectories` を続けて呼ぶと、片方の `write` が
@@ -165,7 +165,7 @@ public actor CacheDatabase: CacheDatabaseProtocol {
     }
   }
 
-  // MARK: - Cache Status
+  // MARK: - キャッシュ状態
 
   nonisolated public func isEmpty() throws -> Bool {
     try dbQueue.read { db in
@@ -183,7 +183,7 @@ public actor CacheDatabase: CacheDatabaseProtocol {
     }
   }
 
-  // MARK: - Diagnostics
+  // MARK: - 診断
 
   public func journalMode() throws -> String {
     try dbQueue.read { db in

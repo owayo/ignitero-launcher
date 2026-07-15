@@ -170,7 +170,7 @@ public final class LauncherViewModel {
   /// コントローラー側で結果を受け取り、アプリ起動やディレクトリオープンを実行する。
   /// - Returns: 選択中の検索結果、または nil
   public func confirmSelection() -> SearchResult? {
-    guard !searchResults.isEmpty, selectedIndex < searchResults.count else {
+    guard searchResults.indices.contains(selectedIndex) else {
       return nil
     }
     return searchResults[selectedIndex]

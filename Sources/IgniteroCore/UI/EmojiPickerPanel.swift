@@ -2,7 +2,7 @@ import AppKit
 import EmojiKit
 import SwiftUI
 
-// MARK: - EmojiPickerContentView
+// MARK: - EmojiPickerContentView関連
 
 /// Emoji ピッカーのコンテンツビュー。
 ///
@@ -12,7 +12,7 @@ import SwiftUI
 /// 全カテゴリの定義（タブバー表示順）
 private let allCategories: [EmojiCategory] = .standardGrid
 
-// MARK: - CategoryTabButton
+// MARK: - CategoryTabButton関連
 
 /// カテゴリタブの個別ボタン。型推論の負荷を軽減するため独立 View として切り出す。
 private struct CategoryTabButton: View {
@@ -39,7 +39,7 @@ private struct CategoryTabButton: View {
   }
 }
 
-// MARK: - EmojiPickerContentView
+// MARK: - EmojiPickerContentView関連
 
 private struct EmojiPickerContentView: View {
 
@@ -74,7 +74,7 @@ private struct EmojiPickerContentView: View {
     .background(.clear)
   }
 
-  // MARK: - Search Field
+  // MARK: - 検索欄
 
   private var searchField: some View {
     HStack(spacing: 8) {
@@ -90,7 +90,7 @@ private struct EmojiPickerContentView: View {
     .background(.ultraThinMaterial)
   }
 
-  // MARK: - Category Tab Bar
+  // MARK: - カテゴリタブバー
 
   private var categoryTabBar: some View {
     HStack(spacing: 2) {
@@ -107,7 +107,7 @@ private struct EmojiPickerContentView: View {
     .background(.ultraThinMaterial)
   }
 
-  // MARK: - Emoji Grid
+  // MARK: - 絵文字グリッド
 
   /// EmojiKit の `EmojiGridScrollView` を使わず、`EmojiGrid` を直接配置し
   /// 自前の `ScrollViewReader` でカテゴリスクロールを制御する。
@@ -150,7 +150,7 @@ private struct EmojiPickerContentView: View {
     }
   }
 
-  // MARK: - Navigation
+  // MARK: - 移動
 
   /// カテゴリタブをタップした際に `ScrollViewProxy` を使って直接スクロールする。
   ///
@@ -163,7 +163,7 @@ private struct EmojiPickerContentView: View {
     category = cat
   }
 
-  // MARK: - Search
+  // MARK: - 検索
 
   private func updateSearchResults() {
     let q = query.trimmingCharacters(in: .whitespaces)
@@ -183,7 +183,7 @@ private struct EmojiPickerContentView: View {
   }
 }
 
-// MARK: - EmojiPickerPanel
+// MARK: - EmojiPickerPanel関連
 
 /// Emoji ピッカーのフローティングパネル。
 ///
@@ -193,16 +193,16 @@ private struct EmojiPickerContentView: View {
 @MainActor
 public final class EmojiPickerPanel: NSPanel {
 
-  // MARK: - Callbacks
+  // MARK: - コールバック
 
   /// パネルが閉じた時のコールバック
   public var onDismiss: (() -> Void)?
 
-  // MARK: - Dependencies
+  // MARK: - 依存関係
 
   private let keywordSearch = EmojiKeywordSearch()
 
-  // MARK: - Initialization
+  // MARK: - 初期化
 
   public init() {
     super.init(
@@ -219,22 +219,22 @@ public final class EmojiPickerPanel: NSPanel {
     configurePanel()
   }
 
-  // MARK: - Key / Main Overrides
+  // MARK: - キー／メイン状態のオーバーライド
 
   override public var canBecomeKey: Bool { true }
   override public var canBecomeMain: Bool { false }
 
-  // MARK: - Key Event Handling
+  // MARK: - キーイベント処理
 
   override public func keyDown(with event: NSEvent) {
-    if event.keyCode == 53 {  // Escape
+    if event.keyCode == 53 {  // Escキー
       dismissPanel()
       return
     }
     super.keyDown(with: event)
   }
 
-  // MARK: - Show / Dismiss
+  // MARK: - 表示／終了
 
   /// パネルを表示する。
   ///
@@ -292,7 +292,7 @@ public final class EmojiPickerPanel: NSPanel {
     onDismiss?()
   }
 
-  // MARK: - Private
+  // MARK: - 非公開
 
   /// ビュー階層から NSTextField を探して first responder にする。
   private func focusSearchField() {

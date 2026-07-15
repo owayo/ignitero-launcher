@@ -3,7 +3,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - AppItem Tests
+// MARK: - アプリItem テスト
 
 @Suite("AppItem Model")
 struct AppItemTests {
@@ -83,7 +83,7 @@ struct AppItemTests {
   }
 }
 
-// MARK: - DirectoryItem Tests
+// MARK: - DirectoryItem テスト
 
 @Suite("DirectoryItem Model")
 struct DirectoryItemTests {
@@ -132,7 +132,7 @@ struct DirectoryItemTests {
   }
 }
 
-// MARK: - EditorType Tests
+// MARK: - EditorType テスト
 
 @Suite("EditorType DisplayName")
 struct EditorTypeDisplayNameTests {

@@ -15,7 +15,7 @@ private func expectDefaultChromeAppsDirectory(_ directory: RegisteredDirectory) 
   #expect(directory.scanForApps == true)
 }
 
-// MARK: - Settings Codable Tests
+// MARK: - Settings Codable テスト
 
 @Suite("Settings JSON Encode/Decode")
 struct SettingsCodableTests {
@@ -127,13 +127,13 @@ struct SettingsCodableTests {
     let data = try encoder.encode(settings)
     let jsonString = String(data: data, encoding: .utf8)!
 
-    // snake_case keys in JSON output
+    // JSON出力ではsnake_caseキーを使用する
     #expect(jsonString.contains("\"registered_directories\""))
     #expect(jsonString.contains("\"custom_commands\""))
     #expect(jsonString.contains("\"default_terminal\""))
     #expect(jsonString.contains("\"cache_update\""))
     #expect(jsonString.contains("\"excluded_apps\""))
-    // camelCase should NOT appear
+    // camelCaseは出力されない
     #expect(!jsonString.contains("\"registeredDirectories\""))
     #expect(!jsonString.contains("\"customCommands\""))
     #expect(!jsonString.contains("\"defaultTerminal\""))
@@ -169,13 +169,13 @@ struct SettingsCodableTests {
       }
       """
     let data = Data(json.utf8)
-    // Should not throw even with unknown keys
+    // 未知のキーがあってもエラーを投げない
     let settings = try JSONDecoder().decode(Settings.self, from: data)
     #expect(settings.defaultTerminal == .terminal)
   }
 
   @Test func decodeWithMissingOptionalFields() throws {
-    // Minimal JSON: no default_editor, no main_window_position, no update_cache
+    // 最小JSON: default_editor、main_window_position、update_cacheなし
     let json = """
       {
         "registered_directories": [],
@@ -248,7 +248,7 @@ struct SettingsCodableTests {
   }
 }
 
-// MARK: - SettingsManager Tests
+// MARK: - SettingsManager テスト
 
 @Suite("SettingsManager Save/Load")
 @MainActor
@@ -288,7 +288,7 @@ struct SettingsManagerTests {
     let manager = SettingsManager(configDirectory: dir)
     try manager.load()
 
-    // Should use default settings, not throw
+    // エラーを投げずに既定設定を使用する
     #expect(manager.settings.defaultTerminal == .terminal)
     #expect(manager.settings.registeredDirectories.count == 1)
     expectDefaultChromeAppsDirectory(manager.settings.registeredDirectories[0])
@@ -304,12 +304,12 @@ struct SettingsManagerTests {
     let manager = SettingsManager(configDirectory: dir)
     try manager.load()
 
-    // Corrupted: should fall back to defaults
+    // 破損時は既定設定へフォールバックする
     #expect(manager.settings.defaultTerminal == .terminal)
     #expect(manager.settings.registeredDirectories.count == 1)
     expectDefaultChromeAppsDirectory(manager.settings.registeredDirectories[0])
 
-    // Backup file should have been created
+    // バックアップファイルが作成される
     let backupExists = FileManager.default.fileExists(
       atPath: dir.appendingPathComponent("settings.json.backup").path
     )
@@ -357,7 +357,7 @@ struct SettingsManagerTests {
     #expect(manager.settings.registeredDirectories.count == 1)
     #expect(manager.settings.registeredDirectories[0].path == "/Users/test/workspace")
 
-    // Verify persistence
+    // 永続化を確認する
     let manager2 = SettingsManager(configDirectory: dir)
     try manager2.load()
     #expect(manager2.settings.registeredDirectories.count == 1)
@@ -429,7 +429,7 @@ struct SettingsManagerTests {
     #expect(manager.settings.customCommands.count == 1)
     #expect(manager.settings.customCommands[0].alias == "test")
 
-    // Verify persistence
+    // 永続化を確認する
     let manager2 = SettingsManager(configDirectory: dir)
     try manager2.load()
     #expect(manager2.settings.customCommands.count == 1)
@@ -511,7 +511,7 @@ struct SettingsManagerTests {
     let dir = try makeTempDir()
     defer { cleanup(dir) }
 
-    // Write a Tauri-format settings.json
+    // Tauri形式のsettings.jsonを書き込む
     let tauriJSON = """
       {
         "registered_directories": [

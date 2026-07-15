@@ -201,7 +201,7 @@ struct VersionComparisonTests {
 
   @Test func nonNumericSegmentsAreDropped() {
     // "v1.2.beta" の "beta" は数値化できず 0 埋めされ [1, 2, 0] となる
-    // "v1.2.3" → [1, 2, 3]
+    // 計算例: "v1.2.3" → [1, 2, 3]
     // 比較: 1==1, 2==2, 0 < 3 → false（candidate は新しくない）
     #expect(VersionComparator.isNewer("v1.2.beta", than: "v1.2.3") == false)
   }
@@ -224,9 +224,9 @@ struct VersionComparisonTests {
   }
 
   @Test func emptyVsNonEmpty() {
-    // "" → [] vs "1.0.0" → [1,0,0] → 0 < 1 → false
+    // 計算例: "" → [] vs "1.0.0" → [1,0,0] → 0 < 1 → false
     #expect(VersionComparator.isNewer("", than: "1.0.0") == false)
-    // "1.0.0" → [1,0,0] vs "" → [] → 1 > 0 → true
+    // 計算例: "1.0.0" → [1,0,0] vs "" → [] → 1 > 0 → true
     #expect(VersionComparator.isNewer("1.0.0", than: "") == true)
   }
 

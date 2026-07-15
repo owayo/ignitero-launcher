@@ -7,27 +7,27 @@ public final class CacheBootstrap {
   private static let logger = Logger(
     subsystem: "com.ignitero.launcher", category: "CacheBootstrap")
 
-  // MARK: - Dependencies
+  // MARK: - 依存関係
 
   private let settingsManager: SettingsManager
   private let cacheDatabase: any CacheDatabaseProtocol
   private let appScanner: any AppScannerProtocol
   private let directoryScanner: any DirectoryScannerProtocol
 
-  // MARK: - Observable Properties
+  // MARK: - 監視対象プロパティ
 
   public private(set) var isScanning: Bool = false
   public var autoUpdateTask: Task<Void, Never>?
   public private(set) var lastScanDate: Date?
 
-  // MARK: - Callbacks
+  // MARK: - コールバック
 
   /// スキャン完了（DB 保存後）に呼ばれるコールバック。
   /// 自動更新を含む全スキャン経路でビューモデルへの再読込を一本化するために使う。
   /// 引数は除外フィルタ適用前の全アプリ一覧（設定画面の除外アプリ一覧用）。
   public var onScanCompleted: (@MainActor ([AppItem]) async -> Void)?
 
-  // MARK: - Initialization
+  // MARK: - 初期化
 
   public init(
     settingsManager: SettingsManager,
@@ -41,7 +41,7 @@ public final class CacheBootstrap {
     self.directoryScanner = directoryScanner
   }
 
-  // MARK: - Initial Scan
+  // MARK: - 初回スキャン
 
   /// 起動時のキャッシュ構築を実行する。
   /// キャッシュが空、または起動時更新設定が有効な場合にスキャンを実行する。
@@ -67,7 +67,7 @@ public final class CacheBootstrap {
     return await runScan()
   }
 
-  // MARK: - Auto Update
+  // MARK: - 自動更新
 
   /// 自動更新が有効な場合、設定された間隔でバックグラウンドキャッシュ更新を開始する。
   ///
@@ -111,7 +111,7 @@ public final class CacheBootstrap {
     autoUpdateTask = nil
   }
 
-  // MARK: - Rebuild Cache
+  // MARK: - キャッシュ再構築
 
   /// 強制的にキャッシュを再構築する（メニューバーアクションから呼び出される）。
   ///
@@ -121,7 +121,7 @@ public final class CacheBootstrap {
     await runScan()
   }
 
-  // MARK: - Internal
+  // MARK: - 内部処理
 
   /// 自動更新インターバル（時間）をナノ秒に変換する。
   /// オーバーフロー防止のため 1〜8760 時間（1年）にクランプする。
@@ -130,7 +130,7 @@ public final class CacheBootstrap {
     return clamped * 3600 * 1_000_000_000
   }
 
-  // MARK: - Private
+  // MARK: - 非公開
 
   /// アプリスキャンとディレクトリスキャンを実行し、結果をデータベースに保存する。
   /// - Returns: スキャンが完了しキャッシュが更新された場合は `true`

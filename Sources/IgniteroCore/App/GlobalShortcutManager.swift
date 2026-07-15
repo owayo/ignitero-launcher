@@ -3,7 +3,7 @@ import Carbon.HIToolbox
 import KeyboardShortcuts
 import os
 
-// MARK: - Shortcut Name Definition
+// MARK: - ショートカット名の定義
 
 extension KeyboardShortcuts.Name {
   /// ランチャーの表示/非表示を切り替えるグローバルショートカット名。
@@ -14,7 +14,7 @@ extension KeyboardShortcuts.Name {
   )
 }
 
-// MARK: - Carbon Hot Key C Callback
+// MARK: - CarbonホットキーのCコールバック
 
 /// Carbon イベントハンドラ。`@convention(c)` 互換のトップレベル関数。
 private func carbonHotKeyEventHandler(
@@ -48,7 +48,7 @@ private func carbonHotKeyEventHandler(
   return noErr
 }
 
-// MARK: - GlobalShortcutManager
+// MARK: - GlobalShortcutManager関連
 
 /// グローバルキーボードショートカットを管理するマネージャ。
 ///
@@ -57,12 +57,12 @@ private func carbonHotKeyEventHandler(
 @MainActor
 public final class GlobalShortcutManager {
 
-  // MARK: - Constants
+  // MARK: - 定数
 
-  /// Carbon hotkey signature "IGNT"
+  /// Carbonホットキーのシグネチャは"IGNT"
   nonisolated static let hotKeySignature: UInt32 = 0x4947_4E54
 
-  // MARK: - Properties
+  // MARK: - プロパティ
 
   /// ランチャーウィンドウの表示/非表示を管理する WindowManager
   public let windowManager: WindowManager
@@ -91,7 +91,7 @@ public final class GlobalShortcutManager {
   private static let logger = Logger(
     subsystem: "com.ignitero.launcher", category: "GlobalShortcut")
 
-  // MARK: - Initialization
+  // MARK: - 初期化
 
   /// GlobalShortcutManager を初期化する。
   ///
@@ -109,14 +109,14 @@ public final class GlobalShortcutManager {
     self.debounceInterval = debounceInterval
   }
 
-  // MARK: - Static Callback Entry Point
+  // MARK: - 静的コールバックの入口
 
   /// Carbon イベントハンドラから呼び出されるエントリポイント。
   static func handleHotKeyEvent() {
     activeInstance?.handleShortcut()
   }
 
-  // MARK: - Setup / Teardown
+  // MARK: - セットアップ／破棄
 
   /// Carbon API を使用してグローバルショートカットを登録する。
   ///
@@ -229,7 +229,7 @@ public final class GlobalShortcutManager {
     setup()
   }
 
-  // MARK: - Handler
+  // MARK: - ハンドラー
 
   /// ショートカット発火時の処理。
   ///

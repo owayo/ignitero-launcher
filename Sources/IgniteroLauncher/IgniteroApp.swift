@@ -6,7 +6,7 @@ import SwiftUI
 @MainActor
 let sharedCoordinator = AppCoordinator()
 
-// MARK: - AppDelegate
+// MARK: - AppDelegate関連
 
 @MainActor
 final class IgniteroAppDelegate: NSObject, NSApplicationDelegate {
@@ -22,7 +22,7 @@ final class IgniteroAppDelegate: NSObject, NSApplicationDelegate {
   }
 }
 
-// MARK: - App
+// MARK: - アプリ
 
 @main
 struct IgniteroApp: App {
@@ -85,7 +85,7 @@ struct IgniteroApp: App {
   }
 }
 
-// MARK: - MenuBarLabel
+// MARK: - メニューバー表示
 
 /// メニューバーアイコン。起動処理完了までローディングアニメーションを表示する。
 private struct MenuBarLabel: View {

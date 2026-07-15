@@ -231,7 +231,7 @@ struct CalculatorEngineDeepNestingTests {
   let engine = CalculatorEngine()
 
   @Test func tenLevelNesting() {
-    // ((((((((((1+1))))))))))
+    // 計算例: ((((((((((1+1))))))))))
     #expect(engine.evaluate("((((((((((1+1))))))))))") == 2.0)
   }
 
@@ -261,12 +261,12 @@ struct CalculatorEngineSpecialPatternTests {
   }
 
   @Test func subtractNegative() {
-    // 5 - (-3) = 8
+    // 計算例: 5 - (-3) = 8
     #expect(engine.evaluate("5-(-3)") == 8.0)
   }
 
   @Test func tripleNegative() {
-    // ---5 = -(-((-5))) = -5
+    // 計算例: ---5 = -(-((-5))) = -5
     #expect(engine.evaluate("---5") == -5.0)
   }
 
@@ -481,7 +481,7 @@ struct CalculatorEngineSubtractionAssociativityTests {
 
   @Test("混合演算子の優先順位: 2*3+4*5/2 = 16")
   func mixedOperatorPrecedence() {
-    // 2*3 = 6, 4*5 = 20, 20/2 = 10, 6+10 = 16
+    // 計算例: 2*3 = 6, 4*5 = 20, 20/2 = 10, 6+10 = 16
     #expect(engine.evaluate("2*3+4*5/2") == 16.0)
   }
 }
@@ -615,13 +615,13 @@ struct CalculatorEngineUnaryMinusParensTests {
 
   @Test("二項減算の右辺で括弧付き式に単項マイナスを適用")
   func subtractParenthesizedExpression() {
-    // 10 - (-(3-1)) = 10 - (-2) = 12
+    // 計算例: 10 - (-(3-1)) = 10 - (-2) = 12
     #expect(engine.evaluate("10-(-(3-1))") == 12.0)
   }
 
   @Test("乗算の左辺で単項マイナス付き括弧式が使える")
   func multiplyWithLeadingNegatedParenthesized() {
-    // -(2+3) * 4 = -5 * 4 = -20
+    // 計算例: -(2+3) * 4 = -5 * 4 = -20
     #expect(engine.evaluate("-(2+3)*4") == -20.0)
   }
 
@@ -632,7 +632,7 @@ struct CalculatorEngineUnaryMinusParensTests {
 
   @Test("ネスト括弧と単項マイナス")
   func unaryMinusWithNestedParens() {
-    // -((1+2)*3) = -9
+    // 計算例: -((1+2)*3) = -9
     #expect(engine.evaluate("-((1+2)*3)") == -9.0)
   }
 }

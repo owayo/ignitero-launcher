@@ -3,7 +3,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - EditorPickerState Tests
+// MARK: - EditorPicker状態 テスト
 
 @Suite("EditorPickerState Initial State")
 struct EditorPickerStateInitialTests {
@@ -40,7 +40,7 @@ struct EditorPickerStateInitialTests {
   }
 }
 
-// MARK: - Shortcut Key Mapping Tests
+// MARK: - ショートカットキー対応 テスト
 
 @Suite("EditorPickerState Shortcut Keys")
 struct EditorPickerStateShortcutTests {
@@ -88,7 +88,7 @@ struct EditorPickerStateShortcutTests {
   @MainActor
   @Test func shortcutForUnavailableEditorIsIgnored() {
     let state = EditorPickerState(availableEditors: [.cursor, .vscode])
-    let handled = state.handleKey("w")  // windsurf not available
+    let handled = state.handleKey("w")  // windsurfは利用不可
     #expect(handled == false)
     #expect(state.selectedIndex == nil)
   }
@@ -106,7 +106,7 @@ struct EditorPickerStateShortcutTests {
     let editors: [EditorType] = [.windsurf, .cursor, .vscode]
     let state = EditorPickerState(availableEditors: editors)
     _ = state.handleKey("v")
-    #expect(state.selectedIndex == 2)  // vscode is at index 2
+    #expect(state.selectedIndex == 2)  // vscodeは位置2
   }
 
   @MainActor
@@ -114,11 +114,11 @@ struct EditorPickerStateShortcutTests {
     let editors: [EditorType] = [.zed, .cursor, .windsurf]
     let state = EditorPickerState(availableEditors: editors)
     _ = state.handleKey("c")
-    #expect(state.selectedIndex == 1)  // cursor is at index 1
+    #expect(state.selectedIndex == 1)  // cursorは位置1
   }
 }
 
-// MARK: - Arrow Key Navigation Tests
+// MARK: - 矢印キー操作のテスト
 
 @Suite("EditorPickerState Arrow Key Navigation")
 struct EditorPickerStateArrowKeyTests {
@@ -133,8 +133,8 @@ struct EditorPickerStateArrowKeyTests {
   @MainActor
   @Test func arrowDownIncrementsIndex() {
     let state = EditorPickerState(availableEditors: EditorType.allCases)
-    state.moveDown()  // 0
-    state.moveDown()  // 1
+    state.moveDown()  // 位置: 0
+    state.moveDown()  // 位置: 1
     #expect(state.selectedIndex == 1)
   }
 
@@ -142,10 +142,10 @@ struct EditorPickerStateArrowKeyTests {
   @Test func arrowDownWrapsAroundToFirst() {
     let editors: [EditorType] = [.windsurf, .cursor, .vscode]
     let state = EditorPickerState(availableEditors: editors)
-    state.moveDown()  // 0
-    state.moveDown()  // 1
-    state.moveDown()  // 2
-    state.moveDown()  // wraps to 0
+    state.moveDown()  // 位置: 0
+    state.moveDown()  // 位置: 1
+    state.moveDown()  // 位置: 2
+    state.moveDown()  // 位置0へ循環
     #expect(state.selectedIndex == 0)
   }
 
@@ -154,16 +154,16 @@ struct EditorPickerStateArrowKeyTests {
     let editors: [EditorType] = [.windsurf, .cursor, .vscode]
     let state = EditorPickerState(availableEditors: editors)
     state.moveUp()
-    #expect(state.selectedIndex == 2)  // last index
+    #expect(state.selectedIndex == 2)  // 末尾の位置
   }
 
   @MainActor
   @Test func arrowUpDecrementsIndex() {
     let state = EditorPickerState(availableEditors: EditorType.allCases)
-    state.moveDown()  // 0
-    state.moveDown()  // 1
-    state.moveDown()  // 2
-    state.moveUp()  // 1
+    state.moveDown()  // 位置: 0
+    state.moveDown()  // 位置: 1
+    state.moveDown()  // 位置: 2
+    state.moveUp()  // 位置: 1
     #expect(state.selectedIndex == 1)
   }
 
@@ -171,8 +171,8 @@ struct EditorPickerStateArrowKeyTests {
   @Test func arrowUpWrapsAroundToLast() {
     let editors: [EditorType] = [.windsurf, .cursor, .vscode]
     let state = EditorPickerState(availableEditors: editors)
-    state.moveDown()  // 0
-    state.moveUp()  // wraps to 2
+    state.moveDown()  // 位置: 0
+    state.moveUp()  // 位置2へ循環
     #expect(state.selectedIndex == 2)
   }
 
@@ -191,7 +191,7 @@ struct EditorPickerStateArrowKeyTests {
   }
 }
 
-// MARK: - Enter / Escape Tests
+// MARK: - Enter／Escキーのテスト
 
 @Suite("EditorPickerState Confirm and Dismiss")
 struct EditorPickerStateConfirmDismissTests {
@@ -199,7 +199,7 @@ struct EditorPickerStateConfirmDismissTests {
   @MainActor
   @Test func enterConfirmsSelectedEditor() {
     let state = EditorPickerState(availableEditors: EditorType.allCases)
-    state.moveDown()  // select first (windsurf)
+    state.moveDown()  // 先頭を選択（windsurf）
     state.confirm()
     #expect(state.confirmedEditor == .windsurf)
   }
@@ -236,7 +236,7 @@ struct EditorPickerStateConfirmDismissTests {
   }
 }
 
-// MARK: - Selected Editor Property Tests
+// MARK: - 選択エディタープロパティのテスト
 
 @Suite("EditorPickerState Selected Editor")
 struct EditorPickerStateSelectedEditorTests {
@@ -251,16 +251,16 @@ struct EditorPickerStateSelectedEditorTests {
   @Test func selectedEditorReturnsCorrectEditorForIndex() {
     let editors: [EditorType] = [.cursor, .vscode, .zed]
     let state = EditorPickerState(availableEditors: editors)
-    state.moveDown()  // index 0 = cursor
+    state.moveDown()  // 位置0 = cursor
     #expect(state.selectedEditor == .cursor)
-    state.moveDown()  // index 1 = vscode
+    state.moveDown()  // 位置1 = vscode
     #expect(state.selectedEditor == .vscode)
-    state.moveDown()  // index 2 = zed
+    state.moveDown()  // 位置2 = zed
     #expect(state.selectedEditor == .zed)
   }
 }
 
-// MARK: - Reset Tests
+// MARK: - リセットのテスト
 
 @Suite("EditorPickerState Reset")
 struct EditorPickerStateResetTests {
@@ -291,12 +291,12 @@ struct EditorPickerStateResetTests {
   }
 }
 
-// MARK: - EditorPickerPanel Configuration Tests
+// MARK: - EditorPickerPanel 設定 テスト
 
 @Suite("EditorPickerPanel Configuration")
 struct EditorPickerPanelConfigurationTests {
 
-  // MARK: - Style Mask
+  // MARK: - スタイルマスク
 
   @Test @MainActor func styleMaskIncludesBorderless() {
     let panel = EditorPickerPanel()
@@ -318,7 +318,7 @@ struct EditorPickerPanelConfigurationTests {
     #expect(panel.styleMask.contains(.fullSizeContentView))
   }
 
-  // MARK: - Panel Properties
+  // MARK: - パネルのプロパティ
 
   @Test @MainActor func isFloatingPanelIsTrue() {
     let panel = EditorPickerPanel()
@@ -335,7 +335,7 @@ struct EditorPickerPanelConfigurationTests {
     #expect(panel.hidesOnDeactivate == false)
   }
 
-  // MARK: - Collection Behavior
+  // MARK: - コレクション動作
 
   @Test @MainActor func collectionBehaviorIncludesCanJoinAllSpaces() {
     let panel = EditorPickerPanel()
@@ -357,7 +357,7 @@ struct EditorPickerPanelConfigurationTests {
     #expect(panel.collectionBehavior.contains(.ignoresCycle))
   }
 
-  // MARK: - Key / Main Behavior
+  // MARK: - キー／メイン動作
 
   @Test @MainActor func canBecomeKeyReturnsTrue() {
     let panel = EditorPickerPanel()
@@ -369,7 +369,7 @@ struct EditorPickerPanelConfigurationTests {
     #expect(panel.canBecomeMain == false)
   }
 
-  // MARK: - Titlebar Settings
+  // MARK: - タイトルバー設定
 
   @Test @MainActor func titlebarAppearsTransparentIsTrue() {
     let panel = EditorPickerPanel()
@@ -381,7 +381,7 @@ struct EditorPickerPanelConfigurationTests {
     #expect(panel.titleVisibility == .hidden)
   }
 
-  // MARK: - Movement & Appearance
+  // MARK: - 移動と外観
 
   @Test @MainActor func isMovableByWindowBackgroundIsTrue() {
     let panel = EditorPickerPanel()
@@ -398,7 +398,7 @@ struct EditorPickerPanelConfigurationTests {
     #expect(panel.isOpaque == false)
   }
 
-  // MARK: - State
+  // MARK: - 状態
 
   @Test @MainActor func panelHasPickerState() {
     let panel = EditorPickerPanel()
@@ -406,7 +406,7 @@ struct EditorPickerPanelConfigurationTests {
   }
 }
 
-// MARK: - EditorPickerPanel Key Event Handling Tests
+// MARK: - EditorPickerPanel キーイベント処理 テスト
 
 @Suite("EditorPickerPanel Key Event Integration")
 struct EditorPickerPanelKeyEventTests {
@@ -431,7 +431,7 @@ struct EditorPickerPanelKeyEventTests {
   }
 }
 
-// MARK: - EditorPickerPanel DismissPanel Tests
+// MARK: - EditorPickerPanel 終了Panel テスト
 
 @Suite("EditorPickerPanel DismissPanel")
 struct EditorPickerPanelDismissPanelTests {

@@ -2,7 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 import KeyboardShortcuts
 
-// MARK: - ShortcutDisplayFormatter
+// MARK: - ShortcutDisplayFormatter関連
 
 /// `KeyboardShortcuts.Shortcut` を表示用文字列に変換するフォーマッタ。
 ///

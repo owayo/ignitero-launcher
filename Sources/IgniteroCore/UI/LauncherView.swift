@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-// MARK: - LauncherView
+// MARK: - LauncherView関連
 
 /// ランチャーのメイン SwiftUI ビュー。
 ///
@@ -9,14 +9,14 @@ import SwiftUI
 /// ロジックはすべて `LauncherViewModel` に委譲し、ビューは表示のみを担当する。
 public struct LauncherView: View {
 
-  // MARK: - Dependencies
+  // MARK: - 依存関係
 
   @Bindable var viewModel: LauncherViewModel
 
   @FocusState private var isSearchFieldFocused: Bool
   @State private var scanRotation: Double = 0
 
-  // MARK: - Callbacks
+  // MARK: - コールバック
 
   /// 検索結果が選択・実行された際のコールバック
   var onExecute: ((SearchResult) -> Void)?
@@ -42,7 +42,7 @@ public struct LauncherView: View {
   /// 設定ボタンが押された際のコールバック
   var onOpenSettings: (() -> Void)?
 
-  // MARK: - Initialization
+  // MARK: - 初期化
 
   /// LauncherView を初期化する。
   ///
@@ -77,7 +77,7 @@ public struct LauncherView: View {
     self.onOpenSettings = onOpenSettings
   }
 
-  // MARK: - Body
+  // MARK: - 本体
 
   public var body: some View {
     VStack(spacing: 0) {
@@ -124,7 +124,7 @@ public struct LauncherView: View {
     }
   }
 
-  // MARK: - Warm Gradient
+  // MARK: - 暖色グラデーション
 
   /// Tauri 版と同様のウォームグラデーション。
   /// マテリアル背景の上に重ねて暖色のティントを加える。
@@ -140,7 +140,7 @@ public struct LauncherView: View {
     )
   }
 
-  // MARK: - Search Field
+  // MARK: - 検索欄
 
   private var searchField: some View {
     HStack(spacing: 12) {
@@ -260,7 +260,7 @@ public struct LauncherView: View {
     Button(action: action) {
       Image(systemName: symbol)
         .font(.system(size: 14))
-        .foregroundStyle(Color(red: 0.76, green: 0.27, blue: 0.06))  // #c24410
+        .foregroundStyle(Color(red: 0.76, green: 0.27, blue: 0.06))  // 色: #c24410
         .frame(width: 36, height: 36)
         .background(.white.opacity(0.85))
         .clipShape(RoundedRectangle(cornerRadius: 14))
@@ -273,7 +273,7 @@ public struct LauncherView: View {
     .help(tooltip)
   }
 
-  // MARK: - Calculator Result Row
+  // MARK: - 計算結果行
 
   private func calculatorRow(result: String) -> some View {
     HStack {
@@ -304,7 +304,7 @@ public struct LauncherView: View {
     }
   }
 
-  // MARK: - Results List
+  // MARK: - 結果一覧
 
   private var resultsList: some View {
     ScrollViewReader { proxy in
@@ -325,12 +325,12 @@ public struct LauncherView: View {
     }
   }
 
-  // MARK: - Theme Colors
+  // MARK: - テーマ色
 
-  private static let ember = Color(red: 1.0, green: 0.47, blue: 0.28)  // #ff7847
-  private static let plasma = Color(red: 1.0, green: 0.70, blue: 0.28)  // #ffb347
+  private static let ember = Color(red: 1.0, green: 0.47, blue: 0.28)  // 色: #ff7847
+  private static let plasma = Color(red: 1.0, green: 0.70, blue: 0.28)  // 色: #ffb347
 
-  // MARK: - Result Row
+  // MARK: - 結果行
 
   private func resultRow(result: SearchResult, index: Int) -> some View {
     let isSelected = index == viewModel.selectedIndex
@@ -402,7 +402,7 @@ public struct LauncherView: View {
     }
   }
 
-  // MARK: - Result Icon
+  // MARK: - 結果アイコン
 
   private func resultIcon(for result: SearchResult, isSelected: Bool) -> some View {
     Group {
@@ -454,7 +454,7 @@ public struct LauncherView: View {
     ZStack {
       Image(systemName: "folder.fill")
         .font(.system(size: 26))
-        .foregroundStyle(Color(red: 0.37, green: 0.70, blue: 0.96))  // #5EB3F4
+        .foregroundStyle(Color(red: 0.37, green: 0.70, blue: 0.96))  // 色: #5EB3F4
 
       if let editor, let iconPath = viewModel.editorIconPaths[editor],
         let nsImage = NSImage(contentsOfFile: iconPath)
@@ -473,7 +473,7 @@ public struct LauncherView: View {
     EditorType(rawValue: rawValue)?.displayName ?? rawValue
   }
 
-  // MARK: - Result Subtitle
+  // MARK: - 結果の補足
 
   private func resultSubtitle(for result: SearchResult) -> String {
     switch result.kind {
@@ -492,7 +492,7 @@ public struct LauncherView: View {
     }
   }
 
-  // MARK: - Directory Key Hints
+  // MARK: - ディレクトリ操作キーの案内
 
   private var directoryKeyHints: some View {
     let terminalName = viewModel.defaultTerminalName
@@ -528,7 +528,7 @@ public struct LauncherView: View {
     }
   }
 
-  // MARK: - Update Banner
+  // MARK: - 更新バナー
 
   private func updateBanner(version: String) -> some View {
     HStack {
@@ -551,7 +551,7 @@ public struct LauncherView: View {
     .background(Color.blue.opacity(0.08))
   }
 
-  // MARK: - Key Event Handling
+  // MARK: - キーイベント処理
 
   /// Enter キーが押された際の処理。
   ///

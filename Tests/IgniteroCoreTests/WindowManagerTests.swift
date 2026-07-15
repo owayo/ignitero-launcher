@@ -4,7 +4,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - WindowManager Initial State Tests
+// MARK: - WindowManager 初期状態 テスト
 
 @Suite("WindowManager Initial State")
 struct WindowManagerInitialStateTests {
@@ -28,7 +28,7 @@ struct WindowManagerInitialStateTests {
   }
 }
 
-// MARK: - WindowManager Toggle Tests
+// MARK: - WindowManager Toggle テスト
 
 @Suite("WindowManager Toggle")
 struct WindowManagerToggleTests {
@@ -44,9 +44,9 @@ struct WindowManagerToggleTests {
   @MainActor
   @Test func toggleLauncherFromVisibleToHidden() {
     let manager = WindowManager()
-    manager.toggleLauncher()  // show
+    manager.toggleLauncher()  // 表示
     #expect(manager.isLauncherVisible == true)
-    manager.toggleLauncher()  // hide
+    manager.toggleLauncher()  // 非表示
     #expect(manager.isLauncherVisible == false)
   }
 
@@ -55,13 +55,13 @@ struct WindowManagerToggleTests {
     let manager = WindowManager()
     for i in 0..<6 {
       manager.toggleLauncher()
-      let expectedVisible = (i % 2 == 0)  // 0->true, 1->false, 2->true...
+      let expectedVisible = (i % 2 == 0)  // 0ならtrue、1ならfalse、2ならtrue…
       #expect(manager.isLauncherVisible == expectedVisible)
     }
   }
 }
 
-// MARK: - WindowManager Show/Hide Tests
+// MARK: - WindowManager表示／非表示のテスト
 
 @Suite("WindowManager Show/Hide")
 struct WindowManagerShowHideTests {
@@ -133,7 +133,7 @@ struct WindowManagerShowHideTests {
   }
 }
 
-// MARK: - WindowManager Picker Tests
+// MARK: - WindowManager Picker テスト
 
 @Suite("WindowManager Picker Control")
 struct WindowManagerPickerTests {
@@ -171,7 +171,7 @@ struct WindowManagerPickerTests {
   }
 }
 
-// MARK: - WindowManager Resize Tests
+// MARK: - WindowManager Resize テスト
 
 @Suite("WindowManager Resize for Results")
 struct WindowManagerResizeTests {
@@ -203,7 +203,7 @@ struct WindowManagerResizeTests {
   @Test func resizeForSevenResultsNotClamped() {
     let manager = WindowManager()
     let height = manager.heightForResults(count: 7)
-    // 108 + 7*52 = 472, under 500 max
+    // 108 + 7*52 = 472で上限500未満
     let expected = WindowManager.minHeight + 7 * WindowManager.rowHeight
     #expect(height == expected)
     #expect(height < WindowManager.maxHeight)
@@ -213,7 +213,7 @@ struct WindowManagerResizeTests {
   @Test func resizeForEightResultsClamps() {
     let manager = WindowManager()
     let height = manager.heightForResults(count: 8)
-    // 108 + 8*52 = 524, clamped to 500
+    // 108 + 8*52 = 524を500へ制限
     #expect(height == WindowManager.maxHeight)
   }
 
@@ -221,7 +221,7 @@ struct WindowManagerResizeTests {
   @Test func resizeForTenResults() {
     let manager = WindowManager()
     let height = manager.heightForResults(count: 10)
-    // 108 + 10*52 = 628, clamped to 500 max
+    // 108 + 10*52 = 628を上限500へ制限
     #expect(height == WindowManager.maxHeight)
   }
 
@@ -229,7 +229,7 @@ struct WindowManagerResizeTests {
   @Test func resizeForElevenResultsClampsToMaxHeight() {
     let manager = WindowManager()
     let height = manager.heightForResults(count: 11)
-    // 108 + 11*52 = 680, clamped to 500
+    // 108 + 11*52 = 680を500へ制限
     #expect(height == WindowManager.maxHeight)
   }
 
@@ -264,7 +264,7 @@ struct WindowManagerResizeTests {
   }
 }
 
-// MARK: - WindowManager Resize Edge Cases
+// MARK: - WindowManagerサイズ変更の境界値テスト
 
 @Suite("WindowManager Resize Edge Cases")
 struct WindowManagerResizeEdgeCaseTests {
@@ -286,7 +286,7 @@ struct WindowManagerResizeEdgeCaseTests {
   }
 }
 
-// MARK: - WindowManager Callbacks
+// MARK: - WindowManager コールバック
 
 @Suite("WindowManager Callbacks")
 struct WindowManagerCallbackTests {

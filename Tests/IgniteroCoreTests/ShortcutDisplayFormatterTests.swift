@@ -5,7 +5,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - ShortcutDisplayFormatter Tests
+// MARK: - ShortcutDisplayFormatter テスト
 
 @MainActor
 @Suite("ShortcutDisplayFormatter")
@@ -17,7 +17,7 @@ struct ShortcutDisplayFormatterTests {
   /// 設定画面を開いた瞬間にクラッシュしないこと。
   ///
   /// 原因（2026-06-21）:
-  /// `String(describing: shortcut)` → `KeyboardShortcuts.Shortcut.description`
+  /// 呼び出し経路: `String(describing: shortcut)` → `KeyboardShortcuts.Shortcut.description`
   /// → `SpecialKey.presentableDescription` の `.space` ケースで
   /// `"space_key".localized` を呼び、SwiftPM の `Bundle.module` 初期化が
   /// `.app` 内のリソース解決に失敗して `assertionFailure` で SIGTRAP。

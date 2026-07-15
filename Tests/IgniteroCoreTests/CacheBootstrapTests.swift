@@ -190,7 +190,7 @@ struct CacheBootstrapTests {
     #expect(mockDB.saveDirectoriesCalled == false)
   }
 
-  // MARK: - Rebuild Cache Tests
+  // MARK: - キャッシュ再構築 テスト
 
   @Test("rebuildCache always runs scan")
   @MainActor
@@ -249,7 +249,7 @@ struct CacheBootstrapTests {
 
     await bootstrap.rebuildCache()
 
-    // Apps from both scanners are combined
+    // 両方のスキャナーが返したアプリを統合する
     #expect(mockDB.savedApps.count == 3)
     #expect(mockDB.savedApps.contains { $0.name == "Safari" })
     #expect(mockDB.savedApps.contains { $0.name == "DirApp" })
@@ -315,7 +315,7 @@ struct CacheBootstrapTests {
     #expect(notified == false)
   }
 
-  // MARK: - isScanning Flag Tests
+  // MARK: - isScanningフラグのテスト
 
   @Test("isScanning flag toggles correctly during scan")
   @MainActor
@@ -338,7 +338,7 @@ struct CacheBootstrapTests {
 
     await bootstrap.performInitialScan()
 
-    // After scan completes, isScanning should be false
+    // スキャン完了後はisScanningがfalseになる
     #expect(bootstrap.isScanning == false)
   }
 
@@ -417,7 +417,7 @@ struct CacheBootstrapTests {
     #expect(bootstrap.lastScanDate == nil)
   }
 
-  // MARK: - Auto Update Tests
+  // MARK: - 自動更新 テスト
 
   @Test("startAutoUpdate creates task when autoUpdateEnabled")
   @MainActor

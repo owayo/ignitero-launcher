@@ -36,7 +36,7 @@ public enum EmojiCategoryDisplayName {
     return table[id] ?? id
   }
 
-  // MARK: - Tables
+  // MARK: - テーブル
 
   /// 標準 + persisted カテゴリの日本語表示名。
   /// EmojiKit `ja.lproj/Localizable.strings` から借用しているため

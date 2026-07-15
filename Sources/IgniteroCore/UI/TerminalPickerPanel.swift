@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-// MARK: - TerminalPickerState
+// MARK: - TerminalPicker状態
 
 /// ターミナルピッカーの選択状態を管理する。
 ///
@@ -46,12 +46,12 @@ public final class TerminalPickerState {
 
   /// 現在ハイライトされているターミナルを選択確定する。
   public func confirmSelection() {
-    guard !terminals.isEmpty, highlightedIndex < terminals.count else { return }
+    guard terminals.indices.contains(highlightedIndex) else { return }
     selectedTerminal = terminals[highlightedIndex].id
   }
 }
 
-// MARK: - TerminalPickerContentView
+// MARK: - TerminalPickerContentView関連
 
 /// ターミナルピッカーのコンテンツラッパービュー。
 ///
@@ -69,7 +69,7 @@ private struct TerminalPickerContentView: View {
   }
 }
 
-// MARK: - TerminalPickerPanel
+// MARK: - TerminalPickerPanel関連
 
 /// ターミナル選択用のフローティングパネル。
 ///
@@ -87,7 +87,7 @@ public final class TerminalPickerPanel: NSPanel {
   /// パネル閉じた時のコールバック
   public var onDismiss: (() -> Void)?
 
-  // MARK: - Initialization
+  // MARK: - 初期化
 
   public convenience init() {
     self.init(
@@ -99,7 +99,7 @@ public final class TerminalPickerPanel: NSPanel {
     configurePanel()
   }
 
-  // MARK: - Key / Main Overrides
+  // MARK: - キー／メイン状態のオーバーライド
 
   /// パネルがキーウィンドウになれるようにする（キーボード入力受付のため）
   override public var canBecomeKey: Bool { true }
@@ -107,31 +107,31 @@ public final class TerminalPickerPanel: NSPanel {
   /// パネルはメインウィンドウにならない（アクセサリパネルのため）
   override public var canBecomeMain: Bool { false }
 
-  // MARK: - Key Handling
+  // MARK: - Key Handling関連
 
   override public func keyDown(with event: NSEvent) {
     switch event.keyCode {
-    case 125, 124:  // Down / Right arrow
+    case 125, 124:  // 下／右矢印キー
       state.moveDown()
       HapticService.selectionChanged()
-    case 126, 123:  // Up / Left arrow
+    case 126, 123:  // 上／左矢印キー
       state.moveUp()
       HapticService.selectionChanged()
-    case 36:  // Enter / Return
+    case 36:  // Enter／Returnキー
       state.confirmSelection()
       if let terminal = state.selectedTerminal {
         HapticService.confirmed()
         onSelect?(terminal)
       }
       dismiss()
-    case 53:  // Escape
+    case 53:  // Escキー
       dismiss()
     default:
       super.keyDown(with: event)
     }
   }
 
-  // MARK: - SwiftUI Content
+  // MARK: - SwiftUIコンテンツ
 
   /// SwiftUI ビューをパネルの contentView に設定する。
   ///
@@ -141,7 +141,7 @@ public final class TerminalPickerPanel: NSPanel {
     contentView = hostingView
   }
 
-  // MARK: - Show / Dismiss
+  // MARK: - 表示／終了
 
   /// パネルを指定された矩形の近くに表示する。
   ///
@@ -185,7 +185,7 @@ public final class TerminalPickerPanel: NSPanel {
     onDismiss?()
   }
 
-  // MARK: - Private
+  // MARK: - 非公開
 
   private func configurePanel() {
     // フローティング設定（ランチャーより上のレベル）

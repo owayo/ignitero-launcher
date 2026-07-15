@@ -3,7 +3,7 @@ import Carbon.HIToolbox
 import KeyboardShortcuts
 import SwiftUI
 
-// MARK: - ShortcutRecorderSettingRow
+// MARK: - ShortcutRecorderSettingRow関連
 
 /// `KeyboardShortcuts.Recorder` を使わずにショートカットを記録する設定行。
 ///
@@ -37,7 +37,7 @@ struct ShortcutRecorderSettingRow: View {
   }
 }
 
-// MARK: - ShortcutRecorderView
+// MARK: - ShortcutRecorderView関連
 
 private struct ShortcutRecorderView: NSViewRepresentable {
   let name: KeyboardShortcuts.Name
@@ -81,7 +81,7 @@ private struct ShortcutRecorderView: NSViewRepresentable {
   }
 }
 
-// MARK: - ShortcutRecorderButton
+// MARK: - ShortcutRecorderButton関連
 
 @MainActor
 private final class ShortcutRecorderButton: NSButton {

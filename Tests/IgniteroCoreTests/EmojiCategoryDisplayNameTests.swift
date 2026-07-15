@@ -4,7 +4,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - EmojiCategoryDisplayName Tests
+// MARK: - EmojiCategoryDisplayName テスト
 
 /// EmojiPickerPanel 起動時クラッシュの回帰テスト。
 ///

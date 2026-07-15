@@ -14,7 +14,7 @@ private struct TestView: View {
 @Suite("LauncherPanel Tests")
 struct LauncherPanelTests {
 
-  // MARK: - Style Mask
+  // MARK: - スタイルマスク
 
   @Test @MainActor func styleMaskIncludesBorderless() {
     let panel = LauncherPanel()
@@ -36,7 +36,7 @@ struct LauncherPanelTests {
     #expect(panel.styleMask.contains(.fullSizeContentView))
   }
 
-  // MARK: - Panel Properties
+  // MARK: - パネルのプロパティ
 
   @Test @MainActor func isFloatingPanelIsTrue() {
     let panel = LauncherPanel()
@@ -58,7 +58,7 @@ struct LauncherPanelTests {
     #expect(panel.hasShadow == true)
   }
 
-  // MARK: - Collection Behavior
+  // MARK: - コレクション動作
 
   @Test @MainActor func collectionBehaviorIncludesCanJoinAllSpaces() {
     let panel = LauncherPanel()
@@ -80,7 +80,7 @@ struct LauncherPanelTests {
     #expect(panel.collectionBehavior.contains(.ignoresCycle))
   }
 
-  // MARK: - Key / Main Behavior
+  // MARK: - キー／メイン動作
 
   @Test @MainActor func canBecomeKeyReturnsTrue() {
     let panel = LauncherPanel()
@@ -92,7 +92,7 @@ struct LauncherPanelTests {
     #expect(panel.canBecomeMain == false)
   }
 
-  // MARK: - Titlebar Settings
+  // MARK: - タイトルバー設定
 
   @Test @MainActor func titlebarAppearsTransparentIsTrue() {
     let panel = LauncherPanel()
@@ -104,7 +104,7 @@ struct LauncherPanelTests {
     #expect(panel.titleVisibility == .hidden)
   }
 
-  // MARK: - Movement & Appearance
+  // MARK: - 移動と外観
 
   @Test @MainActor func isMovableByWindowBackgroundIsTrue() {
     let panel = LauncherPanel()
@@ -121,7 +121,7 @@ struct LauncherPanelTests {
     #expect(panel.isOpaque == false)
   }
 
-  // MARK: - SwiftUI Content View
+  // MARK: - SwiftUIコンテンツ View
 
   @Test @MainActor func setContentViewWrapsSwiftUIInNSHostingView() {
     let panel = LauncherPanel()
@@ -129,12 +129,12 @@ struct LauncherPanelTests {
     #expect(panel.contentView is NSHostingView<TestView>)
   }
 
-  // MARK: - SafeHostingView Reentrant Layout Crash Prevention
+  // MARK: - SafeHostingViewの再入レイアウトクラッシュ防止
   //
   // 過去に macOS 26 で発生した `-[NSWindow _postWindowNeedsUpdateConstraints]`
   // NSException (SIGABRT) を再発させないための回帰テスト群。
   // 発生経路: `NSHostingView.windowDidLayout` → `updateAnimatedWindowSize` →
-  // `_setFrameCommon` → `setFrameSize` KVO → `invalidateSafeAreaInsets` →
+  // 呼び出し経路: `_setFrameCommon` → `setFrameSize` KVO → `invalidateSafeAreaInsets` →
   // SwiftUI ViewGraph 再計算 → `setNeedsUpdateConstraints(true)` の再要求。
   // 対策: SafeHostingView から SwiftUI → AppKit のサイズフィードバックを完全に切る。
 

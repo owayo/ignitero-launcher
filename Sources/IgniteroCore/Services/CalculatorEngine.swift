@@ -28,7 +28,7 @@ public struct CalculatorEngine: Sendable {
   }
 }
 
-// MARK: - Parser
+// MARK: - パーサー
 
 private struct Parser {
   private let characters: [Character]
@@ -47,10 +47,10 @@ private struct Parser {
     return pos >= characters.count
   }
 
-  // MARK: - Grammar
-  // expression = term (('+' | '-') term)*
-  // term       = factor (('*' | '/' | '%') factor)*
-  // factor     = '-'? (number | '(' expression ')')
+  // MARK: - 文法
+  // 文法: expression = term (('+' | '-') term)*
+  // 文法: term = factor (('*' | '/' | '%') factor)*
+  // 文法: factor = '-'? (number | '(' expression ')')
 
   /// 括弧のネスト深さの上限。
   ///
@@ -126,7 +126,7 @@ private struct Parser {
     return negate ? -v : v
   }
 
-  // MARK: - Lexer helpers
+  // MARK: - 字句解析ヘルパー
 
   private mutating func parseNumber() -> Double? {
     skipWhitespace()

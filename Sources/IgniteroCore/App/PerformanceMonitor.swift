@@ -7,7 +7,7 @@ import os
 /// Instruments の Time Profiler / os_signpost で可視化可能。
 public enum PerformanceMonitor: Sendable {
 
-  // MARK: - Private
+  // MARK: - 非公開
 
   private static let signposter = OSSignposter(
     subsystem: "com.ignitero.launcher",
@@ -19,7 +19,7 @@ public enum PerformanceMonitor: Sendable {
     category: "Performance"
   )
 
-  // MARK: - Signpost API
+  // MARK: - Signpost API関連
 
   /// signpost インターバルを開始し、状態を返す。
   ///
@@ -43,7 +43,7 @@ public enum PerformanceMonitor: Sendable {
     signposter.endInterval(name, state)
   }
 
-  // MARK: - Measurement API
+  // MARK: - 計測API
 
   /// 同期ブロックの実行時間をミリ秒単位で計測する。
   ///
@@ -83,7 +83,7 @@ public enum PerformanceMonitor: Sendable {
     return ms
   }
 
-  // MARK: - Private Helpers
+  // MARK: - 非公開ヘルパー
 
   /// `Duration` をミリ秒の `Double` 値に変換する。
   private static func durationToMilliseconds(_ duration: Duration) -> Double {

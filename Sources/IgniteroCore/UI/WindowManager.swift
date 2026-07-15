@@ -9,7 +9,7 @@ import Foundation
 @Observable
 public final class WindowManager {
 
-  // MARK: - Constants
+  // MARK: - 定数
 
   /// 検索バーのみ表示時の最小ウィンドウ高さ (px)
   ///
@@ -28,7 +28,7 @@ public final class WindowManager {
   /// ランチャーウィンドウの幅 (px)
   public static let width: CGFloat = 680
 
-  // MARK: - Published State
+  // MARK: - 公開状態
 
   /// ランチャーウィンドウが表示中かどうか
   public private(set) var isLauncherVisible: Bool = false
@@ -56,7 +56,7 @@ public final class WindowManager {
   /// ピッカーを閉じるために AppCoordinator から設定される。
   public var onCloseAllPickers: (() -> Void)?
 
-  // MARK: - Private
+  // MARK: - 非公開
 
   /// クリック外イベント監視トークン
   private var clickMonitor: Any?
@@ -67,11 +67,11 @@ public final class WindowManager {
   /// キーダウンイベントのローカルモニター
   private var keyEventMonitor: Any?
 
-  // MARK: - Initialization
+  // MARK: - 初期化
 
   public init() {}
 
-  // MARK: - Launcher Visibility
+  // MARK: - ランチャーの表示状態
 
   /// ランチャーの表示/非表示をトグルする。
   ///
@@ -99,7 +99,7 @@ public final class WindowManager {
     startKeyEventMonitor()
   }
 
-  // MARK: - Screen Centering
+  // MARK: - 画面中央への配置
 
   /// カーソルがあるスクリーンの上部寄りにパネルを配置する。
   private func centerOnScreen() {
@@ -126,7 +126,7 @@ public final class WindowManager {
     launcherPanel?.orderOut(nil)
   }
 
-  // MARK: - Dismiss Monitors
+  // MARK: - 終了監視
 
   /// ランチャー外のクリックとアプリ切り替えを監視し、自動非表示を行う。
   private func startDismissMonitors() {
@@ -169,7 +169,7 @@ public final class WindowManager {
     hideLauncher()
   }
 
-  // MARK: - Key Event Monitor
+  // MARK: - キーイベント監視
 
   /// ランチャーパネル向けのローカルキーイベントモニターを開始する。
   private func startKeyEventMonitor() {
@@ -206,7 +206,7 @@ public final class WindowManager {
     }
   }
 
-  // MARK: - Picker Visibility
+  // MARK: - ピッカーの表示状態
 
   /// ピッカー表示中フラグをセットする。
   public func showPicker() {
@@ -218,7 +218,7 @@ public final class WindowManager {
     isPickerVisible = false
   }
 
-  // MARK: - Window Resize
+  // MARK: - ウィンドウサイズ変更
 
   /// 検索結果の件数に応じた適切なウィンドウ高さを計算する。
   ///

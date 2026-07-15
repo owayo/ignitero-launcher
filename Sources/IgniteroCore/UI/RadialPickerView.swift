@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 import SwiftUI
 
-// MARK: - RadialPickerMode
+// MARK: - RadialPickerMode関連
 
 /// ラジアルピッカーの動作モード。
 public enum RadialPickerMode: Sendable {
@@ -12,7 +12,7 @@ public enum RadialPickerMode: Sendable {
   case terminal
 }
 
-// MARK: - RadialPickerItem
+// MARK: - RadialPickerItem関連
 
 /// ラジアルピッカーに表示する個別アイテム。
 public struct RadialPickerItem: Identifiable, Sendable {
@@ -42,7 +42,7 @@ public struct RadialPickerItem: Identifiable, Sendable {
   }
 }
 
-// MARK: - RadialPickerPosition
+// MARK: - RadialPickerPosition関連
 
 /// 円上のアイテム位置を表す構造体。
 public struct RadialPickerPosition: Sendable {
@@ -60,7 +60,7 @@ public struct RadialPickerPosition: Sendable {
   }
 }
 
-// MARK: - RadialPickerGeometry
+// MARK: - RadialPickerGeometry関連
 
 /// N 個のアイテムを円上に均等配置するジオメトリ計算ユーティリティ。
 public enum RadialPickerGeometry {
@@ -95,7 +95,7 @@ public enum RadialPickerGeometry {
   }
 }
 
-// MARK: - RadialPickerItemFactory
+// MARK: - RadialPickerItemFactory関連
 
 /// EditorInfo / TerminalInfo から RadialPickerItem を生成するファクトリ。
 public enum RadialPickerItemFactory {
@@ -148,7 +148,7 @@ public enum RadialPickerItemFactory {
   }
 }
 
-// MARK: - RadialPickerView
+// MARK: - RadialPickerView関連
 
 /// ラジアル（円形）ピッカー SwiftUI ビュー。
 ///
@@ -156,7 +156,7 @@ public enum RadialPickerItemFactory {
 /// ハイライト・グレーアウト・ショートカットキーラベルを描画する。
 public struct RadialPickerView: View {
 
-  // MARK: - Configuration
+  // MARK: - 設定
 
   /// 表示するアイテム一覧
   public let items: [RadialPickerItem]
@@ -169,7 +169,7 @@ public struct RadialPickerView: View {
   /// ビュー全体のサイズ
   public let size: Double
 
-  // MARK: - Computed
+  // MARK: - 計算プロパティ
 
   private var center: (Double, Double) {
     (size / 2, size / 2)
@@ -179,13 +179,13 @@ public struct RadialPickerView: View {
     RadialPickerGeometry.positions(count: items.count, radius: radius, center: center)
   }
 
-  // MARK: - Constants
+  // MARK: - 定数
 
   private let itemRadius: Double = 34
   private let iconSize: Double = 48
   private let shortcutKeyFontSize: Double = 10
 
-  // MARK: - Initialization
+  // MARK: - 初期化
 
   public init(
     items: [RadialPickerItem],
@@ -201,7 +201,7 @@ public struct RadialPickerView: View {
     self.size = size
   }
 
-  // MARK: - Body
+  // MARK: - 本体
 
   public var body: some View {
     Canvas { context, canvasSize in
@@ -221,7 +221,7 @@ public struct RadialPickerView: View {
     .frame(width: size, height: size)
   }
 
-  // MARK: - Drawing Helpers
+  // MARK: - 描画ヘルパー
 
   /// 個別アイテムを描画する。
   ///
@@ -352,7 +352,7 @@ public struct RadialPickerView: View {
   }
 }
 
-// MARK: - Convenience Initializers
+// MARK: - 簡易初期化
 
 extension RadialPickerView {
 

@@ -3,7 +3,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - PerformanceMonitor Measure Tests
+// MARK: - PerformanceMonitor Measure テスト
 
 @Suite("PerformanceMonitor Measure")
 struct PerformanceMonitorMeasureTests {
@@ -33,12 +33,12 @@ struct PerformanceMonitorMeasureTests {
     let ms = await PerformanceMonitor.measureAsync("test-async-sleep") {
       try? await Task.sleep(for: .milliseconds(10))
     }
-    // Should be at least ~10ms (sleep duration)
+    // sleep時間により少なくとも約10msになる
     #expect(ms >= 5)
   }
 }
 
-// MARK: - PerformanceMonitor Signpost Tests
+// MARK: - PerformanceMonitor Signpost テスト
 
 @Suite("PerformanceMonitor Signpost")
 struct PerformanceMonitorSignpostTests {
@@ -56,7 +56,7 @@ struct PerformanceMonitorSignpostTests {
   }
 }
 
-// MARK: - SearchService Performance Tests
+// MARK: - 検索Service Performance テスト
 
 @Suite("SearchService Performance")
 struct SearchServicePerformanceTests {
@@ -70,7 +70,7 @@ struct SearchServicePerformanceTests {
     let ms = PerformanceMonitor.measure("search-100-items") {
       _ = service.search(query: "app", apps: apps, directories: [], commands: [], history: [])
     }
-    #expect(ms < 500)  // Search should complete within 500ms
+    #expect(ms < 500)  // 検索は500ms以内に完了する
   }
 
   @Test func searchPerformanceWith500Items() {
@@ -82,7 +82,7 @@ struct SearchServicePerformanceTests {
     let ms = PerformanceMonitor.measure("search-500-items") {
       _ = service.search(query: "app", apps: apps, directories: [], commands: [], history: [])
     }
-    #expect(ms < 2000)  // 500 items should still be under 2 seconds
+    #expect(ms < 2000)  // 500件でも2秒未満で完了する
   }
 
   @Test("履歴 50 件 + 500 アプリの検索が許容範囲内に収まる（normalize 重複防止のリグレッション）")
@@ -108,7 +108,7 @@ struct SearchServicePerformanceTests {
   }
 }
 
-// MARK: - CalculatorEngine Performance Tests
+// MARK: - CalculatorEngine Performance テスト
 
 @Suite("CalculatorEngine Performance")
 struct CalculatorEnginePerformanceTests {
@@ -120,7 +120,7 @@ struct CalculatorEnginePerformanceTests {
         _ = engine.evaluate("(1+2)*3/4-5%2+100*200")
       }
     }
-    #expect(ms < 1000)  // 1000 calculations under 1 second
+    #expect(ms < 1000)  // 1000回の計算が1秒未満で完了する
   }
 
   @Test func calculatorPerformanceSimpleExpression() {
@@ -130,11 +130,11 @@ struct CalculatorEnginePerformanceTests {
         _ = engine.evaluate("1+1")
       }
     }
-    #expect(ms < 1000)  // 10000 simple calculations under 1 second
+    #expect(ms < 1000)  // 10000回の単純計算が1秒未満で完了する
   }
 }
 
-// MARK: - WindowManager Performance Tests
+// MARK: - WindowManager Performance テスト
 
 @Suite("WindowManager Performance")
 struct WindowManagerPerformanceTests {
@@ -144,11 +144,11 @@ struct WindowManagerPerformanceTests {
     let ms = PerformanceMonitor.measure("window-manager-creation") {
       _ = WindowManager()
     }
-    #expect(ms < 50)  // WindowManager creation under 50ms
+    #expect(ms < 50)  // WindowManagerの生成が50ms未満で完了する
   }
 }
 
-// MARK: - LauncherPanel Performance Tests
+// MARK: - LauncherPanel Performance テスト
 
 @Suite("LauncherPanel Performance")
 struct LauncherPanelPerformanceTests {
@@ -158,7 +158,7 @@ struct LauncherPanelPerformanceTests {
     let ms = PerformanceMonitor.measure("launcher-panel-creation") {
       _ = LauncherPanel()
     }
-    #expect(ms < 100)  // Panel creation under 100ms
+    #expect(ms < 100)  // パネルの生成が100ms未満で完了する
   }
 }
 

@@ -3,7 +3,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - RadialPickerMode Tests
+// MARK: - RadialPickerMode テスト
 
 @Suite("RadialPickerMode")
 struct RadialPickerModeTests {
@@ -19,7 +19,7 @@ struct RadialPickerModeTests {
   }
 }
 
-// MARK: - RadialPickerItem Tests
+// MARK: - RadialPickerItem テスト
 
 @Suite("RadialPickerItem")
 struct RadialPickerItemTests {
@@ -70,13 +70,13 @@ struct RadialPickerItemTests {
       installed: true,
       iconPath: nil
     )
-    // Identifiable requires `id` property
+    // Identifiable準拠には`id`プロパティが必要
     let _: String = item.id
     #expect(item.id == "test")
   }
 }
 
-// MARK: - RadialPickerGeometry Tests
+// MARK: - RadialPickerGeometry テスト
 
 @Suite("RadialPickerGeometry Positions for 4 Items")
 struct RadialPickerGeometry4ItemTests {
@@ -88,7 +88,7 @@ struct RadialPickerGeometry4ItemTests {
 
   @Test func fourItemsFirstItemIsAtTop() {
     let positions = RadialPickerGeometry.positions(count: 4, radius: 100, center: (150, 150))
-    // First item at top: angle = -pi/2, x = center, y = center - radius
+    // 先頭項目は上: angle = -pi/2、x = center、y = center - radius
     let first = positions[0]
     #expect(abs(first.x - 150) < 0.01)
     #expect(abs(first.y - 50) < 0.01)
@@ -97,7 +97,7 @@ struct RadialPickerGeometry4ItemTests {
 
   @Test func fourItemsSecondItemIsAtRight() {
     let positions = RadialPickerGeometry.positions(count: 4, radius: 100, center: (150, 150))
-    // Second item at right: angle = 0, x = center + radius, y = center
+    // 2番目の項目は右: angle = 0、x = center + radius、y = center
     let second = positions[1]
     #expect(abs(second.x - 250) < 0.01)
     #expect(abs(second.y - 150) < 0.01)
@@ -106,7 +106,7 @@ struct RadialPickerGeometry4ItemTests {
 
   @Test func fourItemsThirdItemIsAtBottom() {
     let positions = RadialPickerGeometry.positions(count: 4, radius: 100, center: (150, 150))
-    // Third item at bottom: angle = pi/2, x = center, y = center + radius
+    // 3番目の項目は下: angle = pi/2、x = center、y = center + radius
     let third = positions[2]
     #expect(abs(third.x - 150) < 0.01)
     #expect(abs(third.y - 250) < 0.01)
@@ -115,11 +115,11 @@ struct RadialPickerGeometry4ItemTests {
 
   @Test func fourItemsFourthItemIsAtLeft() {
     let positions = RadialPickerGeometry.positions(count: 4, radius: 100, center: (150, 150))
-    // Fourth item at left: angle = pi, x = center - radius, y = center
+    // 4番目の項目は左: angle = pi、x = center - radius、y = center
     let fourth = positions[3]
     #expect(abs(fourth.x - 50) < 0.01)
     #expect(abs(fourth.y - 150) < 0.01)
-    // angle should be pi (or -pi, they are equivalent)
+    // 角度はpiになる（-piも同値）
     #expect(abs(abs(fourth.angle) - .pi) < 0.01)
   }
 }
@@ -141,7 +141,7 @@ struct RadialPickerGeometry5ItemTests {
 
   @Test func fiveItemsAreEvenlySpaced() {
     let positions = RadialPickerGeometry.positions(count: 5, radius: 100, center: (150, 150))
-    // Angle step should be 2*pi/5 = 1.2566...
+    // 角度の刻みは2*pi/5 = 1.2566...になる
     let expectedStep = 2.0 * .pi / 5.0
     for i in 0..<4 {
       let angleDiff = positions[i + 1].angle - positions[i].angle
@@ -180,7 +180,7 @@ struct RadialPickerGeometryEdgeCaseTests {
   @Test func differentRadiusScalesPositions() {
     let positions = RadialPickerGeometry.positions(count: 4, radius: 50, center: (100, 100))
     let first = positions[0]
-    // First item at top: y = center - radius = 100 - 50 = 50
+    // 先頭項目は上: y = center - radius = 100 - 50 = 50
     #expect(abs(first.x - 100) < 0.01)
     #expect(abs(first.y - 50) < 0.01)
   }
@@ -193,7 +193,7 @@ struct RadialPickerGeometryEdgeCaseTests {
   }
 }
 
-// MARK: - RadialPickerItemFactory Tests
+// MARK: - RadialPickerItemFactory テスト
 
 @Suite("RadialPickerItemFactory Editor Items")
 struct RadialPickerItemFactoryEditorTests {
@@ -327,7 +327,7 @@ struct RadialPickerItemFactoryTerminalTests {
   }
 }
 
-// MARK: - Grayed Out State Tests
+// MARK: - 無効表示状態のテスト
 
 @Suite("RadialPickerItem Installed State")
 struct RadialPickerItemInstalledStateTests {
@@ -364,11 +364,11 @@ struct RadialPickerItemInstalledStateTests {
       EditorInfo(id: .zed, name: "Zed", appName: "Zed.app", installed: true),
     ]
     let items = RadialPickerItemFactory.editorItems(from: editors)
-    #expect(items[0].installed == true)  // windsurf
-    #expect(items[1].installed == false)  // cursor
-    #expect(items[2].installed == true)  // vscode
-    #expect(items[3].installed == false)  // antigravity
-    #expect(items[4].installed == true)  // zed
+    #expect(items[0].installed == true)  // 対象: windsurf
+    #expect(items[1].installed == false)  // 対象: cursor
+    #expect(items[2].installed == true)  // 対象: vscode
+    #expect(items[3].installed == false)  // 対象: antigravity
+    #expect(items[4].installed == true)  // 対象: zed
   }
 
   @Test func mixedInstalledStateInTerminalItems() {
@@ -379,14 +379,14 @@ struct RadialPickerItemInstalledStateTests {
       TerminalInfo(id: .warp, name: "Warp", appName: "Warp.app", installed: false),
     ]
     let items = RadialPickerItemFactory.terminalItems(from: terminals)
-    #expect(items[0].installed == true)  // terminal
-    #expect(items[1].installed == false)  // iterm2
-    #expect(items[2].installed == true)  // ghostty
-    #expect(items[3].installed == false)  // warp
+    #expect(items[0].installed == true)  // 対象: terminal
+    #expect(items[1].installed == false)  // 対象: iterm2
+    #expect(items[2].installed == true)  // 対象: ghostty
+    #expect(items[3].installed == false)  // 対象: warp
   }
 }
 
-// MARK: - RadialPickerGeometry Position Struct Tests
+// MARK: - RadialPickerGeometry Position Struct テスト
 
 @Suite("RadialPickerPosition")
 struct RadialPickerPositionTests {

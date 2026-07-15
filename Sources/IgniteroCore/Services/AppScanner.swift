@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-// MARK: - AppScannerProtocol
+// MARK: - アプリScannerProtocol
 
 public protocol AppScannerProtocol: Sendable {
   /// アプリケーションをスキャンする。
@@ -37,12 +37,12 @@ extension AppScannerProtocol {
   }
 }
 
-// MARK: - AppScanner
+// MARK: - アプリScanner
 
 public struct AppScanner: AppScannerProtocol, Sendable {
   private static let logger = Logger(subsystem: "com.ignitero.launcher", category: "AppScanner")
 
-  // MARK: - ScanTarget
+  // MARK: - ScanTarget関連
 
   public struct ScanTarget: Sendable, Equatable {
     public let path: String
@@ -54,12 +54,12 @@ public struct AppScanner: AppScannerProtocol, Sendable {
     }
   }
 
-  // MARK: - Properties
+  // MARK: - プロパティ
 
   public let scanTargets: [ScanTarget]
   private let iconCacheManager: IconCacheManager
 
-  // MARK: - Default Targets
+  // MARK: - 既定の対象
 
   public static let defaultScanTargets: [ScanTarget] = [
     ScanTarget(path: "/Applications", maxDepth: 2),
@@ -70,7 +70,7 @@ public struct AppScanner: AppScannerProtocol, Sendable {
     ),
   ]
 
-  // MARK: - Initialization
+  // MARK: - 初期化
 
   public init(
     scanTargets: [ScanTarget]? = nil,
@@ -80,7 +80,7 @@ public struct AppScanner: AppScannerProtocol, Sendable {
     self.iconCacheManager = iconCacheManager
   }
 
-  // MARK: - Core Scan
+  // MARK: - 主要スキャン処理
 
   public func scanApplications(excludedApps: [String]) async throws -> [AppItem] {
     let excludedSet = Set(excludedApps)
@@ -199,7 +199,7 @@ public struct AppScanner: AppScannerProtocol, Sendable {
     return false
   }
 
-  // MARK: - Bundle Discovery
+  // MARK: - バンドル検出
 
   /// 指定ディレクトリ内の .app バンドルを再帰的に検索する
   public func findAppBundles(in directory: String, maxDepth: Int) -> [String] {
@@ -250,7 +250,7 @@ public struct AppScanner: AppScannerProtocol, Sendable {
     }
   }
 
-  // MARK: - Info.plist Extraction
+  // MARK: - Info.plistの抽出
 
   /// Info.plist を 1 回だけ読み込み・パースして辞書として返す。
   /// 名前抽出・除外判定・アイコン解決で同一ファイルを共有し、二重読み込みを避ける。
@@ -323,7 +323,7 @@ public struct AppScanner: AppScannerProtocol, Sendable {
     return (resourcesPath as NSString).appendingPathComponent("\(iconFile).icns")
   }
 
-  // MARK: - Localized Name Resolution
+  // MARK: - ローカライズ名の解決
 
   /// LaunchServices からローカライズされた表示名（Finder 表示名）を取得する。
   ///
@@ -400,7 +400,7 @@ public struct AppScanner: AppScannerProtocol, Sendable {
     return String(content[valueRange])
   }
 
-  // MARK: - App Info Assembly
+  // MARK: - アプリ情報の組み立て
 
   /// .app バンドルから AppItem を組み立てる
   public func extractAppInfo(from appPath: String) -> AppItem? {

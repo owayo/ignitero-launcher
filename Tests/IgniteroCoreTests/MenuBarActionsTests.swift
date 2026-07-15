@@ -4,7 +4,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - Initial State Tests
+// MARK: - 初期状態 テスト
 
 @Suite("MenuBarActions Initial State")
 @MainActor
@@ -38,7 +38,7 @@ struct MenuBarActionsInitialStateTests {
   }
 }
 
-// MARK: - Show Window Tests
+// MARK: - ウィンドウ表示のテスト
 
 @Suite("MenuBarActions Show Window")
 @MainActor
@@ -71,7 +71,7 @@ struct MenuBarActionsShowWindowTests {
   }
 }
 
-// MARK: - Rebuild Cache Tests
+// MARK: - キャッシュ再構築 テスト
 
 @Suite("MenuBarActions Rebuild Cache")
 @MainActor
@@ -146,7 +146,7 @@ struct MenuBarActionsRebuildCacheTests {
   }
 }
 
-// MARK: - Open Settings Tests
+// MARK: - 設定画面を開く処理のテスト
 
 @Suite("MenuBarActions Open Settings")
 @MainActor
@@ -189,7 +189,7 @@ struct MenuBarActionsOpenSettingsTests {
   }
 }
 
-// MARK: - Quit Tests
+// MARK: - 終了処理のテスト
 
 @Suite("MenuBarActions Quit")
 @MainActor
@@ -209,7 +209,7 @@ struct MenuBarActionsQuitTests {
   }
 }
 
-// MARK: - Dependencies Tests
+// MARK: - 依存関係 テスト
 
 @Suite("MenuBarActions Dependencies")
 @MainActor
@@ -238,7 +238,7 @@ struct MenuBarActionsDependenciesTests {
   }
 }
 
-// MARK: - Menu Items Tests
+// MARK: - メニュー項目 テスト
 
 @Suite("MenuBarActions Menu Items")
 @MainActor
@@ -273,7 +273,7 @@ struct MenuBarActionsMenuItemsTests {
   }
 }
 
-// MARK: - Test Helpers
+// MARK: - テストヘルパー
 
 private func makeTempConfigDir() -> URL {
   FileManager.default.temporaryDirectory

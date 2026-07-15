@@ -2,6 +2,23 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-07-16 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、リモート差分がないことを確認
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（GRDB.swift / KeyboardShortcuts / Fuse-Swift / EmojiKit の4件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査し、実装方針の変更が不要であることを確認
+  - Terminal.app 2.15: ローカル辞書で `do script` を確認
+  - iTerm2 3.6.11: ローカル辞書で `create window with default profile` / `write text` を確認
+  - Ghostty 1.3.1: ローカル辞書で `new window` / `input text` / `send key` を確認し、現行の AppleScript 優先 + `.command` フォールバックを維持
+  - cmux 0.64.19: ローカル辞書で `new window` / `input text` を確認。`send key` はないため、現行の AppleScript 優先 + CLI フォールバックを維持
+  - Warp 0.2026.07.01.09.21.01: `sdef` がエラー -192 で辞書を取得できず、公式の URI Scheme / Launch Configurations と `.command` 方式を維持
+- astro-sight で複雑度を確認し、最大9、複雑度10以上はゼロであるためリファクタリング不要と判断
+- コードベース全体レビューで、負の公開選択インデックスを上限だけで検証して配列参照する確実なクラッシュ経路を2件修正
+  - LauncherViewModel: `selectedIndex = -1` で `confirmSelection()` を呼ぶとクラッシュする問題を、配列の `indices` 検証で修正
+  - TerminalPickerState: `highlightedIndex = -1` で `confirmSelection()` を呼ぶとクラッシュする問題を、配列の `indices` 検証で修正
+- 負の選択インデックスを未選択として扱う境界値テストを2件追加し、テスト数を996件から998件へ更新
+- Swiftソースとテストコード内の英語コメントを日本語へ統一
+
 2026-07-06 追記（AppleScript 再確認）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、`main` がリモート最新（`e7b174c`）と同期済みであることを確認

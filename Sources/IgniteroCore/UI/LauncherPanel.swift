@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-// MARK: - SafeHostingView
+// MARK: - SafeHostingView関連
 
 /// SwiftUI 内容を AppKit パネルへ埋め込む `NSHostingView` サブクラス。
 ///
@@ -18,7 +18,7 @@ import SwiftUI
 /// 対策 (Apple 公開 API のみ、Codex/OpenAI との相談で確定):
 /// 1. `sizingOptions = []` — SwiftUI の min/ideal/max を AppKit/NSWindow に伝えない
 /// 2. `intrinsicContentSize` は `NSView.noIntrinsicMetric` — Auto Layout に intrinsic size を渡さない
-/// 3. `translatesAutoresizingMaskIntoConstraints = true` + `autoresizingMask = [.width, .height]` —
+/// 3. 自動サイズ変更: `translatesAutoresizingMaskIntoConstraints = true` + `autoresizingMask = [.width, .height]` —
 ///    frame は AppKit の autoresizing で駆動し、Auto Layout 経路を回避
 ///
 /// `.intrinsicContentSize` 単独では今回のクラッシュ経路 (`updateAnimatedWindowSize`) は塞げない。
@@ -52,7 +52,7 @@ final class SafeHostingView<Content: View>: NSHostingView<Content> {
 @MainActor
 public final class LauncherPanel: NSPanel {
 
-  // MARK: - Initialization
+  // MARK: - 初期化
 
   public convenience init() {
     self.init(
@@ -64,7 +64,7 @@ public final class LauncherPanel: NSPanel {
     configurePanel()
   }
 
-  // MARK: - Key / Main Overrides
+  // MARK: - キー／メイン状態のオーバーライド
 
   /// パネルがキーウィンドウになれるようにする（キーボード入力受付のため）
   override public var canBecomeKey: Bool { true }
@@ -72,7 +72,7 @@ public final class LauncherPanel: NSPanel {
   /// パネルはメインウィンドウにならない（アクセサリパネルのため）
   override public var canBecomeMain: Bool { false }
 
-  // MARK: - SwiftUI Content
+  // MARK: - SwiftUIコンテンツ
 
   /// SwiftUI ビューをパネルの contentView に設定する。
   ///
@@ -84,7 +84,7 @@ public final class LauncherPanel: NSPanel {
     contentView = hostingView
   }
 
-  // MARK: - Private
+  // MARK: - 非公開
 
   private func configurePanel() {
     // フローティング設定

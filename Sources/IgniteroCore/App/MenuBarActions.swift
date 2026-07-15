@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 import os
 
-// MARK: - MenuBarItem
+// MARK: - MenuBarItem関連
 
 /// メニューバーの各メニュー項目を表す構造体。
 public struct MenuBarItem: Sendable, Identifiable {
@@ -17,7 +17,7 @@ public struct MenuBarItem: Sendable, Identifiable {
   }
 }
 
-// MARK: - MenuBarActions
+// MARK: - MenuBar操作
 
 /// メニューバーのコンテキストメニュー操作を管理するクラス。
 ///
@@ -33,7 +33,7 @@ public final class MenuBarActions {
   private static let logger = Logger(
     subsystem: "com.ignitero.launcher", category: "MenuBarActions")
 
-  // MARK: - Dependencies
+  // MARK: - 依存関係
 
   /// ランチャーウィンドウの表示制御
   public let windowManager: WindowManager
@@ -44,7 +44,7 @@ public final class MenuBarActions {
   /// キャッシュ再構築の実体処理（AppCoordinator が注入し、スキャン結果を DB に保存・ビューモデルへ反映する）。
   public var onRebuildCache: (@MainActor @Sendable () async -> Void)?
 
-  // MARK: - State
+  // MARK: - 状態
 
   /// キャッシュ再構築中かどうか
   public private(set) var isRebuildingCache: Bool = false
@@ -52,7 +52,7 @@ public final class MenuBarActions {
   /// 設定ウィンドウが開いているかどうか
   public var isSettingsOpen: Bool = false
 
-  // MARK: - Initialization
+  // MARK: - 初期化
 
   /// MenuBarActions を初期化する。
   ///
@@ -67,7 +67,7 @@ public final class MenuBarActions {
     self.settingsManager = settingsManager
   }
 
-  // MARK: - Menu Items
+  // MARK: - メニュー項目
 
   /// メニュー項目の一覧を返す。
   public var menuItems: [MenuBarItem] {
@@ -93,7 +93,7 @@ public final class MenuBarActions {
     ]
   }
 
-  // MARK: - Actions
+  // MARK: - 操作
 
   /// ランチャーウィンドウを表示する。
   public func showWindow() {

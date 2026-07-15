@@ -3,7 +3,7 @@ import Testing
 
 @testable import IgniteroCore
 
-// MARK: - Test Helpers
+// MARK: - テストヘルパー
 
 private func makeSampleTerminals() -> [TerminalInfo] {
   [
@@ -14,12 +14,12 @@ private func makeSampleTerminals() -> [TerminalInfo] {
   ]
 }
 
-// MARK: - TerminalPickerState Tests
+// MARK: - TerminalPicker状態 テスト
 
 @Suite("TerminalPickerState Tests")
 struct TerminalPickerStateTests {
 
-  // MARK: - Initial State
+  // MARK: - 初期状態
 
   @Test @MainActor func initialStateHasNoTerminals() {
     let state = TerminalPickerState()
@@ -36,7 +36,7 @@ struct TerminalPickerStateTests {
     #expect(state.selectedTerminal == nil)
   }
 
-  // MARK: - Reset
+  // MARK: - リセット
 
   @Test @MainActor func resetSetsTerminals() {
     let state = TerminalPickerState()
@@ -70,7 +70,7 @@ struct TerminalPickerStateTests {
     #expect(state.selectedTerminal == nil)
   }
 
-  // MARK: - Move Down
+  // MARK: - 下へ移動
 
   @Test @MainActor func moveDownIncrementsHighlightedIndex() {
     let state = TerminalPickerState()
@@ -87,12 +87,12 @@ struct TerminalPickerStateTests {
     let state = TerminalPickerState()
     state.reset(terminals: makeSampleTerminals())
 
-    state.moveDown()  // 1
-    state.moveDown()  // 2
-    state.moveDown()  // 3
+    state.moveDown()  // 位置: 1
+    state.moveDown()  // 位置: 2
+    state.moveDown()  // 位置: 3
     #expect(state.highlightedIndex == 3)
 
-    state.moveDown()  // wraps to 0
+    state.moveDown()  // 位置0へ循環
     #expect(state.highlightedIndex == 0)
   }
 
@@ -102,7 +102,7 @@ struct TerminalPickerStateTests {
     #expect(state.highlightedIndex == 0)
   }
 
-  // MARK: - Move Up
+  // MARK: - 上へ移動
 
   @Test @MainActor func moveUpDecrementsHighlightedIndex() {
     let state = TerminalPickerState()
@@ -120,7 +120,7 @@ struct TerminalPickerStateTests {
     state.reset(terminals: makeSampleTerminals())
     #expect(state.highlightedIndex == 0)
 
-    state.moveUp()  // wraps to 3
+    state.moveUp()  // 位置3へ循環
     #expect(state.highlightedIndex == 3)
   }
 
@@ -130,7 +130,7 @@ struct TerminalPickerStateTests {
     #expect(state.highlightedIndex == 0)
   }
 
-  // MARK: - Confirm Selection
+  // MARK: - 選択確定
 
   @Test @MainActor func confirmSelectionSetsSelectedTerminal() {
     let state = TerminalPickerState()
@@ -151,7 +151,7 @@ struct TerminalPickerStateTests {
   @Test @MainActor func confirmSelectionAfterWrapSelectsCorrectTerminal() {
     let state = TerminalPickerState()
     state.reset(terminals: makeSampleTerminals())
-    state.moveUp()  // wraps to 3 (warp)
+    state.moveUp()  // 位置3（warp）へ循環
     state.confirmSelection()
     #expect(state.selectedTerminal == .warp)
   }
@@ -162,7 +162,7 @@ struct TerminalPickerStateTests {
     #expect(state.selectedTerminal == nil)
   }
 
-  // MARK: - Full Navigation Cycle
+  // MARK: - 一巡するキー操作
 
   @Test @MainActor func fullCycleDownReturnsToStart() {
     let state = TerminalPickerState()
@@ -185,12 +185,12 @@ struct TerminalPickerStateTests {
   }
 }
 
-// MARK: - TerminalPickerPanel Tests
+// MARK: - TerminalPickerPanel テスト
 
 @Suite("TerminalPickerPanel Tests")
 struct TerminalPickerPanelTests {
 
-  // MARK: - Style Mask
+  // MARK: - スタイルマスク
 
   @Test @MainActor func styleMaskIncludesBorderless() {
     let panel = TerminalPickerPanel()
@@ -212,7 +212,7 @@ struct TerminalPickerPanelTests {
     #expect(panel.styleMask.contains(.fullSizeContentView))
   }
 
-  // MARK: - Panel Properties
+  // MARK: - パネルのプロパティ
 
   @Test @MainActor func isFloatingPanelIsTrue() {
     let panel = TerminalPickerPanel()
@@ -230,7 +230,7 @@ struct TerminalPickerPanelTests {
     #expect(panel.hidesOnDeactivate == false)
   }
 
-  // MARK: - Collection Behavior
+  // MARK: - コレクション動作
 
   @Test @MainActor func collectionBehaviorIncludesCanJoinAllSpaces() {
     let panel = TerminalPickerPanel()
@@ -252,7 +252,7 @@ struct TerminalPickerPanelTests {
     #expect(panel.collectionBehavior.contains(.ignoresCycle))
   }
 
-  // MARK: - Key / Main Behavior
+  // MARK: - キー／メイン動作
 
   @Test @MainActor func canBecomeKeyReturnsTrue() {
     let panel = TerminalPickerPanel()
@@ -264,7 +264,7 @@ struct TerminalPickerPanelTests {
     #expect(panel.canBecomeMain == false)
   }
 
-  // MARK: - Titlebar Settings
+  // MARK: - タイトルバー設定
 
   @Test @MainActor func titlebarAppearsTransparentIsTrue() {
     let panel = TerminalPickerPanel()
@@ -276,7 +276,7 @@ struct TerminalPickerPanelTests {
     #expect(panel.titleVisibility == .hidden)
   }
 
-  // MARK: - Movement & Appearance
+  // MARK: - 移動と外観
 
   @Test @MainActor func isMovableByWindowBackgroundIsTrue() {
     let panel = TerminalPickerPanel()
@@ -293,7 +293,7 @@ struct TerminalPickerPanelTests {
     #expect(panel.isOpaque == false)
   }
 
-  // MARK: - State Integration
+  // MARK: - 状態連携
 
   @Test @MainActor func panelHasState() {
     let panel = TerminalPickerPanel()
@@ -301,7 +301,7 @@ struct TerminalPickerPanelTests {
     #expect(panel.state.selectedTerminal == nil)
   }
 
-  // MARK: - Dismiss
+  // MARK: - 終了
 
   @Test @MainActor func dismissOrdersOutPanel() {
     let panel = TerminalPickerPanel()

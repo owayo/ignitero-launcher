@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-// MARK: - EditorPickerState
+// MARK: - EditorPicker状態
 
 /// エディタピッカーの選択状態を管理する Observable モデル。
 ///
@@ -11,7 +11,7 @@ import SwiftUI
 @Observable
 public final class EditorPickerState {
 
-  // MARK: - Shortcut Key Mapping
+  // MARK: - ショートカットキー対応
 
   /// エディタに対応するショートカットキーを返す。
   public static func shortcutKey(for editor: EditorType) -> String {
@@ -39,7 +39,7 @@ public final class EditorPickerState {
     }
   }
 
-  // MARK: - State
+  // MARK: - 状態
 
   /// 選択可能なエディタ一覧
   public var availableEditors: [EditorType]
@@ -63,7 +63,7 @@ public final class EditorPickerState {
     return availableEditors[index]
   }
 
-  // MARK: - Initialization
+  // MARK: - 初期化
 
   /// EditorPickerState を初期化する。
   ///
@@ -72,7 +72,7 @@ public final class EditorPickerState {
     self.availableEditors = availableEditors
   }
 
-  // MARK: - Key Handling
+  // MARK: - Key Handling関連
 
   /// ショートカットキーを処理する。
   ///
@@ -90,7 +90,7 @@ public final class EditorPickerState {
     return true
   }
 
-  // MARK: - Arrow Key Navigation
+  // MARK: - 矢印キー操作
 
   /// 選択を下方向に移動する（リストの末尾で先頭に戻る）。
   public func moveDown() {
@@ -112,7 +112,7 @@ public final class EditorPickerState {
     }
   }
 
-  // MARK: - Confirm / Dismiss
+  // MARK: - 確定／終了
 
   /// 現在の選択を確定する。
   ///
@@ -128,7 +128,7 @@ public final class EditorPickerState {
     isDismissed = true
   }
 
-  // MARK: - Reset
+  // MARK: - リセット
 
   /// 状態をリセットして再利用可能にする。
   public func reset() {
@@ -144,7 +144,7 @@ public final class EditorPickerState {
   }
 }
 
-// MARK: - EditorPickerContentView
+// MARK: - EditorPickerContentView関連
 
 /// エディタピッカーのコンテンツラッパービュー。
 ///
@@ -174,7 +174,7 @@ private struct EditorPickerContentView: View {
   }
 }
 
-// MARK: - EditorPickerPanel
+// MARK: - EditorPickerPanel関連
 
 /// エディタ選択用のフローティングパネル。
 ///
@@ -184,7 +184,7 @@ private struct EditorPickerContentView: View {
 @MainActor
 public final class EditorPickerPanel: NSPanel {
 
-  // MARK: - State
+  // MARK: - 状態
 
   /// ピッカーの選択状態
   public let pickerState: EditorPickerState
@@ -195,7 +195,7 @@ public final class EditorPickerPanel: NSPanel {
   /// パネルが閉じた時のコールバック
   public var onDismiss: (() -> Void)?
 
-  // MARK: - Initialization
+  // MARK: - 初期化
 
   /// デフォルトの EditorPickerPanel を初期化する。
   ///
@@ -218,7 +218,7 @@ public final class EditorPickerPanel: NSPanel {
     configurePanel()
   }
 
-  // MARK: - Key / Main Overrides
+  // MARK: - キー／メイン状態のオーバーライド
 
   /// パネルがキーウィンドウになれるようにする（キーボード入力受付のため）
   override public var canBecomeKey: Bool { true }
@@ -226,7 +226,7 @@ public final class EditorPickerPanel: NSPanel {
   /// パネルはメインウィンドウにならない（アクセサリパネルのため）
   override public var canBecomeMain: Bool { false }
 
-  // MARK: - Key Event Handling
+  // MARK: - キーイベント処理
 
   /// キーダウンイベントを処理する。
   ///
@@ -239,20 +239,20 @@ public final class EditorPickerPanel: NSPanel {
     }
 
     switch event.keyCode {
-    case 125, 124:  // Down / Right arrow
+    case 125, 124:  // 下／右矢印キー
       pickerState.moveDown()
       HapticService.selectionChanged()
-    case 126, 123:  // Up / Left arrow
+    case 126, 123:  // 上／左矢印キー
       pickerState.moveUp()
       HapticService.selectionChanged()
-    case 36:  // Enter / Return
+    case 36:  // Enter／Returnキー
       pickerState.confirm()
       if let editor = pickerState.confirmedEditor {
         HapticService.confirmed()
         onSelect?(editor)
         dismissPanel()
       }
-    case 53:  // Escape
+    case 53:  // Escキー
       pickerState.dismiss()
       dismissPanel()
     default:
@@ -262,7 +262,7 @@ public final class EditorPickerPanel: NSPanel {
     }
   }
 
-  // MARK: - SwiftUI Content
+  // MARK: - SwiftUIコンテンツ
 
   /// SwiftUI ビューをパネルの contentView に設定する。
   ///
@@ -272,7 +272,7 @@ public final class EditorPickerPanel: NSPanel {
     contentView = hostingView
   }
 
-  // MARK: - Show / Dismiss
+  // MARK: - 表示／終了
 
   /// 指定された矩形の近くにパネルを表示する。
   ///
@@ -328,7 +328,7 @@ public final class EditorPickerPanel: NSPanel {
     onDismiss?()
   }
 
-  // MARK: - Private
+  // MARK: - 非公開
 
   private func configurePanel() {
     // フローティング設定（ランチャーの手前に表示）

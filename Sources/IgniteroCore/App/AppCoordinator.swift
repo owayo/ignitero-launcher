@@ -5,7 +5,7 @@ import os
 
 /// アプリケーション全体のコンポーネントを統合し、ライフサイクルを管理するコーディネーター。
 ///
-/// `AppDelegate` → `GlobalShortcutManager` → `WindowManager` → `LauncherPanel` →
+/// 構成: `AppDelegate` → `GlobalShortcutManager` → `WindowManager` → `LauncherPanel` →
 /// `LauncherView` → `SearchService` の全フローを接続し、
 /// ランチャー表示・検索・起動・設定変更の一連の動作を統括する。
 @MainActor
@@ -437,18 +437,18 @@ public final class AppCoordinator {
     Self.logger.debug(
       "Key event: keyCode=\(event.keyCode), modifiers=\(event.modifierFlags.rawValue)")
     switch event.keyCode {
-    case 126:  // Up arrow
+    case 126:  // 上矢印キー
       launcherViewModel.moveSelectionUp()
       HapticService.selectionChanged()
       return true
-    case 125:  // Down arrow
+    case 125:  // 下矢印キー
       launcherViewModel.moveSelectionDown()
       HapticService.selectionChanged()
       return true
-    case 53:  // Escape
+    case 53:  // Escキー
       dismissLauncher()
       return true
-    case 123:  // Left arrow
+    case 123:  // 左矢印キー
       Self.logger.debug(
         "Left arrow: results=\(self.launcherViewModel.searchResults.count), index=\(self.launcherViewModel.selectedIndex)"
       )
@@ -459,7 +459,7 @@ public final class AppCoordinator {
       }
       Self.logger.debug("Left arrow: no action (no directory selected?)")
       return false
-    case 124:  // Right arrow
+    case 124:  // 右矢印キー
       Self.logger.debug(
         "Right arrow: results=\(self.launcherViewModel.searchResults.count), index=\(self.launcherViewModel.selectedIndex)"
       )
