@@ -47,9 +47,31 @@ make bundle       # .app バンドル作成
 make install      # /Applications にインストール＆起動
 make run          # ビルド後に .app を起動
 make dev          # デバッグビルド＆直接実行
+make verify-sign  # インストール済み .app の署名を確認
 make log          # ログストリーム (com.owayo.ignitero.launcher)
 make clean        # ビルドキャッシュ削除
 ```
+
+### コード署名とアクセシビリティ権限
+
+`bundle` / `dev` は `CODESIGN_IDENTITY` で署名する。この変数は「ローカルの自己署名 identity が
+あればそれ、無ければ ad-hoc (`-`)」に解決されるため、証明書を持たない CI や他マシンでも
+ビルドは止まらない。
+
+ad-hoc 署名 (`codesign --sign -`) は再ビルドのたびに cdhash が変わる。macOS の TCC は
+「bundle ID + 署名」の組で権限を記憶しているため、ad-hoc のままだと `make install` のたびに
+別アプリ扱いになり、**アクセシビリティ権限（グローバルショートカット Option+Space に必須）が
+黙って無効化される**。システム設定のチェックは入ったまま残るので「許可しているのに効かない」
+という分かりにくい壊れ方をする。ローカル開発では固定 identity で署名してこれを避ける。
+
+- 署名が ad-hoc に落ちていないかの確認: `make verify-sign`（`Authority=` があれば固定署名、
+  `Signature=adhoc` なら fallback 中）
+- ad-hoc から固定署名へ切り替えた直後は、**一度だけ**権限を許可し直す必要がある
+  （システム設定 > プライバシーとセキュリティ > アクセシビリティ でチェックを外す → 付け直す →
+  アプリ再起動。効かなければ `−` で削除してから追加し直す）
+- 一時的に別 identity を使う場合は `make CODESIGN_IDENTITY="別の名前" install`
+- リリース成果物（`.github/workflows/release.yml`）は配布用のため ad-hoc のままで、この仕組みの
+  対象外（Gatekeeper を通すには Developer ID + notarization が別途必要）
 
 ## テスト規約
 
