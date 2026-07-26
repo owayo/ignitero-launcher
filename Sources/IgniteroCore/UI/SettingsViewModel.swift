@@ -158,8 +158,7 @@ public final class SettingsViewModel {
   /// - Parameter editor: 新しいデフォルトエディタ
   /// - Throws: 設定の保存に失敗した場合
   public func setDefaultEditor(_ editor: EditorType) throws {
-    settingsManager.settings.defaultEditor = editor
-    try settingsManager.save()
+    try settingsManager.updateSettings { $0.defaultEditor = editor }
     onSettingsChanged?(.reloadOnly)
   }
 
@@ -168,8 +167,7 @@ public final class SettingsViewModel {
   /// - Parameter terminal: 新しいデフォルトターミナル
   /// - Throws: 設定の保存に失敗した場合
   public func setDefaultTerminal(_ terminal: TerminalType) throws {
-    settingsManager.settings.defaultTerminal = terminal
-    try settingsManager.save()
+    try settingsManager.updateSettings { $0.defaultTerminal = terminal }
     onSettingsChanged?(.reloadOnly)
   }
 
@@ -178,8 +176,7 @@ public final class SettingsViewModel {
   /// - Parameter cacheSettings: 新しいキャッシュ更新設定
   /// - Throws: 設定の保存に失敗した場合
   public func setCacheUpdateSettings(_ cacheSettings: CacheUpdateSettings) throws {
-    settingsManager.settings.cacheUpdate = cacheSettings
-    try settingsManager.save()
+    try settingsManager.updateSettings { $0.cacheUpdate = cacheSettings }
     onSettingsChanged?(.updateScheduleChanged)
   }
 
@@ -215,8 +212,9 @@ public final class SettingsViewModel {
   /// - Throws: 設定の保存に失敗した場合
   public func removeDirectory(at index: Int) throws {
     guard settingsManager.settings.registeredDirectories.indices.contains(index) else { return }
-    settingsManager.settings.registeredDirectories.remove(at: index)
-    try settingsManager.save()
+    try settingsManager.updateSettings {
+      $0.registeredDirectories.remove(at: index)
+    }
     onSettingsChanged?(.cacheInvalidated)
   }
 
@@ -228,8 +226,9 @@ public final class SettingsViewModel {
   /// - Throws: 設定の保存に失敗した場合
   public func updateDirectory(at index: Int, _ directory: RegisteredDirectory) throws {
     guard settingsManager.settings.registeredDirectories.indices.contains(index) else { return }
-    settingsManager.settings.registeredDirectories[index] = directory
-    try settingsManager.save()
+    try settingsManager.updateSettings {
+      $0.registeredDirectories[index] = directory
+    }
     onSettingsChanged?(.cacheInvalidated)
   }
 
@@ -262,8 +261,9 @@ public final class SettingsViewModel {
   /// - Throws: 設定の保存に失敗した場合
   public func removeCommand(at index: Int) throws {
     guard settingsManager.settings.customCommands.indices.contains(index) else { return }
-    settingsManager.settings.customCommands.remove(at: index)
-    try settingsManager.save()
+    try settingsManager.updateSettings {
+      $0.customCommands.remove(at: index)
+    }
     onSettingsChanged?(.reloadOnly)
   }
 
@@ -275,8 +275,9 @@ public final class SettingsViewModel {
   /// - Throws: 設定の保存に失敗した場合
   public func updateCommand(at index: Int, _ command: CustomCommand) throws {
     guard settingsManager.settings.customCommands.indices.contains(index) else { return }
-    settingsManager.settings.customCommands[index] = command
-    try settingsManager.save()
+    try settingsManager.updateSettings {
+      $0.customCommands[index] = command
+    }
     onSettingsChanged?(.reloadOnly)
   }
 
@@ -288,12 +289,13 @@ public final class SettingsViewModel {
   /// - Parameter appName: アプリ表示名またはバンドル名（例: "Safari" / "Safari.app"）
   /// - Throws: 設定の保存に失敗した場合
   public func toggleExcludedApp(_ appName: String) throws {
-    if let index = settingsManager.settings.excludedApps.firstIndex(of: appName) {
-      settingsManager.settings.excludedApps.remove(at: index)
-    } else {
-      settingsManager.settings.excludedApps.append(appName)
+    try settingsManager.updateSettings { settings in
+      if let index = settings.excludedApps.firstIndex(of: appName) {
+        settings.excludedApps.remove(at: index)
+      } else {
+        settings.excludedApps.append(appName)
+      }
     }
-    try settingsManager.save()
     onSettingsChanged?(.cacheInvalidated)
   }
 

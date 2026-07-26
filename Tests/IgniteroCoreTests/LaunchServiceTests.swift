@@ -697,7 +697,7 @@ struct LaunchServiceAppleScriptCoverageTests {
       workingDirectory: "/tmp/cmux project"
     )
 
-    // cmux 0.64.19 の辞書には new surface configuration がないため、入力注入方式だけに留める。
+    // cmux 0.64.20 の辞書には new surface configuration がないため、入力注入方式だけに留める。
     #expect(script.contains("set w to new window"))
     #expect(script.contains("input text \"cd -- '/tmp/cmux project' && echo cmux\\n\""))
     #expect(!script.contains("new surface configuration"))

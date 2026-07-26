@@ -46,6 +46,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - 🖱️ **ドラッグ移動**: ウィンドウを自由に移動でき、表示のたびに画面中央へ戻す
 - 🔄 **自動キャッシュ更新**: 起動時・定期的な自動更新に対応
 - ⚙️ **ログイン時起動**: 設定画面から切替可能。状態取得と登録/解除はメインスレッド外で処理し、設定画面の表示を止めない
+- 💾 **安全な設定保存**: 書き込みに失敗した場合はメモリ上の設定も変更前へ戻し、未保存の値でアプリが動き続ける不整合を防止
 - 📌 **メニューバー常駐**: バックグラウンドで常に利用可能
 - 🚫 **アプリ除外機能**: 不要なアプリを表示名・バンドル名・パスで検索結果から除外
 
@@ -80,13 +81,13 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-07-16確認）
+#### ターミナル自動化方式（2026-07-27確認）
 
 - macOSターミナル: AppleScript（`do script`）を維持
 - iTerm2: AppleScript（`create window` + `write text`）を維持。現行ドキュメントでは AppleScript はメンテナンスモードだが、コマンド実行 API は利用可能
 - Warp: AppleScript dictionary 非対応。公式ドキュメントは URI Scheme / Launch Configurations / Tab Configs を案内し、ローカルの Warp 0.2026.07.01.09.21.01 でも `sdef` がエラー -192 で辞書を取得できないため `.command` ファイル方式を維持
 - Ghostty: AppleScript（公式ドキュメントでは 1.3.0 で導入、ローカル Ghostty 1.3.1 で `new window` + `input text "...\n"` を確認）。辞書には `send key` もあるが、現行実装は cmux と同じく改行込みの `input text` で実行を確定する。AppleScript が無効な環境では `.command` ファイル方式へフォールバック
-- cmux: AppleScript（ローカル cmux 0.64.19 で `new window` + `input text "...\n"` を確認）でカスタムコマンドを実行。公式の主経路は CLI / Socket API だが、現行の AppleScript 優先 + CLI フォールバックを維持する。`send key` は辞書にないため改行込みの `input text` で実行を確定する。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュと無応答時のハングを防ぎ、5 秒以内に正常終了した場合のみ成功扱い
+- cmux: AppleScript（ローカル cmux 0.64.20 で `new window` + `input text "...\n"` を確認）でカスタムコマンドを実行。公式の主経路は CLI / Socket API だが、現行の AppleScript 優先 + CLI フォールバックを維持する。`send key` は辞書にないため改行込みの `input text` で実行を確定する。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュと無応答時のハングを防ぎ、5 秒以内に正常終了した場合のみ成功扱い
   - **注意**: ディレクトリを cmux で開く場合は Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
 
 ### アップデート通知

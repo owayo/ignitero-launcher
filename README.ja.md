@@ -2,6 +2,23 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-07-27 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、リモート最新と同期済みであることを確認
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（GRDB.swift / KeyboardShortcuts / Fuse-Swift / EmojiKit の4件すべて最新）を確認
+- 各ターミナルの AppleScript 対応状況を再調査し、実装方針の変更が不要であることを確認
+  - Terminal.app 2.15: ローカル辞書で `do script` を確認
+  - iTerm2 3.6.11: 公式ドキュメントとローカル辞書で `create window with default profile` / `write text` を確認
+  - Ghostty 1.3.1: 公式辞書とローカル辞書で `new window` / `input text` / `send key` を確認し、現行の AppleScript 優先 + `.command` フォールバックを維持
+  - cmux 0.64.20: 公式辞書とローカル辞書で `new window` / `input text` を確認。`send key` はないため、現行の AppleScript 優先 + CLI フォールバックを維持
+  - Warp 0.2026.07.01.09.21.01: `sdef` がエラー -192 で辞書を取得できず、公式の URI Scheme / Launch Configurations と `.command` 方式を維持
+- astro-sight で全体の複雑度と未参照シンボルを確認。最大値は網羅的なキー記号対応表の40で分岐の独立した単純マッピング、その他の主要処理は12以下、未参照シンボルはないためリファクタリング不要と判断
+- コードベース全体レビューで、設定保存失敗後にメモリ上だけ変更済みとなる確実な不整合を修正
+  - `SettingsManager.updateSettings` に設定更新と保存を集約し、保存エラー時は変更前の設定を復元
+  - `SettingsViewModel` の設定変更・ディレクトリ・コマンド・除外アプリ操作を共通更新経路へ統一し、保存失敗時は変更通知を抑止
+- 保存失敗時の値・配列・通知を検証する回帰テストを3件追加し、テスト数を998件から1001件へ更新
+- Swiftソースとテストコード内のコメントが日本語であることを確認
+
 2026-07-16 更新内容（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、リモート差分がないことを確認

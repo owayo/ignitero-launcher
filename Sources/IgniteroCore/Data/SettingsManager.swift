@@ -248,6 +248,22 @@ public final class SettingsManager: @unchecked Sendable {
     try data.write(to: filePath, options: .atomic)
   }
 
+  /// 設定変更を保存し、保存失敗時はメモリ上の設定を変更前へ戻す。
+  ///
+  /// - Parameter update: 設定へ適用する変更
+  /// - Throws: 設定の保存に失敗した場合
+  func updateSettings(_ update: (inout Settings) -> Void) throws {
+    let previousSettings = settings
+    update(&settings)
+
+    do {
+      try save()
+    } catch {
+      settings = previousSettings
+      throw error
+    }
+  }
+
   public func load() throws {
     let fm = FileManager.default
     guard fm.fileExists(atPath: filePath.path) else {
@@ -283,26 +299,30 @@ public final class SettingsManager: @unchecked Sendable {
   public func addDirectory(_ dir: RegisteredDirectory) throws {
     // path を一意キーとして扱う。SettingsView の一覧は id: \.path で行を識別するため、
     // 同一 path の重複登録を防ぐ。既存エントリがあれば設定を置き換える。
-    if let index = settings.registeredDirectories.firstIndex(where: { $0.path == dir.path }) {
-      settings.registeredDirectories[index] = dir
-    } else {
-      settings.registeredDirectories.append(dir)
+    try updateSettings { settings in
+      if let index = settings.registeredDirectories.firstIndex(where: { $0.path == dir.path }) {
+        settings.registeredDirectories[index] = dir
+      } else {
+        settings.registeredDirectories.append(dir)
+      }
     }
-    try save()
   }
 
   public func removeDirectory(path: String) throws {
-    settings.registeredDirectories.removeAll { $0.path == path }
-    try save()
+    try updateSettings { settings in
+      settings.registeredDirectories.removeAll { $0.path == path }
+    }
   }
 
   public func addCommand(_ cmd: CustomCommand) throws {
-    settings.customCommands.append(cmd)
-    try save()
+    try updateSettings { settings in
+      settings.customCommands.append(cmd)
+    }
   }
 
   public func removeCommand(alias: String) throws {
-    settings.customCommands.removeAll { $0.alias == alias }
-    try save()
+    try updateSettings { settings in
+      settings.customCommands.removeAll { $0.alias == alias }
+    }
   }
 }
