@@ -2,6 +2,19 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-07-29 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、リモート最新と同期済みであることを確認
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（GRDB.swift / KeyboardShortcuts / Fuse-Swift / EmojiKit の4件すべて最新）を確認
+- Terminal.app 2.15 / iTerm2 3.6.11 / Ghostty 1.3.1 / cmux 0.64.20 のローカル AppleScript dictionary と公式情報、Warp 0.2026.07.01.09.21.01 の `sdef` エラー -192 を再確認し、現行方式の変更が不要と判断
+- astro-sight で複雑度・未参照シンボル・変更影響を確認し、単純な網羅的マッピング以外にリファクタリング対象がないことを確認
+- Thread Sanitizer で確実に再現した問題を修正
+  - `CalculatorEngine` の括弧深度上限256では計測用コードを含む実行時に深さ219でスタック保護領域へ到達したため、上限を128へ変更
+  - `MockLaunchService` の呼び出し記録を `Mutex` で保護し、並行読み書きのデータ競合を解消
+  - 非同期処理を固定時間待つテストを完了条件待ちへ変更し、低速実行時の偽陰性を解消
+- モックの並行読み書き回帰テストを追加し、テスト数を1001件から1002件へ更新
+- Swiftソースとテストコード内のコメントが日本語であることを確認
+
 2026-07-27 更新内容（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、リモート最新と同期済みであることを確認

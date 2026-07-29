@@ -58,7 +58,7 @@ private struct Parser {
   /// （検索欄への大量貼り付け等）はスタックオーバーフローを起こし、アプリ全体が SIGSEGV で
   /// クラッシュする。正当な計算式がこの深さを超えることはないため、上限を超えたら無効な式として
   /// nil を返す（`+`/`*`/単項マイナスをループ化してスタック消費を抑えているのと同じ方針）。
-  private static let maxParenDepth = 256
+  private static let maxParenDepth = 128
 
   mutating func parseExpression(depth: Int = 0) -> Double? {
     guard var result = parseTerm(depth: depth) else { return nil }

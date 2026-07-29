@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Synchronization
 import Testing
 
 @testable import IgniteroCore
@@ -89,29 +90,53 @@ private struct CoordinatorMockIMEController: IMEControlling {
 }
 
 /// テスト用モック LaunchService
-private final class MockLaunchService: Launching, @unchecked Sendable {
-  var launchAppCalledWith: String?
-  var openDirectoryCalledWith: (path: String, editor: EditorType?)?
-  var openInTerminalCalledWith: (path: String, terminal: TerminalType)?
+private final class MockLaunchService: Launching, Sendable {
+  private struct Calls: Sendable {
+    var launchAppCalledWith: String?
+    var openDirectoryCalledWith: (path: String, editor: EditorType?)?
+    var openInTerminalCalledWith: (path: String, terminal: TerminalType)?
+    var executeCommandCalledWith:
+      (command: String, workingDirectory: String?, terminal: TerminalType)?
+  }
+
+  private let calls = Mutex(Calls())
+
+  var launchAppCalledWith: String? {
+    calls.withLock { $0.launchAppCalledWith }
+  }
+
+  var openDirectoryCalledWith: (path: String, editor: EditorType?)? {
+    calls.withLock { $0.openDirectoryCalledWith }
+  }
+
+  var openInTerminalCalledWith: (path: String, terminal: TerminalType)? {
+    calls.withLock { $0.openInTerminalCalledWith }
+  }
+
   var executeCommandCalledWith:
     (command: String, workingDirectory: String?, terminal: TerminalType)?
+  {
+    calls.withLock { $0.executeCommandCalledWith }
+  }
 
   func launchApp(at path: String) async throws {
-    launchAppCalledWith = path
+    calls.withLock { $0.launchAppCalledWith = path }
   }
 
   func openDirectory(_ path: String, editor: EditorType?) async throws {
-    openDirectoryCalledWith = (path, editor)
+    calls.withLock { $0.openDirectoryCalledWith = (path, editor) }
   }
 
   func openInTerminal(_ path: String, terminal: TerminalType) async throws {
-    openInTerminalCalledWith = (path, terminal)
+    calls.withLock { $0.openInTerminalCalledWith = (path, terminal) }
   }
 
   func executeCommand(
     _ command: String, workingDirectory: String?, terminal: TerminalType
   ) async throws {
-    executeCommandCalledWith = (command, workingDirectory, terminal)
+    calls.withLock {
+      $0.executeCommandCalledWith = (command, workingDirectory, terminal)
+    }
   }
 
   func availableEditors() -> [EditorInfo] {
@@ -134,6 +159,45 @@ private final class MockLaunchService: Launching, @unchecked Sendable {
         installed: true
       )
     }
+  }
+}
+
+@MainActor
+private func waitUntil(
+  timeout: Duration = .seconds(5),
+  _ condition: () -> Bool
+) async -> Bool {
+  let clock = ContinuousClock()
+  let deadline = clock.now.advanced(by: timeout)
+
+  while clock.now < deadline {
+    if condition() {
+      return true
+    }
+    await Task.yield()
+  }
+
+  return condition()
+}
+
+@Suite("LaunchService モックの並行安全性")
+struct MockLaunchServiceConcurrencyTests {
+  @Test("呼び出し記録の並行読み書きでデータ競合を起こさない")
+  func concurrentCallRecording() async {
+    let service = MockLaunchService()
+
+    await withTaskGroup(of: Void.self) { group in
+      for index in 0..<100 {
+        group.addTask {
+          try? await service.openDirectory("/tmp/\(index)", editor: .vscode)
+        }
+        group.addTask {
+          _ = service.openDirectoryCalledWith
+        }
+      }
+    }
+
+    #expect(service.openDirectoryCalledWith != nil)
   }
 }
 
@@ -498,7 +562,8 @@ struct AppCoordinatorExecuteResultTests {
     coordinator.executeResult(result)
 
     // 非同期タスクの完了を待つ
-    try await Task.sleep(nanoseconds: 100_000_000)
+    let completed = await waitUntil { mockLaunch.launchAppCalledWith != nil }
+    #expect(completed)
 
     #expect(mockLaunch.launchAppCalledWith == "/Applications/Safari.app")
   }
@@ -520,7 +585,8 @@ struct AppCoordinatorExecuteResultTests {
     coordinator.executeResult(result)
 
     // 非同期タスクの完了を待つ
-    try await Task.sleep(nanoseconds: 100_000_000)
+    let completed = await waitUntil { mockLaunch.executeCommandCalledWith != nil }
+    #expect(completed)
 
     #expect(mockLaunch.executeCommandCalledWith?.command == "make build")
     #expect(mockLaunch.executeCommandCalledWith?.workingDirectory == "/project")
@@ -677,7 +743,8 @@ struct AppCoordinatorOpenInTerminalTests {
     coordinator.openInTerminal("/Users/dev/project")
 
     // 非同期タスクの完了を待つ
-    try await Task.sleep(nanoseconds: 100_000_000)
+    let completed = await waitUntil { mockLaunch.openInTerminalCalledWith != nil }
+    #expect(completed)
 
     #expect(mockLaunch.openInTerminalCalledWith?.path == "/Users/dev/project")
     #expect(mockLaunch.openInTerminalCalledWith?.terminal == .ghostty)
@@ -737,7 +804,8 @@ struct AppCoordinatorSettingsIntegrationTests {
 
     coordinator.openInTerminal("/test")
 
-    try await Task.sleep(nanoseconds: 100_000_000)
+    let completed = await waitUntil { mockLaunch.openInTerminalCalledWith != nil }
+    #expect(completed)
 
     #expect(mockLaunch.openInTerminalCalledWith?.terminal == .warp)
   }
@@ -1128,7 +1196,8 @@ struct AppCoordinatorEndToEndFlowTests {
     coordinator.executeResult(selected)
 
     // 5. 非同期実行の完了を待つ
-    try await Task.sleep(nanoseconds: 100_000_000)
+    let completed = await waitUntil { mockLaunch.launchAppCalledWith != nil }
+    #expect(completed)
 
     // 6. アプリが起動されたことを確認する
     #expect(mockLaunch.launchAppCalledWith == "/Applications/Xcode.app")
@@ -1177,7 +1246,8 @@ struct AppCoordinatorEndToEndFlowTests {
     // 4. ターミナル起動を実行する
     coordinator.openInTerminal(firstResult.path)
 
-    try await Task.sleep(nanoseconds: 100_000_000)
+    let completed = await waitUntil { mockLaunch.openInTerminalCalledWith != nil }
+    #expect(completed)
 
     #expect(mockLaunch.openInTerminalCalledWith?.path == "/Users/dev/my-project")
     #expect(mockLaunch.openInTerminalCalledWith?.terminal == .iterm2)
