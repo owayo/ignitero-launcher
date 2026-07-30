@@ -12,5 +12,9 @@ DerivedData/
 # macOS
 .DS_Store
 
+# Python (scripts/ のバイトコードキャッシュ)
+__pycache__/
+*.py[cod]
+
 # Backup (Tauri legacy)
 .backup/
