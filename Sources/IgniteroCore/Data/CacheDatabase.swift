@@ -31,7 +31,16 @@ public actor CacheDatabase: CacheDatabaseProtocol {
     dbQueue = queue
   }
 
-  public init(inMemory: Bool) throws {
+  /// インメモリ DB を生成する（テスト・キャッシュ無効時のフォールバック用）。
+  ///
+  /// 以前は `init(inMemory: Bool)` だったが、引数を一切参照しておらず
+  /// `inMemory: false` を渡しても常にインメモリ DB が返る「嘘の API」だった。
+  /// 永続化するかどうかはパスの有無で決まるため、ファクトリで意図を型に表す。
+  public static func inMemory() throws -> CacheDatabase {
+    try CacheDatabase(inMemoryMarker: ())
+  }
+
+  private init(inMemoryMarker: Void) throws {
     var config = Configuration()
     config.prepareDatabase { db in
       try db.execute(sql: "PRAGMA journal_mode = WAL")

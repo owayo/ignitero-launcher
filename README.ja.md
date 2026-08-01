@@ -2,6 +2,21 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-08-02 更新内容（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、既存の未コミット変更を退避・復元してリモート最新と同期
+- `depup --install --include-pinned` を実行し、依存パッケージ更新なし（GRDB.swift / KeyboardShortcuts / Fuse-Swift / EmojiKit の4件すべて最新）を確認
+- OSV API の `SwiftURL` エコシステムへ解決済み4依存の正確なバージョンを問い合わせ、既知脆弱性0件を確認（ローカルの `osv-scanner` はLinux x86_64バイナリのため実行不能）
+- Terminal.app 2.15 / iTerm2 3.6.11 / Ghostty 1.3.1 / cmux 0.64.20 のローカル AppleScript dictionary と公式情報、Warp 0.2026.07.01.09.21.01 の `sdef` エラー -192 を再確認し、現行方式の変更が不要と判断
+- astro-sight で全体の複雑度・未参照シンボル・変更影響を確認。最大複雑度40は特殊キーの網羅的な単純マッピングで、次点は12のため、挙動変更を伴うリファクタリングは不要と判断
+- コードベース全体レビューで、再現条件を確定できた問題を修正
+  - `SelectionHistory`: 上限50件がすべて高スコアの場合、51件目の新規履歴が追加直後に最低スコアとして自己削除され、以後新しい選択を学習できない問題を修正
+  - `Settings` / `RegisteredDirectory`: 未知の enum rawValue 1件で設定ファイル全体がデフォルトへ戻り、登録ディレクトリ・カスタムコマンド・除外アプリまで失われる問題を修正
+  - `CacheDatabase`: 常にインメモリDBを生成するのに真偽値を受け取っていた初期化APIを `inMemory()` ファクトリへ変更し、`false` でもインメモリになる無効な状態を排除
+  - コンパイラが到達不能と判定した nil 合体演算子と、`nonisolated` DBメソッドへの不要な `await` を除去
+- テスト数を 1002 → 1004 に増加（高スコア履歴満杯時の新規項目保持、未知enum値を含む設定の部分的フォールバックを追加）
+- Swiftフォーマット厳格lint、コメント日本語化監査、デバッグ・リリースビルド、通常および Thread Sanitizer 付きの全テストを実施。CodeRabbit CLI は無料枠の rate limit で開始できなかったため、astro-sight・コンパイラ・テストで補完
+
 2026-07-29 更新内容（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、リモート最新と同期済みであることを確認

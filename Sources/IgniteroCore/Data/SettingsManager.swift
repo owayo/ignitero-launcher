@@ -55,6 +55,35 @@ public struct RegisteredDirectory: Codable, Sendable, Equatable {
     case subdirsEditor = "subdirs_editor"
     case scanForApps = "scan_for_apps"
   }
+
+  /// 未知の `OpenMode` を `.finder` へ落として読み込む。
+  ///
+  /// 合成デコーダのままだと未知の rawValue で `DecodingError` を投げ、それが
+  /// `SettingsManager.load()` に捕まって「設定ファイル全体をデフォルトへ巻き戻す」
+  /// 挙動になる（登録ディレクトリもカスタムコマンドも除外アプリも失われる）。
+  /// 「表示しない」は既知の `.none` として保存されるため、未知の値は
+  /// 何らかの表示モードだった可能性が高い。ディレクトリが黙って消えるより
+  /// Finder で開ける状態に落とす方が復旧しやすい。
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    path = try container.decode(String.self, forKey: .path)
+    parentOpenMode = Self.decodeOpenMode(from: container, forKey: .parentOpenMode)
+    parentEditor = try container.decodeIfPresent(String.self, forKey: .parentEditor)
+    parentSearchKeyword = try container.decodeIfPresent(String.self, forKey: .parentSearchKeyword)
+    subdirsOpenMode = Self.decodeOpenMode(from: container, forKey: .subdirsOpenMode)
+    subdirsEditor = try container.decodeIfPresent(String.self, forKey: .subdirsEditor)
+    scanForApps = try container.decode(Bool.self, forKey: .scanForApps)
+  }
+
+  private static func decodeOpenMode(
+    from container: KeyedDecodingContainer<CodingKeys>,
+    forKey key: CodingKeys
+  ) -> OpenMode {
+    guard let mode = try? container.decodeIfPresent(OpenMode.self, forKey: key) else {
+      return .finder
+    }
+    return mode
+  }
 }
 
 public struct CustomCommand: Codable, Sendable, Equatable, Identifiable {
@@ -188,6 +217,26 @@ public struct Settings: Codable, Sendable {
     case updateCache = "update_cache"
   }
 
+  /// 未知の rawValue を持つ enum フィールドをデフォルト値へ落として読み込む。
+  ///
+  /// `decodeIfPresent` が nil を返すのはキー欠落か null のときだけで、キーが存在して
+  /// rawValue が未知（新しいビルドで選んだ `cmux` を旧ビルドで読む、設定ファイルの
+  /// 手編集ミス等）の場合は `DecodingError.dataCorrupted` を投げる。
+  /// この 1 フィールドの失敗が `load()` の `catch is DecodingError` に捕まると
+  /// 登録ディレクトリ・カスタムコマンド・除外アプリを含む全設定がデフォルトへ
+  /// 巻き戻ってしまうため、enum だけは個別に握りつぶす。
+  private static func decodeLenient<T: Decodable>(
+    _ type: T.Type,
+    from container: KeyedDecodingContainer<CodingKeys>,
+    forKey key: CodingKeys,
+    default fallback: T
+  ) -> T {
+    guard let value = try? container.decodeIfPresent(type, forKey: key) else {
+      return fallback
+    }
+    return value
+  }
+
   /// 既存の設定ファイルとの後方互換デコード（新フィールドはデフォルト値で補完）。
   public init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -196,10 +245,10 @@ public struct Settings: Codable, Sendable {
       ?? Settings.defaultRegisteredDirectories
     customCommands =
       try container.decodeIfPresent([CustomCommand].self, forKey: .customCommands) ?? []
-    defaultEditor =
-      try container.decodeIfPresent(EditorType.self, forKey: .defaultEditor) ?? .cursor
-    defaultTerminal =
-      try container.decodeIfPresent(TerminalType.self, forKey: .defaultTerminal) ?? .terminal
+    defaultEditor = Self.decodeLenient(
+      EditorType.self, from: container, forKey: .defaultEditor, default: .cursor)
+    defaultTerminal = Self.decodeLenient(
+      TerminalType.self, from: container, forKey: .defaultTerminal, default: .terminal)
     cacheUpdate =
       try container.decodeIfPresent(CacheUpdateSettings.self, forKey: .cacheUpdate)
       ?? CacheUpdateSettings(

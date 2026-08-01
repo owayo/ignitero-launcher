@@ -125,7 +125,7 @@ public final class AppCoordinator {
         Self.logger.error("Failed to open cache database: \(error.localizedDescription)")
         // インメモリデータベースへフォールバックする
         do {
-          self.cacheDatabase = try CacheDatabase(inMemory: true)
+          self.cacheDatabase = try CacheDatabase.inMemory()
         } catch {
           fatalError("Failed to create in-memory cache database: \(error)")
         }

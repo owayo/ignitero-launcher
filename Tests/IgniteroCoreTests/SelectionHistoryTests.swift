@@ -365,6 +365,26 @@ struct SelectionHistoryTests {
     #expect(frequentEntries[0].count == 20)
   }
 
+  @Test("高スコアの履歴で満杯でも新規エントリを保持する")
+  func fullHighScoreHistoryAcceptsNewEntry() throws {
+    let path = makeTempFilePath()
+    defer { cleanup(path) }
+
+    let history = SelectionHistory(filePath: path)
+
+    // 全エントリを2回ずつ記録し、新規エントリより保持スコアを高くする
+    for i in 0..<50 {
+      history.record(keyword: "key\(i)", path: "/path/\(i)")
+      history.record(keyword: "key\(i)", path: "/path/\(i)")
+    }
+
+    history.record(keyword: "new", path: "/path/new")
+
+    #expect(history.allEntries.count == 50)
+    #expect(history.entries(for: "new").count == 1)
+    #expect(history.allEntries.count(where: { $0.keyword.hasPrefix("key") }) == 49)
+  }
+
   // MARK: - 無効パスの削除
 
   @Test("存在しないパスの履歴を削除できる")

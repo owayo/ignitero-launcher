@@ -39,7 +39,7 @@ public final class SelectionHistory: Sendable {
   /// キーワードとパスの組み合わせを記録する
   ///
   /// 同じキーワード+パスが既に存在する場合はカウントを増加し lastUsed を更新する。
-  /// エントリ数が上限を超えた場合、lastUsed が最も古いエントリを削除する。
+  /// エントリ数が上限を超えた場合、保持価値が最も低い「既存の」エントリを削除する。
   public func record(keyword: String, path: String) {
     storage.withLock { entries in
       if let index = entries.firstIndex(where: { $0.keyword == keyword && $0.selectedPath == path })
@@ -53,11 +53,22 @@ public final class SelectionHistory: Sendable {
 
       // 上限を超えたら保持価値が最も低いエントリを削除
       // 保持スコア = lastUsed + log2(count+1) * 1日分（頻繁に使うほど猶予を与える）
+      //
+      // 退避候補から末尾（＝いま append した新規エントリ）を必ず除外する。
+      // 新規エントリのスコアは `now + log2(2)*86400` で固定だが、count が 2 以上の
+      // 既存エントリは `lastUsed + log2(3)*86400` 以上になるため、上限に達した
+      // 履歴がすべて「count>=2 かつ直近約14時間以内に使用」だと新規エントリが
+      // 最小スコアになり、追加した直後に自分自身が削除されてしまう。
+      // その状態では履歴が恒久的に更新されなくなる。
       if entries.count > SelectionHistory.maxEntries {
-        if let evictIndex = entries.indices.min(by: {
+        let existingIndices = entries.indices.dropLast()
+        if let evictIndex = existingIndices.min(by: {
           Self.retentionScore(entries[$0]) < Self.retentionScore(entries[$1])
         }) {
           entries.remove(at: evictIndex)
+        } else {
+          // 既存エントリが無い（maxEntries が 0）ケースの保険
+          entries.removeLast()
         }
       }
     }

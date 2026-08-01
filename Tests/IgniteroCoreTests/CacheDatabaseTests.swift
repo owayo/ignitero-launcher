@@ -5,7 +5,7 @@ import Testing
 @testable import IgniteroCore
 
 @Test func cacheDatabaseCreatesTablesOnInit() async throws {
-  let db = try CacheDatabase(inMemory: true)
+  let db = try CacheDatabase.inMemory()
   // テーブルが作成されていることを確認
   let tableNames = try await db.tableNames()
   #expect(tableNames.contains("apps"))
@@ -14,7 +14,7 @@ import Testing
 }
 
 @Test func cacheDatabaseSaveAndLoadApps() async throws {
-  let db = try CacheDatabase(inMemory: true)
+  let db = try CacheDatabase.inMemory()
   let apps = [
     AppItem(
       name: "Safari", path: "/Applications/Safari.app", iconPath: "/icons/safari.png",
@@ -22,7 +22,7 @@ import Testing
     AppItem(name: "Finder", path: "/System/Applications/Finder.app"),
   ]
 
-  try await db.saveApps(apps)
+  try db.saveApps(apps)
   let loaded = try await db.loadApps()
 
   #expect(loaded.count == 2)
@@ -31,12 +31,12 @@ import Testing
 }
 
 @Test func cacheDatabaseSaveAppsOverwritesExisting() async throws {
-  let db = try CacheDatabase(inMemory: true)
+  let db = try CacheDatabase.inMemory()
   let initial = [AppItem(name: "Safari", path: "/Applications/Safari.app")]
-  try await db.saveApps(initial)
+  try db.saveApps(initial)
 
   let updated = [AppItem(name: "Safari Updated", path: "/Applications/Safari.app")]
-  try await db.saveApps(updated)
+  try db.saveApps(updated)
 
   let loaded = try await db.loadApps()
   #expect(loaded.count == 1)
@@ -44,9 +44,9 @@ import Testing
 }
 
 @Test func cacheDatabaseAppWithOptionalFields() async throws {
-  let db = try CacheDatabase(inMemory: true)
+  let db = try CacheDatabase.inMemory()
   let app = AppItem(name: "Test", path: "/test.app", iconPath: nil, originalName: nil)
-  try await db.saveApps([app])
+  try db.saveApps([app])
   let loaded = try await db.loadApps()
   #expect(loaded.count == 1)
   #expect(loaded[0].iconPath == nil)
@@ -54,13 +54,13 @@ import Testing
 }
 
 @Test func cacheDatabaseSaveAndLoadDirectories() async throws {
-  let db = try CacheDatabase(inMemory: true)
+  let db = try CacheDatabase.inMemory()
   let dirs = [
     DirectoryItem(name: "project-a", path: "/Users/dev/project-a", editor: "vscode"),
     DirectoryItem(name: "project-b", path: "/Users/dev/project-b"),
   ]
 
-  try await db.saveDirectories(dirs)
+  try db.saveDirectories(dirs)
   let loaded = try await db.loadDirectories()
 
   #expect(loaded.count == 2)
@@ -69,46 +69,46 @@ import Testing
 }
 
 @Test func cacheDatabaseSaveDirectoriesOverwritesExisting() async throws {
-  let db = try CacheDatabase(inMemory: true)
+  let db = try CacheDatabase.inMemory()
   let initial = [DirectoryItem(name: "project", path: "/project", editor: "vscode")]
-  try await db.saveDirectories(initial)
+  try db.saveDirectories(initial)
 
   let updated = [DirectoryItem(name: "project", path: "/project", editor: "cursor")]
-  try await db.saveDirectories(updated)
+  try db.saveDirectories(updated)
 
   let loaded = try await db.loadDirectories()
   #expect(loaded.count == 1)
   #expect(loaded[0].editor == "cursor")
 }
 
-@Test func cacheDatabaseIsEmptyWhenNew() async throws {
-  let db = try CacheDatabase(inMemory: true)
-  let empty = try await db.isEmpty()
+@Test func cacheDatabaseIsEmptyWhenNew() throws {
+  let db = try CacheDatabase.inMemory()
+  let empty = try db.isEmpty()
   #expect(empty == true)
 }
 
-@Test func cacheDatabaseIsNotEmptyAfterSavingApps() async throws {
-  let db = try CacheDatabase(inMemory: true)
-  try await db.saveApps([AppItem(name: "Safari", path: "/Applications/Safari.app")])
-  let empty = try await db.isEmpty()
+@Test func cacheDatabaseIsNotEmptyAfterSavingApps() throws {
+  let db = try CacheDatabase.inMemory()
+  try db.saveApps([AppItem(name: "Safari", path: "/Applications/Safari.app")])
+  let empty = try db.isEmpty()
   #expect(empty == false)
 }
 
-@Test func cacheDatabaseIsNotEmptyAfterSavingDirectories() async throws {
-  let db = try CacheDatabase(inMemory: true)
-  try await db.saveDirectories([DirectoryItem(name: "proj", path: "/proj")])
-  let empty = try await db.isEmpty()
+@Test func cacheDatabaseIsNotEmptyAfterSavingDirectories() throws {
+  let db = try CacheDatabase.inMemory()
+  try db.saveDirectories([DirectoryItem(name: "proj", path: "/proj")])
+  let empty = try db.isEmpty()
   #expect(empty == false)
 }
 
-@Test func cacheDatabaseClearCache() async throws {
-  let db = try CacheDatabase(inMemory: true)
-  try await db.saveApps([AppItem(name: "Safari", path: "/Applications/Safari.app")])
-  try await db.saveDirectories([DirectoryItem(name: "proj", path: "/proj")])
+@Test func cacheDatabaseClearCache() throws {
+  let db = try CacheDatabase.inMemory()
+  try db.saveApps([AppItem(name: "Safari", path: "/Applications/Safari.app")])
+  try db.saveDirectories([DirectoryItem(name: "proj", path: "/proj")])
 
-  try await db.clearCache()
+  try db.clearCache()
 
-  let empty = try await db.isEmpty()
+  let empty = try db.isEmpty()
   #expect(empty == true)
 }
 
@@ -134,10 +134,10 @@ import Testing
 // MARK: - saveAppsAndDirectories の結合保存
 
 @Test func cacheDatabaseSaveAppsAndDirectoriesReplacesBoth() async throws {
-  let db = try CacheDatabase(inMemory: true)
+  let db = try CacheDatabase.inMemory()
 
   // 初期データ
-  try await db.saveAppsAndDirectories(
+  try db.saveAppsAndDirectories(
     apps: [
       AppItem(name: "OldApp", path: "/Applications/OldApp.app")
     ],
@@ -147,7 +147,7 @@ import Testing
   )
 
   // まったく異なる世代のデータで置換
-  try await db.saveAppsAndDirectories(
+  try db.saveAppsAndDirectories(
     apps: [
       AppItem(name: "NewApp", path: "/Applications/NewApp.app", iconPath: "/i.png")
     ],
@@ -165,9 +165,9 @@ import Testing
   #expect(dirs.first?.editor == "cursor")
 }
 
-@Test func cacheDatabaseSaveAppsAndDirectoriesHandlesEmptyArrays() async throws {
-  let db = try CacheDatabase(inMemory: true)
-  try await db.saveAppsAndDirectories(apps: [], directories: [])
-  let empty = try await db.isEmpty()
+@Test func cacheDatabaseSaveAppsAndDirectoriesHandlesEmptyArrays() throws {
+  let db = try CacheDatabase.inMemory()
+  try db.saveAppsAndDirectories(apps: [], directories: [])
+  let empty = try db.isEmpty()
   #expect(empty == true)
 }

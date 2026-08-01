@@ -196,6 +196,39 @@ struct SettingsCodableTests {
     #expect(settings.defaultTerminal == .ghostty)
   }
 
+  @Test func decodeUnknownEnumValuesFallsBackWithoutDiscardingOtherSettings() throws {
+    let json = """
+      {
+        "registered_directories": [
+          {
+            "path": "/future-project",
+            "parent_open_mode": "future-mode",
+            "parent_search_keyword": "keep-me",
+            "subdirs_open_mode": "future-mode",
+            "scan_for_apps": true
+          }
+        ],
+        "custom_commands": [],
+        "default_editor": "future-editor",
+        "default_terminal": "future-terminal",
+        "excluded_apps": ["KeepMe.app"]
+      }
+      """
+
+    let settings = try JSONDecoder().decode(Settings.self, from: Data(json.utf8))
+    let directory = try #require(settings.registeredDirectories.first)
+
+    #expect(settings.defaultEditor == .cursor)
+    #expect(settings.defaultTerminal == .terminal)
+    #expect(settings.registeredDirectories.count == 1)
+    #expect(directory.path == "/future-project")
+    #expect(directory.parentOpenMode == .finder)
+    #expect(directory.parentSearchKeyword == "keep-me")
+    #expect(directory.subdirsOpenMode == .finder)
+    #expect(directory.scanForApps)
+    #expect(settings.excludedApps == ["KeepMe.app"])
+  }
+
   @Test func allTerminalTypes() throws {
     for terminal in TerminalType.allCases {
       let json = """

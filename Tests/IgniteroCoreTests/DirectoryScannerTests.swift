@@ -737,7 +737,7 @@ struct DirectoryScannerCacheIntegrationTests {
     let result = try scanner.scan(directories: [registered])
 
     // キャッシュデータベースへ保存する
-    let db = try CacheDatabase(inMemory: true)
+    let db = try CacheDatabase.inMemory()
     try db.saveDirectories(result.directories)
     try db.saveApps(result.apps)
 
