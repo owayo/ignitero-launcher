@@ -86,14 +86,11 @@ private func writeMinimalValidIcon(to path: String) throws {
 struct AppScannerProtocolTests {
 
   @Test func conformsToAppScannerProtocol() {
-    let scanner = AppScanner()
-    #expect(scanner is any AppScannerProtocol)
+    let _: any AppScannerProtocol = AppScanner()
   }
 
   @Test func isSendable() {
-    let scanner = AppScanner()
-    let _: any Sendable = scanner
-    #expect(true)  // コンパイルできれば Sendable 準拠
+    let _: any Sendable = AppScanner()
   }
 }
 

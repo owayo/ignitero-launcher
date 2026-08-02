@@ -75,7 +75,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - カスタムコマンド履歴は `command://UUID` 識別子で管理し、現在登録されているコマンドだけ起動時クリーンアップで保持
 - AppleScript実行失敗時はエラーを検出し、Ghostty は `.command` 方式、cmux は CLI 方式へ自動フォールバック
 - cmux CLI は実行ファイルの存在と実行権限を確認してから ping し、CLI 起動失敗時や ping 無応答時もアプリ本体がクラッシュ・ハングしないように処理（短命プロセスの終了検出遅延を考慮して 5 秒上限）
-- cmux CLI の stdout/stderr は一時ファイルに分けて回収し、大きな stderr 出力でもデッドロックしないように処理
+- cmux CLI の stdout/stderr は一時ファイルに分けて回収し、大きな stderr 出力でもデッドロックしないように処理。削除処理をファイルハンドル取得前に予約し、stderr 側のハンドル取得失敗時も FD と一時ファイルを残さない
 - AppleScript 実行（`osascript`）の stderr Pipe ハンドルは取得直後に `defer` で close し、cmux CLI 経路と同じく FD リークを防止
 - `Process` の stdout/stderr 破棄には `FileHandle.nullDevice` を使わず、各プロセス専用の書き込み用 `/dev/null` ハンドルを使って短命 CLI の false negative を防止
 - デフォルトターミナル（macOSターミナル / iTerm2 / Warp / Ghostty / cmux）で実行

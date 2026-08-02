@@ -925,6 +925,37 @@ struct LaunchServiceCmuxCLIExecutionTests {
       Issue.record("予期しないエラー: \(error)")
     }
   }
+
+  @Test("stderr ハンドル取得失敗時も一時ファイルを削除する")
+  func removesTemporaryFilesWhenOpeningStderrFails() throws {
+    let fileURL = try makeExecutableScript("#!/bin/sh\nexit 0\n")
+    defer { try? FileManager.default.removeItem(at: fileURL) }
+
+    var openedURLs: [URL] = []
+    do {
+      _ = try LaunchService.executeCmuxCLI(
+        [],
+        cliPath: fileURL.path,
+        openOutputHandle: { url in
+          openedURLs.append(url)
+          if openedURLs.count == 2 {
+            throw CocoaError(.fileWriteUnknown)
+          }
+          return try FileHandle(forWritingTo: url)
+        }
+      )
+      Issue.record("stderr ハンドル取得失敗でエラーがスローされるべき")
+    } catch is CocoaError {
+      // 想定どおり
+    } catch {
+      Issue.record("予期しないエラー: \(error)")
+    }
+
+    #expect(openedURLs.count == 2)
+    #expect(
+      openedURLs.allSatisfy { !FileManager.default.fileExists(atPath: $0.path) }
+    )
+  }
 }
 
 // MARK: - プロトコル準拠テスト

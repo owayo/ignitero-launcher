@@ -583,7 +583,8 @@ public struct LaunchService: Launching, Sendable {
   @discardableResult
   static func executeCmuxCLI(
     _ arguments: [String],
-    cliPath: String = cmuxCLIPath
+    cliPath: String = cmuxCLIPath,
+    openOutputHandle: (URL) throws -> FileHandle = { try FileHandle(forWritingTo: $0) }
   ) throws -> String {
     guard FileManager.default.fileExists(atPath: cliPath) else {
       throw LaunchError.terminalNotFound(.cmux)
@@ -592,21 +593,19 @@ public struct LaunchService: Launching, Sendable {
     let tempDir = fm.temporaryDirectory
     let stdoutURL = tempDir.appendingPathComponent("ignitero-cmux-stdout-\(UUID().uuidString).log")
     let stderrURL = tempDir.appendingPathComponent("ignitero-cmux-stderr-\(UUID().uuidString).log")
-    _ = fm.createFile(atPath: stdoutURL.path, contents: nil)
-    _ = fm.createFile(atPath: stderrURL.path, contents: nil)
-    // 各ハンドルは取得直後に defer を登録する。
-    // stdout 取得後・stderr 取得前に throw すると、両者をまとめた単一 defer では
-    // stdout ハンドルの defer が未登録となり FD と一時ファイルがリークするため。
-    let stdoutHandle = try FileHandle(forWritingTo: stdoutURL)
+    // ハンドル取得前に失敗しても、一時ファイルを必ず削除する。
+    // 後から登録するハンドルの close が先に実行されるよう、この defer を最初に置く。
     defer {
-      try? stdoutHandle.close()
       try? fm.removeItem(at: stdoutURL)
-    }
-    let stderrHandle = try FileHandle(forWritingTo: stderrURL)
-    defer {
-      try? stderrHandle.close()
       try? fm.removeItem(at: stderrURL)
     }
+    _ = fm.createFile(atPath: stdoutURL.path, contents: nil)
+    _ = fm.createFile(atPath: stderrURL.path, contents: nil)
+    // 各ハンドルは取得直後に close を登録し、途中の失敗でも FD を残さない。
+    let stdoutHandle = try openOutputHandle(stdoutURL)
+    defer { try? stdoutHandle.close() }
+    let stderrHandle = try openOutputHandle(stderrURL)
+    defer { try? stderrHandle.close() }
 
     let process = Process()
     process.executableURL = URL(fileURLWithPath: cliPath)
