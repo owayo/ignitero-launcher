@@ -368,6 +368,26 @@ struct SettingsManagerTests {
       let backupPath = dir.appendingPathComponent("settings.json.backup")
       #expect(!FileManager.default.fileExists(atPath: backupPath.path))
     }
+
+    #expect(manager.loadFailed)
+    do {
+      try manager.save()
+      Issue.record("読み込み失敗後の保存は拒否される必要がある")
+    } catch let error as SettingsError {
+      #expect(error == .saveBlockedByLoadFailure)
+    } catch {
+      Issue.record("想定外のエラー: \(error)")
+    }
+
+    // 外部でファイルが復旧し、再読み込みに成功すれば保存を再開できる。
+    try FileManager.default.removeItem(at: filePath)
+    let recovered = Settings(defaultTerminal: .iterm2)
+    let recoveredData = try JSONEncoder().encode(recovered)
+    try recoveredData.write(to: filePath, options: .atomic)
+    try manager.load()
+    #expect(!manager.loadFailed)
+    #expect(manager.settings.defaultTerminal == .iterm2)
+    try manager.save()
   }
 
   @Test func addDirectory() throws {

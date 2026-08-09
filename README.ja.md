@@ -2,6 +2,18 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-08-09 追記（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、既存の未コミット変更を退避・復元してリモート最新と同期
+- `depup --install --include-pinned` を実行し、GRDB.swift / KeyboardShortcuts / Fuse-Swift / EmojiKit の4依存がすべて最新であることを確認
+- Terminal.app 2.15 / iTerm2 3.6.11 / Ghostty 1.3.1 / cmux 0.64.22 のローカル AppleScript dictionary を確認。Warp 0.2026.07.01.09.21.01 は `sdef` エラー -192 で辞書がなく、公式の URI Scheme / Launch Configurations と `.command` 方式を維持
+- astro-sight で全体の複雑度・未参照シンボル・変更影響を確認。最大複雑度39は特殊キーの網羅的な単純マッピング、次点は11で、挙動変更を伴うリファクタリングは不要と判断
+- コードベース全体レビューで、読込失敗後の起動継続と終了時保存が組み合わさる確実なデータ消失経路を修正
+  - `SettingsManager`: I/O 読込エラー後にデフォルト設定を既存 `settings.json` へ上書きしないよう保存を拒否し、再読込成功時だけ解除
+  - `SelectionHistory`: JSON デコード・I/O 読込エラー後に空履歴を既存ファイルへ上書きしないよう保存を拒否し、再読込成功時だけ解除
+- 読込失敗状態、保存拒否、既存ファイル保持、外部復旧後の保存再開を検証する回帰ケースを追加。Swift ソースとテスト内のコメント表記を日本語へ統一
+- Swift フォーマット厳格 lint、通常の全1005テスト、性能系を除く Thread Sanitizer 付き986テスト、デバッグ・リリースビルドを実行して成功
+
 2026-08-02 追記（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、リモート最新と同期済みであることを確認

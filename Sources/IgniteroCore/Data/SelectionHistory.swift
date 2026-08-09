@@ -16,6 +16,14 @@ public struct SelectionHistoryEntry: Codable, Sendable {
   }
 }
 
+public enum SelectionHistoryError: LocalizedError, Equatable {
+  case saveBlockedByLoadFailure
+
+  public var errorDescription: String? {
+    "選択履歴ファイルの読み込みに失敗しているため保存できません"
+  }
+}
+
 /// キーワード+パスによる選択履歴を管理する
 ///
 /// ランチャーで選択された結果を記録し、次回以降の検索スコア調整に利用する。
@@ -24,11 +32,18 @@ public final class SelectionHistory: Sendable {
   private static let maxEntries = 50
 
   private let storage: Mutex<[SelectionHistoryEntry]>
+  private let loadFailureState: Mutex<Bool>
   private let filePath: String
 
   public init(filePath: String) {
     self.filePath = filePath
     self.storage = Mutex([])
+    self.loadFailureState = Mutex(false)
+  }
+
+  /// 読み込みに失敗し、保存を拒否しているかどうか。
+  public var loadFailed: Bool {
+    loadFailureState.withLock { $0 }
   }
 
   /// 全エントリを返す
@@ -85,11 +100,18 @@ public final class SelectionHistory: Sendable {
 
   /// 現在のエントリを JSON ファイルに保存する
   public func save() throws {
-    let encoder = JSONEncoder()
-    encoder.dateEncodingStrategy = .iso8601
-    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-    let data = try encoder.encode(allEntries)
-    try data.write(to: URL(fileURLWithPath: filePath), options: .atomic)
+    try loadFailureState.withLock { loadFailed in
+      // 読み込み失敗後の空履歴で既存ファイルを上書きしない。
+      guard !loadFailed else {
+        throw SelectionHistoryError.saveBlockedByLoadFailure
+      }
+
+      let encoder = JSONEncoder()
+      encoder.dateEncodingStrategy = .iso8601
+      encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+      let data = try encoder.encode(allEntries)
+      try data.write(to: URL(fileURLWithPath: filePath), options: .atomic)
+    }
   }
 
   /// 存在しないパス・識別子の履歴エントリを削除する（allowlist 方式）。
@@ -118,17 +140,31 @@ public final class SelectionHistory: Sendable {
   ///
   /// ファイルが存在しない場合は何もしない（空の状態を維持）。
   public func load() throws {
-    let url = URL(fileURLWithPath: filePath)
-    guard FileManager.default.fileExists(atPath: filePath) else { return }
-    let data = try Data(contentsOf: url)
-    let decoder = JSONDecoder()
-    decoder.dateDecodingStrategy = .iso8601
-    var loaded = try decoder.decode([SelectionHistoryEntry].self, from: data)
-    // ファイルが maxEntries を超えている場合（手動編集・旧バージョン等）は切り詰める
-    if loaded.count > Self.maxEntries {
-      loaded.sort { Self.retentionScore($0) > Self.retentionScore($1) }
-      loaded = Array(loaded.prefix(Self.maxEntries))
+    try loadFailureState.withLock { loadFailed in
+      // 読み込みと保存を直列化し、読込結果が確定してから保存可否を更新する。
+      loadFailed = true
+      let url = URL(fileURLWithPath: filePath)
+      guard FileManager.default.fileExists(atPath: filePath) else {
+        loadFailed = false
+        return
+      }
+
+      do {
+        let data = try Data(contentsOf: url)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        var loaded = try decoder.decode([SelectionHistoryEntry].self, from: data)
+        // ファイルが maxEntries を超えている場合（手動編集・旧バージョン等）は切り詰める
+        if loaded.count > Self.maxEntries {
+          loaded.sort { Self.retentionScore($0) > Self.retentionScore($1) }
+          loaded = Array(loaded.prefix(Self.maxEntries))
+        }
+        storage.withLock { $0 = loaded }
+        loadFailed = false
+      } catch {
+        // 起動後の終了処理が空履歴を保存しないよう、失敗状態を維持する。
+        throw error
+      }
     }
-    storage.withLock { $0 = loaded }
   }
 }

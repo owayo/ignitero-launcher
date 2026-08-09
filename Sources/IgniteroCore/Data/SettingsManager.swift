@@ -17,6 +17,14 @@ public enum OpenMode: String, Codable, Sendable, CaseIterable {
   case editor
 }
 
+public enum SettingsError: LocalizedError, Equatable {
+  case saveBlockedByLoadFailure
+
+  public var errorDescription: String? {
+    "設定ファイルの読み込みに失敗しているため保存できません"
+  }
+}
+
 // MARK: - データモデル
 
 public struct RegisteredDirectory: Codable, Sendable, Equatable {
@@ -270,6 +278,16 @@ public final class SettingsManager: @unchecked Sendable {
 
   public var settings: Settings
 
+  /// `load()` が I/O エラーで失敗したかどうか。
+  ///
+  /// 読み込みに失敗した場合 `settings` は `init` が入れた `.default` のままになる。
+  /// この状態で `save()` を許すと、`Data.write(options: .atomic)` が一時ファイルを
+  /// rename して既存ファイルへ被せる（rename に必要なのはディレクトリの書き込み権限
+  /// だけで、対象ファイル自体が読めなくても成功する）ため、登録ディレクトリ・
+  /// カスタムコマンド・除外アプリを含むユーザー設定がデフォルトで丸ごと消える。
+  /// 破損 JSON 経路と違ってバックアップも残らないため、保存自体を拒否する。
+  public private(set) var loadFailed = false
+
   private let configDirectory: URL
   private let fileName = "settings.json"
 
@@ -286,6 +304,12 @@ public final class SettingsManager: @unchecked Sendable {
   }
 
   public func save() throws {
+    // 読み込みに失敗したままの保存はユーザー設定の破壊になるため拒否する。
+    guard !loadFailed else {
+      Self.logger.error("Refusing to save settings: the settings file was never loaded")
+      throw SettingsError.saveBlockedByLoadFailure
+    }
+
     let fm = FileManager.default
     if !fm.fileExists(atPath: configDirectory.path) {
       try fm.createDirectory(at: configDirectory, withIntermediateDirectories: true)
@@ -317,12 +341,14 @@ public final class SettingsManager: @unchecked Sendable {
     let fm = FileManager.default
     guard fm.fileExists(atPath: filePath.path) else {
       settings = .default
+      loadFailed = false
       return
     }
 
     do {
       let data = try Data(contentsOf: filePath)
       settings = try JSONDecoder().decode(Settings.self, from: data)
+      loadFailed = false
     } catch is DecodingError {
       // JSON が破損: バックアップを作成しデフォルト値に復元
       let backupPath = configDirectory.appendingPathComponent("\(fileName).backup")
@@ -339,8 +365,10 @@ public final class SettingsManager: @unchecked Sendable {
         )
       }
       settings = .default
+      loadFailed = false
     } catch {
       // I/O エラーは呼び出し側へ伝播する
+      loadFailed = true
       throw error
     }
   }

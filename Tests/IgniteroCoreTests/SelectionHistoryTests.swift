@@ -248,13 +248,32 @@ struct SelectionHistoryTests {
     defer { cleanup(path) }
 
     // 不正な JSON を書き込む
-    try "{ invalid json }".write(
+    let corruptedJSON = "{ invalid json }"
+    try corruptedJSON.write(
       to: URL(fileURLWithPath: path), atomically: true, encoding: .utf8)
 
     let history = SelectionHistory(filePath: path)
     #expect(throws: (any Error).self) {
       try history.load()
     }
+    #expect(history.loadFailed)
+
+    do {
+      try history.save()
+      Issue.record("読み込み失敗後の保存は拒否される必要がある")
+    } catch let error as SelectionHistoryError {
+      #expect(error == .saveBlockedByLoadFailure)
+    } catch {
+      Issue.record("想定外のエラー: \(error)")
+    }
+    #expect(try String(contentsOfFile: path, encoding: .utf8) == corruptedJSON)
+
+    // 外部でファイルが復旧し、再読み込みに成功すれば保存を再開できる。
+    try "[]".write(
+      to: URL(fileURLWithPath: path), atomically: true, encoding: .utf8)
+    try history.load()
+    #expect(!history.loadFailed)
+    try history.save()
   }
 
   // MARK: - 並行 save + record
