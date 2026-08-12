@@ -82,7 +82,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-08-09確認）
+#### ターミナル自動化方式（2026-08-13確認）
 
 - macOSターミナル: AppleScript（`do script`）を維持
 - iTerm2: AppleScript（`create window` + `write text`）を維持。現行ドキュメントでは AppleScript はメンテナンスモードだが、コマンド実行 API は利用可能
@@ -130,6 +130,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 ### キャッシュ管理
 - SQLiteによる高速なキャッシュ
 - キャッシュ保存・読み込みは `CacheDatabaseProtocol` 経由で統一し、テスト用モックや将来の別実装でも AppCoordinator が同じ経路で ViewModel へ反映
+- アプリと登録ディレクトリのファイル走査は `@concurrent` でメインアクター外へ移し、起動時・自動更新・手動再構築中も UI 操作を阻害しない
 - 更新タイミングを細かく設定可能：
   - 起動時に更新
   - 自動更新（1〜24時間間隔で設定可能）
@@ -367,7 +368,7 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 - **データ**: GRDB.swift (SQLite), JSON 永続化
 - **検索**: Fuse-Swift（ファジー検索）
 - **ショートカット**: KeyboardShortcuts (`Option` + `Space`)
-- **テスト**: Swift Testing (1005テスト)
+- **テスト**: Swift Testing (1006テスト)
 - **パッケージ**: Swift Package Manager
 - **最小OS**: macOS 26
 

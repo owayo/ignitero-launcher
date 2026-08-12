@@ -50,7 +50,9 @@ public struct ScanResult: Sendable, Equatable {
 // MARK: - DirectoryScanner プロトコル
 
 public protocol DirectoryScannerProtocol: Sendable {
-  func scan(directories: [RegisteredDirectory]) throws -> ScanResult
+  /// 登録ディレクトリをスキャンする。呼び出し元のアクターを占有しない。
+  @concurrent
+  func scan(directories: [RegisteredDirectory]) async throws -> ScanResult
 }
 
 // MARK: - DirectoryScanner 本体
@@ -65,7 +67,8 @@ public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
     self.fileSystemProvider = fileSystemProvider
   }
 
-  public func scan(directories: [RegisteredDirectory]) throws -> ScanResult {
+  @concurrent
+  public func scan(directories: [RegisteredDirectory]) async throws -> ScanResult {
     var allDirectories: [DirectoryItem] = []
     var allApps: [AppItem] = []
 

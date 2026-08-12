@@ -164,7 +164,8 @@ public final class CacheBootstrap {
     // ディレクトリスキャン
     let allDirectories: [DirectoryItem]
     do {
-      let scanResult = try directoryScanner.scan(directories: settings.registeredDirectories)
+      let scanResult = try await directoryScanner.scan(
+        directories: settings.registeredDirectories)
       allDirectories = scanResult.directories
       allApps.append(contentsOf: scanResult.apps)
     } catch {

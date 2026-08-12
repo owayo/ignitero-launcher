@@ -6,8 +6,9 @@ import os
 public protocol AppScannerProtocol: Sendable {
   /// アプリケーションをスキャンする。
   ///
-  /// nonisolated async のため呼び出し元が MainActor でもバックグラウンドで実行され、
+  /// `@concurrent` のため呼び出し元が MainActor でもバックグラウンドで実行され、
   /// メインスレッドをブロックしない。
+  @concurrent
   func scanApplications(excludedApps: [String]) async throws -> [AppItem]
 
   /// スキャン済みアプリが除外リストに該当するかを判定する。
@@ -82,6 +83,7 @@ public struct AppScanner: AppScannerProtocol, Sendable {
 
   // MARK: - 主要スキャン処理
 
+  @concurrent
   public func scanApplications(excludedApps: [String]) async throws -> [AppItem] {
     let excludedSet = Set(excludedApps)
     var seenPaths = Set<String>()

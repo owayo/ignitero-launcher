@@ -2,6 +2,17 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-08-13 追記（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、未コミット変更のない `main` をリモート最新と同期
+- `depup --install --include-pinned` を実行し、GRDB.swift 7.11.1 / KeyboardShortcuts 3.0.1 / EmojiKit 3.0.0 / Fuse-Swift 1.4.0 がすべて最新であることを確認
+- Terminal.app 2.15 / iTerm2 3.6.11 / Ghostty 1.3.1 / cmux 0.64.22 のローカル AppleScript dictionary と公式情報を再確認。Warp 0.2026.07.01.09.21.01 は `sdef` エラー -192 で辞書を取得できないため、現行の `.command` 方式を維持
+- astro-sight で全体の複雑度・未参照シンボル・変更影響を確認。最大複雑度39は特殊キーの網羅的な単純マッピング、次点は11の逐次処理と描画処理で、挙動変更を伴うリファクタリングは不要と判断
+- コードベース全体レビューで、Swift 6.2 以降の実行規則により `async` のファイル走査が呼び出し元の MainActor 上で進み、起動時・自動更新・手動再構築中に UI を停止させる問題を修正
+  - アプリスキャンと登録ディレクトリスキャンのプロトコル・実装を `@concurrent async` に統一
+  - ブロッキング I/O 中にも MainActor が進行できることを実物の `DirectoryScanner` で検証する回帰テストを追加
+- テスト数を 1005 → 1006 に増加。Swift フォーマット厳格 lint、全1006テスト（199スイート）、リリースビルドを実行して成功
+
 2026-08-09 追記（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、既存の未コミット変更を退避・復元してリモート最新と同期
