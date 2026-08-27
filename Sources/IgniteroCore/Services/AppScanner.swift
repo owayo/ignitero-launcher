@@ -13,9 +13,25 @@ public protocol AppScannerProtocol: Sendable {
 
   /// スキャン済みアプリが除外リストに該当するかを判定する。
   func isExcluded(_ app: AppItem, excludedApps: [String]) -> Bool
+
+  /// スキャン済みアプリ一覧へ除外フィルタを適用する。
+  ///
+  /// `isExcluded` は `AppScanner` の実装で Info.plist を読み込むため、アプリ数分の
+  /// 同期ファイル I/O が発生する。MainActor 上で直接 filter すると、その間ランチャーの
+  /// UI が停止する（実測: 158 アプリで約 90ms）。`@concurrent` にして呼び出し元の
+  /// アクターを占有しないようにする。
+  @concurrent
+  func excluding(_ apps: [AppItem], excludedApps: [String]) async -> [AppItem]
 }
 
 extension AppScannerProtocol {
+  /// 既定実装: 除外リストが空なら入力をそのまま返し、無用な走査を避ける。
+  @concurrent
+  public func excluding(_ apps: [AppItem], excludedApps: [String]) async -> [AppItem] {
+    guard !excludedApps.isEmpty else { return apps }
+    return apps.filter { !isExcluded($0, excludedApps: excludedApps) }
+  }
+
   /// 既定実装: パス・バンドルファイル名・バンドル名・表示名・元名で照合する。
   public func isExcluded(_ app: AppItem, excludedApps: [String]) -> Bool {
     guard !excludedApps.isEmpty else { return false }

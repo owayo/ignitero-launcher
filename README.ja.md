@@ -2,6 +2,19 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-08-28 追記（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、未コミット変更のない `main` をリモート最新と同期
+- `depup --install --include-pinned` を実行し、EmojiKit 3.0.0 → 3.0.1（パッチ）へ更新。GRDB.swift 7.11.1 / KeyboardShortcuts 3.0.1 / Fuse-Swift 1.4.0 は最新のため据え置き。破壊的変更なし
+- Terminal.app 2.15 / iTerm2 3.6.11 / Ghostty 1.3.1 / cmux 0.64.22 のローカル AppleScript dictionary を再確認。Warp 0.2026.07.01.09.21.01 は `sdef` エラー -192 に加えて `Info.plist` に `NSAppleScriptEnabled` / `OSAScriptingDefinition` がなく `.sdef` も同梱していないため標準スイートすら未定義であることを確認し、要望 Issue warpdotdev/warp#3364 が 2023-07 から未対応のままであることも併せて確認して `.command` 方式を維持
+- astro-sight で全体の複雑度・未参照シンボル・変更影響を確認。最大複雑度39は特殊キーの網羅的な単純マッピング、次点は11で、最大ファイルも935行のため挙動変更を伴うリファクタリングは不要と判断
+- コードベース全体レビューで、登録ディレクトリ由来のアプリがキャッシュへ合流する経路の確実なバグ2件を修正
+  - **除外設定の適用漏れ**: `scanForApps` で拾ったアプリは除外フィルタを通しておらず、ユーザーが除外したアプリが登録ディレクトリ経由で検索結果へ復活していた
+  - **アプリ情報の劣化**: `DirectoryScanner` の `AppItem` は `.app` のファイル名しか持たないため、`~/Applications` のようにアプリスキャン対象と重なるディレクトリを登録すると `INSERT OR REPLACE` の後勝ちでアイコン・ローカライズ名・`originalName` が失われていた。同一パスはアプリスキャン側を優先するよう変更
+  - あわせて、除外判定が Info.plist を読む同期 I/O（実測: 158 アプリで約90ms）を MainActor 上で実行していた問題を `AppScannerProtocol.excluding` の `@concurrent` 化で解消
+- テスト数を 1006 → 1013 に増加（除外フィルタ適用・同一パスの優先・重複排除・除外なし時の保持と、`excluding` の既定実装 3 件）
+- デバッグビルド・全1013テスト（199スイート）を実行して成功
+
 2026-08-13 追記（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、未コミット変更のない `main` をリモート最新と同期

@@ -132,6 +132,34 @@ public final class CacheBootstrap {
 
   // MARK: - 非公開
 
+  /// 登録ディレクトリ由来のアプリのうち、キャッシュへ追加してよいものだけを返す。
+  ///
+  /// 2 つの取りこぼしを塞ぐ:
+  /// 1. **除外設定の適用漏れ** — `scanForApps` で拾ったアプリは以前フィルタを通しておらず、
+  ///    ユーザーが除外したアプリが登録ディレクトリ経由で検索結果へ復活していた。
+  /// 2. **アプリ情報の劣化** — `DirectoryScanner` の `AppItem` は `.app` のファイル名だけで、
+  ///    アイコン・ローカライズ名・`originalName` を持たない。`saveAppsAndDirectories` の
+  ///    `INSERT OR REPLACE` は後勝ちのため、`~/Applications` のようにアプリスキャン対象と
+  ///    重なるディレクトリを登録すると、情報の揃った `AppScanner` の結果が上書きされて
+  ///    アイコンが消え、英語名での検索もヒットしなくなっていた。
+  ///    同一パスは先に載っている `AppScanner` の結果を優先する。
+  private func mergeableDirectoryApps(
+    _ directoryApps: [AppItem],
+    alreadyListed: [AppItem],
+    excludedApps: [String]
+  ) async -> [AppItem] {
+    guard !directoryApps.isEmpty else { return [] }
+
+    var knownPaths = Set(alreadyListed.map(\.path))
+    var candidates: [AppItem] = []
+    for app in directoryApps where !knownPaths.contains(app.path) {
+      knownPaths.insert(app.path)
+      candidates.append(app)
+    }
+
+    return await appScanner.excluding(candidates, excludedApps: excludedApps)
+  }
+
   /// アプリスキャンとディレクトリスキャンを実行し、結果をデータベースに保存する。
   /// - Returns: スキャンが完了しキャッシュが更新された場合は `true`
   @discardableResult
@@ -156,10 +184,10 @@ public final class CacheBootstrap {
       return false
     }
 
-    // ランチャー用に除外フィルタを適用する
-    var allApps = scannedAllApps.filter {
-      !appScanner.isExcluded($0, excludedApps: settings.excludedApps)
-    }
+    // ランチャー用に除外フィルタを適用する。
+    // 判定は Info.plist を読むため、MainActor を占有しないよう @concurrent 側で走らせる。
+    var allApps = await appScanner.excluding(
+      scannedAllApps, excludedApps: settings.excludedApps)
 
     // ディレクトリスキャン
     let allDirectories: [DirectoryItem]
@@ -167,7 +195,9 @@ public final class CacheBootstrap {
       let scanResult = try await directoryScanner.scan(
         directories: settings.registeredDirectories)
       allDirectories = scanResult.directories
-      allApps.append(contentsOf: scanResult.apps)
+      allApps.append(
+        contentsOf: await mergeableDirectoryApps(
+          scanResult.apps, alreadyListed: allApps, excludedApps: settings.excludedApps))
     } catch {
       // 失敗時は既存キャッシュを保持する
       Self.logger.error("Directory scan failed: \(error.localizedDescription)")

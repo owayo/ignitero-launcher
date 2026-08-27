@@ -566,4 +566,122 @@ struct CacheBootstrapTests {
 
     bootstrap.stopAutoUpdate()
   }
+
+  // MARK: - 登録ディレクトリ由来アプリのマージ
+
+  @Test("登録ディレクトリ由来のアプリにも除外フィルタが適用される")
+  @MainActor
+  func directoryAppsRespectExcludedApps() async throws {
+    let mockDB = CacheBootstrapMockDB(isEmpty: true)
+    let mockAppScanner = CacheBootstrapMockAppScanner()
+    let mockDirScanner = CacheBootstrapMockDirScanner(
+      result: ScanResult(
+        directories: [],
+        apps: [
+          AppItem(name: "Excluded", path: "/Users/dev/tools/Excluded.app"),
+          AppItem(name: "Kept", path: "/Users/dev/tools/Kept.app"),
+        ]
+      ))
+    let settings = makeSettingsManager()
+    settings.settings.excludedApps = ["Excluded"]
+
+    let bootstrap = CacheBootstrap(
+      settingsManager: settings,
+      cacheDatabase: mockDB,
+      appScanner: mockAppScanner,
+      directoryScanner: mockDirScanner
+    )
+
+    await bootstrap.rebuildCache()
+
+    #expect(mockDB.savedApps.map(\.path) == ["/Users/dev/tools/Kept.app"])
+  }
+
+  @Test("アプリスキャンと同一パスの登録ディレクトリ由来アプリは情報の揃った側を残す")
+  @MainActor
+  func scannedAppWinsOverDirectoryAppWithSamePath() async throws {
+    let mockDB = CacheBootstrapMockDB(isEmpty: true)
+    // アプリスキャン側はアイコンとローカライズ名を持つ
+    let mockAppScanner = CacheBootstrapMockAppScanner(apps: [
+      AppItem(
+        name: "メモ", path: "/Users/dev/Applications/Notes.app",
+        iconPath: "/cache/notes.png", originalName: "Notes")
+    ])
+    // 登録ディレクトリ側は .app のファイル名しか持たない
+    let mockDirScanner = CacheBootstrapMockDirScanner(
+      result: ScanResult(
+        directories: [],
+        apps: [AppItem(name: "Notes", path: "/Users/dev/Applications/Notes.app")]
+      ))
+    let settings = makeSettingsManager()
+
+    let bootstrap = CacheBootstrap(
+      settingsManager: settings,
+      cacheDatabase: mockDB,
+      appScanner: mockAppScanner,
+      directoryScanner: mockDirScanner
+    )
+
+    await bootstrap.rebuildCache()
+
+    #expect(mockDB.savedApps.count == 1)
+    #expect(mockDB.savedApps.first?.name == "メモ")
+    #expect(mockDB.savedApps.first?.iconPath == "/cache/notes.png")
+    #expect(mockDB.savedApps.first?.originalName == "Notes")
+  }
+
+  @Test("登録ディレクトリ内で同一パスが重複しても 1 件だけ保存される")
+  @MainActor
+  func duplicateDirectoryAppsAreDeduplicated() async throws {
+    let mockDB = CacheBootstrapMockDB(isEmpty: true)
+    let mockAppScanner = CacheBootstrapMockAppScanner()
+    let mockDirScanner = CacheBootstrapMockDirScanner(
+      result: ScanResult(
+        directories: [],
+        apps: [
+          AppItem(name: "Tool", path: "/Users/dev/tools/Tool.app"),
+          AppItem(name: "Tool", path: "/Users/dev/tools/Tool.app"),
+        ]
+      ))
+    let settings = makeSettingsManager()
+
+    let bootstrap = CacheBootstrap(
+      settingsManager: settings,
+      cacheDatabase: mockDB,
+      appScanner: mockAppScanner,
+      directoryScanner: mockDirScanner
+    )
+
+    await bootstrap.rebuildCache()
+
+    #expect(mockDB.savedApps.count == 1)
+  }
+
+  @Test("除外設定が空なら登録ディレクトリ由来のアプリはすべて保存される")
+  @MainActor
+  func directoryAppsKeptWhenNoExclusions() async throws {
+    let mockDB = CacheBootstrapMockDB(isEmpty: true)
+    let mockAppScanner = CacheBootstrapMockAppScanner(apps: [
+      AppItem(name: "Safari", path: "/Applications/Safari.app")
+    ])
+    let mockDirScanner = CacheBootstrapMockDirScanner(
+      result: ScanResult(
+        directories: [],
+        apps: [AppItem(name: "Tool", path: "/Users/dev/tools/Tool.app")]
+      ))
+    let settings = makeSettingsManager()
+
+    let bootstrap = CacheBootstrap(
+      settingsManager: settings,
+      cacheDatabase: mockDB,
+      appScanner: mockAppScanner,
+      directoryScanner: mockDirScanner
+    )
+
+    await bootstrap.rebuildCache()
+
+    #expect(
+      Set(mockDB.savedApps.map(\.path))
+        == ["/Applications/Safari.app", "/Users/dev/tools/Tool.app"])
+  }
 }

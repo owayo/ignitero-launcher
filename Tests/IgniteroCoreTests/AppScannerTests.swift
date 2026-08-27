@@ -914,4 +914,46 @@ struct AppScannerIsExcludedItemTests {
 
     #expect(scanFiltered.map(\.path) == postFiltered.map(\.path))
   }
+
+  @Test("excluding の結果は scanApplications の除外結果と一致する")
+  func excludingMatchesScanResults() async throws {
+    let tmpDir = try makeTempDir()
+    defer { cleanup(tmpDir) }
+
+    _ = try createFakeApp(at: tmpDir, name: "Keep.app", bundleName: "Keep")
+    _ = try createFakeApp(at: tmpDir, name: "Exclude.app", bundleName: "Exclude")
+
+    let scanner = AppScanner(
+      scanTargets: [AppScanner.ScanTarget(path: tmpDir, maxDepth: 1)]
+    )
+    let excluded = ["Exclude.app"]
+
+    let scanFiltered = try await scanner.scanApplications(excludedApps: excluded)
+    let allApps = try await scanner.scanApplications(excludedApps: [])
+    let postFiltered = await scanner.excluding(allApps, excludedApps: excluded)
+
+    #expect(scanFiltered.map(\.path) == postFiltered.map(\.path))
+  }
+
+  @Test("excluding は除外リストが空なら入力をそのまま返す")
+  func excludingReturnsInputWhenNoExclusions() async throws {
+    let scanner = AppScanner(scanTargets: [])
+    let apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app"),
+      AppItem(name: "メール", path: "/Applications/Mail.app", originalName: "Mail"),
+    ]
+
+    let result = await scanner.excluding(apps, excludedApps: [])
+
+    #expect(result.map(\.path) == apps.map(\.path))
+  }
+
+  @Test("excluding は空配列を渡しても空配列を返す")
+  func excludingHandlesEmptyInput() async throws {
+    let scanner = AppScanner(scanTargets: [])
+
+    let result = await scanner.excluding([], excludedApps: ["Safari"])
+
+    #expect(result.isEmpty)
+  }
 }

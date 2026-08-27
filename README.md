@@ -82,11 +82,11 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-08-13確認）
+#### ターミナル自動化方式（2026-08-28確認）
 
 - macOSターミナル: AppleScript（`do script`）を維持
 - iTerm2: AppleScript（`create window` + `write text`）を維持。現行ドキュメントでは AppleScript はメンテナンスモードだが、コマンド実行 API は利用可能
-- Warp: AppleScript dictionary 非対応。公式ドキュメントは URI Scheme / Launch Configurations / Tab Configs を案内し、ローカルの Warp 0.2026.07.01.09.21.01 でも `sdef` がエラー -192 で辞書を取得できないため `.command` ファイル方式を維持
+- Warp: AppleScript dictionary 非対応。公式ドキュメントは URI Scheme / Launch Configurations / Tab Configs を案内し、ローカルの Warp 0.2026.07.01.09.21.01 でも `sdef` がエラー -192 で辞書を取得できないため `.command` ファイル方式を維持。`Info.plist` に `NSAppleScriptEnabled` / `OSAScriptingDefinition` がなく `Contents/Resources` にも `.sdef` を持たないため標準スイートすら定義されておらず、要望 Issue（warpdotdev/warp#3364、2023-07 起票）も未対応のまま
 - Ghostty: AppleScript（公式ドキュメントでは 1.3.0 で導入、ローカル Ghostty 1.3.1 で `new window` + `input text "...\n"` を確認）。辞書には `send key` もあるが、現行実装は cmux と同じく改行込みの `input text` で実行を確定する。AppleScript が無効な環境では `.command` ファイル方式へフォールバック
 - cmux: AppleScript（ローカル cmux 0.64.22 で `new window` + `input text "...\n"` を確認）でカスタムコマンドを実行。公式の主経路は CLI / Socket API だが、現行の AppleScript 優先 + CLI フォールバックを維持する。`send key` は辞書にないため改行込みの `input text` で実行を確定する。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュと無応答時のハングを防ぎ、5 秒以内に正常終了した場合のみ成功扱い
   - **注意**: ディレクトリを cmux で開く場合は Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
@@ -103,6 +103,8 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
   - ユーザーアプリケーション（~/Applications）
   - Chrome Apps、PWAなども自動検出
 - 登録ディレクトリ配下の`.app`ファイルも検索対象に追加可能
+  - 除外設定は登録ディレクトリ経由で見つかったアプリにも適用される
+  - `~/Applications` のようにアプリスキャン対象と重なるディレクトリを登録しても、アイコン・ローカライズ名・原名を持つアプリスキャン側の情報が優先される
 - ファジーマッチングによる柔軟な検索
 - **自動IME制御**: ウィンドウ表示時に自動的に英字入力モードへ切り替え
 - **アプリ除外機能**: 設定画面から不要なアプリを検索結果から除外可能（表示名・バンドル名・パスの既存設定に対応）
