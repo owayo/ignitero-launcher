@@ -132,7 +132,32 @@ jobs:
           cp Resources/MenuBarIcon.png "${BUNDLE}/Contents/Resources/MenuBarIcon.png"
           cp Resources/MenuBarIcon@2x.png "${BUNDLE}/Contents/Resources/MenuBarIcon@2x.png"
           cp Resources/IgniteroLauncher.entitlements "${BUNDLE}/Contents/Resources/"
+          # SwiftPM のリソースバンドル (EmojiKit のローカライズ名・IgniteroCore の
+          # 絵文字キーワード辞書など) を Contents/Resources へ配置する。
+          # ResourceBundle.resolve(named:) がここを読む。これを省くと
+          # 配布物にリソースが一切入らず、Bundle.module は CI のビルドパス
+          # (.build の絶対パス) しか候補に持たないため必ず解決に失敗する。
+          for b in .build/release/*.bundle; do
+            [ -d "$b" ] || continue
+            cp -R "$b" "${BUNDLE}/Contents/Resources/"
+          done
+          # 配置漏れを機械的に検出する (Makefile の verify-bundle と同じ検証)。
+          for b in EmojiKit_EmojiKit.bundle IgniteroLauncher_IgniteroCore.bundle; do
+            if [ ! -d "${BUNDLE}/Contents/Resources/$b" ]; then
+              echo "error: $b が Contents/Resources に無い" >&2
+              exit 1
+            fi
+          done
+          # ネストしたリソースバンドルを内側から先に署名する
+          # (ルートを先に署名すると seal violation になる)。
+          # Info.plist を持たない .bundle は codesign から見るとバンドルではないので除外する。
+          find "${BUNDLE}/Contents" -depth -name '*.bundle' -type d \
+            | while IFS= read -r nested; do
+                [ -f "$nested/Info.plist" ] || continue
+                codesign --force --sign - "$nested"
+              done
           codesign --force --sign - --entitlements Resources/IgniteroLauncher.entitlements "${BUNDLE}"
+          codesign --verify --strict "${BUNDLE}"
 
       - name: Create DMG
         run: |

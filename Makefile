@@ -21,7 +21,15 @@ CODESIGN_IDENTITY ?= $(shell \
 	if security find-identity -v -p codesigning 2>/dev/null | grep -qF "owayo local dev"; \
 	then echo "owayo local dev"; else echo "-"; fi)
 
-.PHONY: build build-debug bundle install run dev clean test log emoji-keywords verify-sign
+# `.app` に必ず入っていなければならない SwiftPM のリソースバンドル。
+# `Bundle.module` は `.app` では解決できない (探索先が `.app/` ルート直下と
+# ビルド時に焼き込まれた `.build` の絶対パスの 2 つだけで、`Contents/Resources` を
+# 見ない。ルート直下は codesign が unsealed contents として拒否する) ため、
+# リソースは `ResourceBundle.resolve(named:)` が読む `Contents/Resources` に置く。
+# ここに配置漏れがあると絵文字のローカライズ名とキーワード辞書が黙って失われる。
+REQUIRED_BUNDLES := EmojiKit_EmojiKit.bundle IgniteroLauncher_IgniteroCore.bundle
+
+.PHONY: build build-debug bundle install run dev clean test log emoji-keywords verify-sign verify-bundle
 
 emoji-keywords:
 	@python3 scripts/update_emoji_keywords.py
@@ -59,8 +67,21 @@ bundle: build
 			codesign --force --sign "$(CODESIGN_IDENTITY)" "$$nested"; \
 		done
 	@codesign --force --sign "$(CODESIGN_IDENTITY)" --entitlements "$(ENTITLEMENTS)" "$(BUNDLE_DIR)"
+	@$(MAKE) --no-print-directory verify-bundle
 	@echo "Signed with: $(CODESIGN_IDENTITY)"
 	@echo "Bundle created: $(BUNDLE_DIR)"
+
+# `.app` に必要なリソースバンドルが揃っているかを検証する。
+verify-bundle:
+	@for b in $(REQUIRED_BUNDLES); do \
+		if [ ! -d "$(BUNDLE_DIR)/Contents/Resources/$$b" ]; then \
+			echo "error: $$b が $(BUNDLE_DIR)/Contents/Resources に無い" >&2; \
+			echo "       ResourceBundle.resolve(named:) が解決できず、絵文字のローカライズ名や" >&2; \
+			echo "       キーワード辞書が黙って失われる。bundle ターゲットの配置処理を確認する。" >&2; \
+			exit 1; \
+		fi; \
+	done
+	@echo "Resource bundles: OK ($(REQUIRED_BUNDLES))"
 
 install: bundle
 	@osascript -e 'quit app "$(APP_NAME)"' 2>/dev/null || true

@@ -9,19 +9,22 @@ import Testing
 @Suite("EmojiLocalizedNames ロケール候補")
 struct EmojiLocalizedNamesLocaleCandidatesTests {
 
-  @Test func 地域付き識別子は言語コードへフォールバックする() {
+  @Test("地域付き識別子は言語コードへフォールバックする")
+  func regionalIdentifierFallsBackToLanguageCode() {
     // EmojiKit のバンドルは `ja.lproj` しか持たないため、`ja_JP` で引けない場合に
     // 言語コード単体で再試行できないと日本語名が一切引けなくなる。
     let candidates = EmojiLocalizedNames.localeCandidates(for: Locale(identifier: "ja_JP"))
     #expect(candidates == ["ja_JP", "ja"])
   }
 
-  @Test func 言語コードのみの識別子は重複を作らない() {
+  @Test("言語コードのみの識別子は重複候補を作らない")
+  func languageOnlyIdentifierHasNoDuplicate() {
     let candidates = EmojiLocalizedNames.localeCandidates(for: Locale(identifier: "ja"))
     #expect(candidates == ["ja"])
   }
 
-  @Test func 未知のロケールでも候補を返す() {
+  @Test("英語ロケールでも識別子と言語コードの両方を候補にする")
+  func englishLocaleIncludesBothCandidates() {
     let candidates = EmojiLocalizedNames.localeCandidates(for: Locale(identifier: "en_US"))
     #expect(candidates.first == "en_US")
     #expect(candidates.contains("en"))
@@ -38,9 +41,9 @@ struct EmojiLocalizedNamesLoadTableTests {
     lang: String,
     entries: [String: String]
   ) throws -> (bundle: Bundle, cleanup: () throws -> Void) {
-    let root = URL(fileURLWithPath: NSTemporaryDirectory())
+    let container = URL(fileURLWithPath: NSTemporaryDirectory())
       .appendingPathComponent("EmojiLocalizedNamesTests-\(UUID().uuidString)")
-      .appendingPathComponent("Fake_Fake.bundle")
+    let root = container.appendingPathComponent("Fake_Fake.bundle")
     let lproj = root.appendingPathComponent("\(lang).lproj")
     try FileManager.default.createDirectory(at: lproj, withIntermediateDirectories: true)
     try (entries as NSDictionary).write(
@@ -49,22 +52,19 @@ struct EmojiLocalizedNamesLoadTableTests {
     guard let bundle = Bundle(url: root) else {
       throw CocoaError(.fileNoSuchFile)
     }
-    return (
-      bundle,
-      {
-        try FileManager.default.removeItem(at: root.deletingLastPathComponent())
-      }
-    )
+    return (bundle, { try FileManager.default.removeItem(at: container) })
   }
 
-  @Test func バンドルが解決できない場合は空辞書へ縮退する() {
+  @Test("バンドルが解決できない場合は空辞書へ縮退する")
+  func unresolvedBundleYieldsEmptyTable() {
     // `Bundle.module` は非 Optional で fatalError するため、代替実装は必ず
     // nil バンドルを受け取っても落ちず空辞書を返さなければならない。
     let table = EmojiLocalizedNames.loadTable(bundle: nil, locale: Locale(identifier: "ja"))
     #expect(table.isEmpty)
   }
 
-  @Test func ロケール一致する strings を辞書として読む() throws {
+  @Test("ロケールが一致する Localizable.strings を辞書として読む")
+  func readsMatchingLocaleStrings() throws {
     let (bundle, cleanup) = try makeBundle(lang: "ja", entries: ["😀": "にっこり顔"])
     defer { try? cleanup() }
 
@@ -72,7 +72,8 @@ struct EmojiLocalizedNamesLoadTableTests {
     #expect(table["😀"] == "にっこり顔")
   }
 
-  @Test func 地域付きロケールでも言語コードの strings を読む() throws {
+  @Test("地域付きロケールでも言語コードの Localizable.strings を読む")
+  func readsLanguageCodeStringsForRegionalLocale() throws {
     let (bundle, cleanup) = try makeBundle(lang: "ja", entries: ["😀": "にっこり顔"])
     defer { try? cleanup() }
 
@@ -80,7 +81,8 @@ struct EmojiLocalizedNamesLoadTableTests {
     #expect(table["😀"] == "にっこり顔")
   }
 
-  @Test func ロケールが一致しない場合は空辞書を返す() throws {
+  @Test("ロケールが一致しない場合は空辞書を返す")
+  func mismatchedLocaleYieldsEmptyTable() throws {
     let (bundle, cleanup) = try makeBundle(lang: "ja", entries: ["😀": "にっこり顔"])
     defer { try? cleanup() }
 
@@ -94,7 +96,8 @@ struct EmojiLocalizedNamesLoadTableTests {
 @Suite("ResourceBundle の解決")
 struct ResourceBundleResolveTests {
 
-  @Test func 存在しないバンドル名では nil を返す() {
+  @Test("存在しないバンドル名では nil を返す")
+  func missingBundleResolvesToNil() {
     // `Bundle.module` はここで fatalError していた。解決失敗は必ず nil で返す。
     #expect(ResourceBundle.resolve(named: "NotExisting_NotExisting.bundle") == nil)
   }
@@ -105,27 +108,32 @@ struct ResourceBundleResolveTests {
 @Suite("EmojiKeywordSearch.standardMatches")
 struct EmojiStandardMatchesTests {
 
-  @Test func 絵文字そのものと完全一致する() {
+  @Test("絵文字そのものと完全一致する")
+  func matchesExactChar() {
     #expect(EmojiKeywordSearch.standardMatches(Emoji("😀"), query: "😀"))
   }
 
-  @Test func Unicode 名の部分一致で真を返す() {
+  @Test("Unicode 名の部分一致で真を返す")
+  func matchesUnicodeNameSubstring() {
     // ローカライズ名テーブルが空でも Unicode 名だけで検索が成立することを保証する
     // （バンドル未解決時の縮退動作）。
     #expect(EmojiKeywordSearch.standardMatches(Emoji("😀"), query: "grinning"))
   }
 
-  @Test func Unicode 名の大文字小文字を無視する() {
+  @Test("Unicode 名の大文字小文字を無視する")
+  func matchesUnicodeNameCaseInsensitively() {
     #expect(EmojiKeywordSearch.standardMatches(Emoji("😀"), query: "GRINNING"))
   }
 
-  @Test func 無関係なクエリでは偽を返す() {
+  @Test("無関係なクエリでは偽を返す")
+  func doesNotMatchUnrelatedQuery() {
     #expect(!EmojiKeywordSearch.standardMatches(Emoji("😀"), query: "zzzzzunmatched"))
   }
 
-  @Test func 全絵文字に対して Bundle_module を踏まず判定できる() {
+  @Test("全絵文字を走査しても Bundle.module を踏まずに完走する")
+  func scansAllEmojisWithoutTouchingBundleModule() {
     // EmojiKit の `Emoji.matches(_:)` はこの全走査の途中で `Bundle.module` を
-    // 初期化して SIGTRAP した（2026-09-01）。代替実装が全件走っても落ちないこと。
+    // 初期化して SIGTRAP した（2026-09-01）。代替実装は全件走っても落ちない。
     for emoji in Emoji.all {
       _ = EmojiKeywordSearch.standardMatches(emoji, query: "face")
     }
