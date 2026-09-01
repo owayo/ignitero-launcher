@@ -14,7 +14,7 @@ public final class EmojiKeywordSearch: Sendable {
 
   public init() {
     guard
-      let url = ResourceBundle.bundle.url(forResource: "emoji_keywords_ja", withExtension: "json"),
+      let url = ResourceBundle.bundle?.url(forResource: "emoji_keywords_ja", withExtension: "json"),
       let data = try? Data(contentsOf: url),
       let dict = try? JSONDecoder().decode([String: [String]].self, from: data)
     else {
@@ -66,19 +66,33 @@ public final class EmojiKeywordSearch: Sendable {
       let char = emoji.char
       guard !seen.contains(char) else { continue }
 
-      // EmojiKit 標準の検索（Unicode名 + ローカライズ名）
-      let standardMatch = emoji.matches(q)
-      // キーワード辞書の検索
+      // 辞書引きで済むキーワード検索を先に判定し、真なら Unicode 名の
+      // ICU 変換（`unicodeName`）をスキップする。
       let keywordMatch =
         keywordMatches.contains(char)
         || keywordMatches.contains(char.removingVariationSelectors())
 
-      if standardMatch || keywordMatch {
+      if keywordMatch || Self.standardMatches(emoji, query: q) {
         seen.insert(char)
         result.append(emoji)
       }
     }
     return result
+  }
+
+  /// EmojiKit `Emoji.matches(_:in:)` 相当の一致判定を、`Bundle.module` を
+  /// 踏まずに行う。
+  ///
+  /// EmojiKit の実装は最後に `localizedName(in:)` を呼ぶが、これはデフォルト引数の
+  /// `Bundle.module` を解決しに行き、`.app` 配置では `fatalError` で SIGTRAP して
+  /// アプリ全体を落とす（実例と理由は ``ResourceBundle`` のコメント参照）。
+  /// ローカライズ名は ``EmojiLocalizedNames`` の辞書から引き、辞書が空の場合は
+  /// Unicode 名までの判定で縮退する。
+  static func standardMatches(_ emoji: Emoji, query: String) -> Bool {
+    if emoji.char == query { return true }
+    if emoji.unicodeName.localizedCaseInsensitiveContains(query) { return true }
+    guard let localizedName = EmojiLocalizedNames.name(for: emoji.char) else { return false }
+    return localizedName.localizedCaseInsensitiveContains(query)
   }
 }
 
