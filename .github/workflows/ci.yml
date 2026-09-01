@@ -34,3 +34,13 @@ jobs:
         # Swift 6.3 系の release 最適化で KeyboardShortcuts の SIL シリアライズが
         # crash するため、Makefile と同様に -Onone を付与して回避する。
         run: swift build -c release -Xswiftc -Onone
+
+      - name: Test
+        run: swift test
+
+      - name: Verify packaged resource resolution
+        # `.app` にリソースバンドルを入れ忘れても、開発マシンでは `Bundle.module` が
+        # ビルドディレクトリの絶対パスで偶然解決できてしまうため、配布物でだけ
+        # クラッシュする形で現れる (2026-09-01 に絵文字検索で発生)。
+        # `.build` の `.bundle` を退避した状態で `.app` の自己診断を走らせて検出する。
+        run: make smoke-resources

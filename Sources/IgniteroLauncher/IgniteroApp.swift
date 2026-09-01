@@ -22,9 +22,24 @@ final class IgniteroAppDelegate: NSObject, NSApplicationDelegate {
   }
 }
 
+// MARK: - エントリポイント
+
+/// `--self-test-resources` 付きで起動された場合はリソース解決の自己診断だけを実行して
+/// 終了コードで結果を返す（`make smoke-resources` が `.app` に対して実行する）。
+/// GUI を起動しないため `sharedCoordinator` は初期化されない。
+@main
+enum IgniteroLauncherMain {
+  @MainActor
+  static func main() {
+    if CommandLine.arguments.contains("--self-test-resources") {
+      exit(ResourceSelfTest.run() ? EXIT_SUCCESS : EXIT_FAILURE)
+    }
+    IgniteroApp.main()
+  }
+}
+
 // MARK: - アプリ
 
-@main
 struct IgniteroApp: App {
   @NSApplicationDelegateAdaptor(IgniteroAppDelegate.self) var appDelegate
   @Environment(\.openWindow) private var openWindow

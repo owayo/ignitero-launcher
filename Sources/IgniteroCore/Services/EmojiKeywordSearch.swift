@@ -1,5 +1,6 @@
 import EmojiKit
 import Foundation
+import os
 
 /// emojibase ベースの日本語絵文字キーワード検索。
 ///
@@ -8,6 +9,9 @@ import Foundation
 /// EmojiKit の `localizedName` 検索では対応できない
 /// 「いいね」→ 👍 のような日本語キーワード検索を提供する。
 public final class EmojiKeywordSearch: Sendable {
+
+  private static let logger = Logger(
+    subsystem: "com.ignitero.launcher", category: "EmojiKeywordSearch")
 
   /// emoji 文字列 → キーワード配列
   private let keywords: [String: [String]]
@@ -18,6 +22,13 @@ public final class EmojiKeywordSearch: Sendable {
       let data = try? Data(contentsOf: url),
       let dict = try? JSONDecoder().decode([String: [String]].self, from: data)
     else {
+      // 読めないとキーワード検索（「いいね」→ 👍 等）が黙って消えるため記録する。
+      Self.logger.warning(
+        """
+        emoji_keywords_ja.json を読めなかった。絵文字検索は Unicode 名と\
+        ローカライズ名のみで継続する。.app の Contents/Resources に\
+        IgniteroLauncher_IgniteroCore.bundle があるか確認する (make verify-bundle)。
+        """)
       self.keywords = [:]
       return
     }

@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// 絵文字のローカライズ名テーブル。EmojiKit の `Emoji.localizedName(in:)` の代替。
 ///
@@ -17,8 +18,25 @@ import Foundation
 /// `NSLocalizedString` を呼んでいたのに対し、こちらは辞書引き 1 回で済む。
 public enum EmojiLocalizedNames {
 
+  private static let logger = Logger(
+    subsystem: "com.ignitero.launcher", category: "EmojiLocalizedNames")
+
   /// 絵文字 → 現在ロケールのローカライズ名。解決できない場合は空。
-  public static let table: [String: String] = loadTable()
+  ///
+  /// 空になると絵文字検索からローカライズ名の一致が黙って消えるため、
+  /// 初期化時（プロセスで 1 回）に warning を残す。
+  public static let table: [String: String] = {
+    let loaded = loadTable()
+    if loaded.isEmpty {
+      logger.warning(
+        """
+        EmojiKit のローカライズ名テーブルを読めなかった (locale: \(Locale.current.identifier, privacy: .public))。\
+        絵文字検索は Unicode 名とキーワード辞書のみで継続する。\
+        .app の Contents/Resources に EmojiKit_EmojiKit.bundle があるか確認する (make verify-bundle)。
+        """)
+    }
+    return loaded
+  }()
 
   /// 指定した絵文字のローカライズ名。テーブルに無ければ `nil`。
   public static func name(for char: String) -> String? {

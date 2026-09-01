@@ -159,6 +159,12 @@ jobs:
           codesign --force --sign - --entitlements Resources/IgniteroLauncher.entitlements "${BUNDLE}"
           codesign --verify --strict "${BUNDLE}"
 
+      - name: Verify packaged resource resolution
+        # CI のビルドパスは配布先に存在しないため、`Bundle.module` は必ず解決に失敗する。
+        # `.build` の `.bundle` を退避して同じ条件を作り、`.app` 内のリソースだけで
+        # 動くことを確かめる (壊れた配布物をリリースしないためのゲート)。
+        run: bash scripts/smoke_resources.sh "${{ env.BUNDLE_NAME }}" "${{ env.APP_NAME }}"
+
       - name: Create DMG
         run: |
           DMG_DIR=$(mktemp -d)

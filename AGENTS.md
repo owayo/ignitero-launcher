@@ -51,6 +51,8 @@ make bundle       # .app バンドル作成
 make install      # /Applications にインストール＆起動
 make run          # ビルド後に .app を起動
 make dev          # デバッグビルド＆直接実行
+make verify-bundle     # .app に必要なリソースバンドルが揃っているか検証 (bundle/dev が自動実行)
+make smoke-resources   # .build の .bundle を退避して .app のリソース解決を自己診断
 make verify-sign  # インストール済み .app の署名を確認
 make log          # ログストリーム (com.owayo.ignitero.launcher)
 make clean        # ビルドキャッシュ削除
@@ -131,6 +133,32 @@ from /Applications/IgniteroLauncher.app/EmojiKit_EmojiKit.bundle or
 
 `Makefile` の `bundle` / `dev` が `.bundle` を `Contents/Resources` へ置くのは、この
 `ResourceBundle.resolve(named:)` が読むため（`Bundle.module` のためではない）。
+`Contents/MacOS` へのコピーは標準の探索経路（`Bundle.main.resourceURL` /
+`Bundle.main.url(forResource:)` / `Bundle(for:).resourceURL` / SwiftPM の accessor）の
+どれからも参照されないため削除した。
+
+**再発の検出**（3 層）:
+
+1. `make verify-bundle`（`bundle` / `dev` が自動実行、CI も通る）——
+   `.app/Contents/Resources` に代表ファイル（`EmojiKit_EmojiKit.bundle/ja.lproj/Localizable.strings`、
+   `IgniteroLauncher_IgniteroCore.bundle/emoji_keywords_ja.json`）があるかを見る。
+   `Bundle(url:)` は空ディレクトリでも成功するので、バンドルの有無ではなく中身で判定する。
+2. `make smoke-resources`（`ci.yml` / `release.yml` のゲート）—— `.build/<triple>/<config>/*.bundle`
+   を一時退避して `Bundle.module` の fallback を無効化し、`.app` を `--self-test-resources`
+   で起動して `ResourceSelfTest`（`Sources/IgniteroCore/App/`）を走らせる。
+   **開発マシンでこの障害を再現できる唯一の手段**。`Emoji.matches` を呼ぶ実装へ戻すと
+   同じ `fatalError` で `make` が Error 133 (SIGTRAP) になることを確認済み。
+   過去にクラッシュした 3 経路（絵文字検索・ショートカット表示・絵文字カテゴリ名）を通す。
+3. ユニットテスト —— 疑似バンドルでの fail-open と、実リソースに対する EmojiKit の
+   レイアウト前提（`<lang>.lproj/Localizable.strings`、キー = 絵文字そのもの）の検証。
+   **EmojiKit を更新したらこのテストが落ちないか確認する**（前提が変わるとテーブルが
+   無音で空になり、ローカライズ名検索だけが静かに死ぬ）。
+
+バンドルを解決できなかった場合は `EmojiLocalizedNames` / `EmojiKeywordSearch.init` が
+warning を残す（`make log`）。無音で機能が消えるのを避けるため、縮退は必ず記録する。
+
+未実装の強化候補: 引数ラベルまで見て `localizedName(in:)` と `localizedName(in:bundle:)` を
+区別する構造的 lint。`self-test` が通らない新規経路で危険 API を呼ぶと 2 では検出できない。
 
 ### KeyboardShortcuts（過去 2 度の設定画面クラッシュ原因）
 

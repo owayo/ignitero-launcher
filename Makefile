@@ -27,9 +27,15 @@ CODESIGN_IDENTITY ?= $(shell \
 # 見ない。ルート直下は codesign が unsealed contents として拒否する) ため、
 # リソースは `ResourceBundle.resolve(named:)` が読む `Contents/Resources` に置く。
 # ここに配置漏れがあると絵文字のローカライズ名とキーワード辞書が黙って失われる。
-REQUIRED_BUNDLES := EmojiKit_EmojiKit.bundle IgniteroLauncher_IgniteroCore.bundle
+#
+# バンドルのディレクトリ有無ではなく代表ファイルの有無で見る。`Bundle(url:)` は
+# 空ディレクトリでも成功するため、中身が欠けた `.bundle` があると解決自体は通って
+# しまい、機能だけが無音で消える。
+REQUIRED_RESOURCES := \
+	EmojiKit_EmojiKit.bundle/ja.lproj/Localizable.strings \
+	IgniteroLauncher_IgniteroCore.bundle/emoji_keywords_ja.json
 
-.PHONY: build build-debug bundle install run dev clean test log emoji-keywords verify-sign verify-bundle
+.PHONY: build build-debug bundle install run dev clean test log emoji-keywords verify-sign verify-bundle smoke-resources
 
 emoji-keywords:
 	@python3 scripts/update_emoji_keywords.py
@@ -53,11 +59,13 @@ bundle: build
 	@cp "Resources/MenuBarIcon.png" "$(BUNDLE_DIR)/Contents/Resources/MenuBarIcon.png"
 	@cp "Resources/MenuBarIcon@2x.png" "$(BUNDLE_DIR)/Contents/Resources/MenuBarIcon@2x.png"
 	@cp "Resources/IgniteroLauncher.entitlements" "$(BUNDLE_DIR)/Contents/Resources/"
+	@# リソースバンドルは Contents/Resources にのみ置く。ResourceBundle.resolve(named:)
+	@# がここを読む。Contents/MacOS へのコピーはどの探索経路からも参照されない
+	@# (Bundle.main.resourceURL / url(forResource:) / Bundle(for:).resourceURL /
+	@# SwiftPM の accessor のいずれも見ない) ため、署名対象とサイズを増やすだけだった。
 	@for b in $(BUILD_DIR)/release/*.bundle; do \
-		[ -d "$$b" ] && cp -R "$$b" "$(BUNDLE_DIR)/Contents/Resources/"; \
-		if [ -d "$$b" ] && [ -f "$$b/Info.plist" ]; then \
-			cp -R "$$b" "$(BUNDLE_DIR)/Contents/MacOS/"; \
-		fi; \
+		[ -d "$$b" ] || continue; \
+		cp -R "$$b" "$(BUNDLE_DIR)/Contents/Resources/"; \
 	done
 	@# ネストしたリソースバンドルを内側から先に署名する (ルートを先に署名すると seal violation)。
 	@# Info.plist を持たない .bundle は codesign から見るとバンドルではないので除外する。
@@ -71,17 +79,23 @@ bundle: build
 	@echo "Signed with: $(CODESIGN_IDENTITY)"
 	@echo "Bundle created: $(BUNDLE_DIR)"
 
-# `.app` に必要なリソースバンドルが揃っているかを検証する。
+# `.app` に必要なリソースが揃っているかを検証する。
 verify-bundle:
-	@for b in $(REQUIRED_BUNDLES); do \
-		if [ ! -d "$(BUNDLE_DIR)/Contents/Resources/$$b" ]; then \
-			echo "error: $$b が $(BUNDLE_DIR)/Contents/Resources に無い" >&2; \
-			echo "       ResourceBundle.resolve(named:) が解決できず、絵文字のローカライズ名や" >&2; \
+	@for r in $(REQUIRED_RESOURCES); do \
+		if [ ! -e "$(BUNDLE_DIR)/Contents/Resources/$$r" ]; then \
+			echo "error: $$r が $(BUNDLE_DIR)/Contents/Resources に無い" >&2; \
+			echo "       ResourceBundle.resolve(named:) が中身を読めず、絵文字のローカライズ名や" >&2; \
 			echo "       キーワード辞書が黙って失われる。bundle ターゲットの配置処理を確認する。" >&2; \
 			exit 1; \
 		fi; \
 	done
-	@echo "Resource bundles: OK ($(REQUIRED_BUNDLES))"
+	@echo "Resource bundles: OK"
+
+# `.app` を実際に起動してリソース解決の自己診断を行う。
+# ビルドディレクトリの `.bundle` を退避して `Bundle.module` の fallback を無効化するため、
+# 「開発マシンでは動くが `.build` を消すと落ちる」破損を検出できる。
+smoke-resources: bundle
+	@bash scripts/smoke_resources.sh "$(BUNDLE_DIR)" "$(EXEC_NAME)"
 
 install: bundle
 	@osascript -e 'quit app "$(APP_NAME)"' 2>/dev/null || true
@@ -112,11 +126,10 @@ dev: build-debug
 	@cp "Resources/MenuBarIcon.png" "$(BUNDLE_DIR)/Contents/Resources/MenuBarIcon.png"
 	@cp "Resources/MenuBarIcon@2x.png" "$(BUNDLE_DIR)/Contents/Resources/MenuBarIcon@2x.png"
 	@cp "Resources/IgniteroLauncher.entitlements" "$(BUNDLE_DIR)/Contents/Resources/"
+	@# 配置方針は bundle ターゲットと同じ (Contents/Resources のみ)。
 	@for b in $(BUILD_DIR)/debug/*.bundle; do \
-		[ -d "$$b" ] && cp -R "$$b" "$(BUNDLE_DIR)/Contents/Resources/"; \
-		if [ -d "$$b" ] && [ -f "$$b/Info.plist" ]; then \
-			cp -R "$$b" "$(BUNDLE_DIR)/Contents/MacOS/"; \
-		fi; \
+		[ -d "$$b" ] || continue; \
+		cp -R "$$b" "$(BUNDLE_DIR)/Contents/Resources/"; \
 	done
 	@# ネストしたリソースバンドルを内側から先に署名する (ルートを先に署名すると seal violation)。
 	@# Info.plist を持たない .bundle は codesign から見るとバンドルではないので除外する。
@@ -126,6 +139,7 @@ dev: build-debug
 			codesign --force --sign "$(CODESIGN_IDENTITY)" "$$nested"; \
 		done
 	@codesign --force --sign "$(CODESIGN_IDENTITY)" --entitlements "$(ENTITLEMENTS)" "$(BUNDLE_DIR)"
+	@$(MAKE) --no-print-directory verify-bundle
 	@echo "Signed with: $(CODESIGN_IDENTITY)"
 	@"$(BUNDLE_DIR)/Contents/MacOS/$(EXEC_NAME)"
 

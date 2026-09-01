@@ -91,6 +91,82 @@ struct EmojiLocalizedNamesLoadTableTests {
   }
 }
 
+// MARK: - EmojiKit のリソースレイアウト前提
+
+/// `EmojiLocalizedNames` は EmojiKit のリソースが「`<lang>.lproj/Localizable.strings`」
+/// というレイアウトで、かつ「キー = 絵文字そのもの」であることに依存している。
+/// EmojiKit を更新してここが変わるとテーブルが無音で空になり、ローカライズ名検索だけが
+/// 静かに死ぬ（クラッシュしないので気づきにくい）。疑似バンドルではなく実際のリソースに
+/// 対して前提が崩れていないことを検証する。
+@Suite("EmojiKit リソースレイアウトの前提")
+struct EmojiKitResourceLayoutTests {
+
+  /// ビルド済みのリソースバンドル、無ければ checkouts のリソース原本を返す。
+  static func emojiKitResourceRoot() -> URL? {
+    if let bundle = ResourceBundle.emojiKit { return bundle.bundleURL }
+
+    let fm = FileManager.default
+    let buildDir = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent()  // IgniteroCoreTests
+      .deletingLastPathComponent()  // Tests
+      .deletingLastPathComponent()  // リポジトリルート
+      .appendingPathComponent(".build")
+
+    func hasJapaneseLproj(_ url: URL) -> Bool {
+      fm.fileExists(atPath: url.appendingPathComponent("ja.lproj").path)
+    }
+
+    // .build/<triple>/<config>/EmojiKit_EmojiKit.bundle
+    if let entries = try? fm.contentsOfDirectory(at: buildDir, includingPropertiesForKeys: nil) {
+      for entry in entries {
+        for config in ["debug", "release"] {
+          let candidate = entry.appendingPathComponent(config)
+            .appendingPathComponent("EmojiKit_EmojiKit.bundle")
+          if hasJapaneseLproj(candidate) { return candidate }
+        }
+      }
+    }
+
+    // ビルド前のリソース原本
+    let checkout = buildDir.appendingPathComponent("checkouts/EmojiKit/Sources/EmojiKit/Resources")
+    return hasJapaneseLproj(checkout) ? checkout : nil
+  }
+
+  @Test("ja.lproj/Localizable.strings が絵文字そのものをキーにしている")
+  func japaneseStringsAreKeyedByEmojiChar() throws {
+    let root = try #require(
+      Self.emojiKitResourceRoot(),
+      "EmojiKit のリソースが見つからない。`swift build` 済みか、EmojiKit のリソース構成が変わっていないか確認する")
+    let url = root.appendingPathComponent("ja.lproj").appendingPathComponent("Localizable.strings")
+    let dict = try #require(
+      NSDictionary(contentsOf: url) as? [String: String],
+      "ja.lproj/Localizable.strings を [String: String] として読めない（String Catalog へ移行した可能性）")
+
+    #expect(dict["😀"] != nil, "キーが絵文字そのものでなくなった可能性がある")
+    #expect(dict.count > 1000, "ローカライズ名の件数が想定より少ない（実測 1,885 件）")
+  }
+
+  @Test("実リソースから日本語のローカライズ名を引ける")
+  func loadsJapaneseNameFromRealResources() throws {
+    let root = try #require(Self.emojiKitResourceRoot())
+    let bundle = try #require(Bundle(url: root))
+
+    let table = EmojiLocalizedNames.loadTable(bundle: bundle, locale: Locale(identifier: "ja_JP"))
+    #expect(table["😀"]?.isEmpty == false)
+  }
+
+  @Test("実リソース由来のローカライズ名で一致判定できる")
+  func matchesByLocalizedNameFromRealResources() throws {
+    let root = try #require(Self.emojiKitResourceRoot())
+    let bundle = try #require(Bundle(url: root))
+    let table = EmojiLocalizedNames.loadTable(bundle: bundle, locale: Locale(identifier: "ja_JP"))
+    let name = try #require(table["😀"])
+
+    // ローカライズ名の一部で一致すること（Unicode 名は英語なので日本語では一致しない）。
+    #expect(name.localizedCaseInsensitiveContains(String(name.prefix(2))))
+  }
+}
+
 // MARK: - ResourceBundle
 
 @Suite("ResourceBundle の解決")
