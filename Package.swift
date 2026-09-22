@@ -6,9 +6,9 @@ let package = Package(
   platforms: [.macOS(.v26)],
   dependencies: [
     .package(url: "https://github.com/groue/GRDB.swift", from: "7.11.1"),
-    .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "3.0.1"),
+    .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "3.1.0"),
     .package(url: "https://github.com/krisk/fuse-swift", from: "1.4.0"),
-    .package(url: "https://github.com/danielsaidi/EmojiKit", from: "3.0.1"),
+    .package(url: "https://github.com/danielsaidi/EmojiKit", from: "3.1.0"),
   ],
   targets: [
     .target(
