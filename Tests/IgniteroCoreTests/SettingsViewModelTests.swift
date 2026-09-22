@@ -103,7 +103,9 @@ struct SettingsViewModelInitialStateTests {
   @Test func versionReturnsIgniteroVersion() throws {
     let manager = try makeTempSettingsManager()
     let vm = SettingsViewModel(settingsManager: manager)
-    #expect(vm.version == Ignitero.version)
+    // `.app` 以外（テストランナー）ではバージョンを取得できないため、
+    // 表示用のフォールバックへ落ちることを確認する。
+    #expect(vm.version == (Ignitero.version ?? "開発ビルド"))
   }
 }
 
@@ -897,7 +899,8 @@ struct SettingsViewModelVersionTests {
   @Test func versionMatchesIgniteroVersion() throws {
     let manager = try makeTempSettingsManager()
     let vm = SettingsViewModel(settingsManager: manager)
-    #expect(vm.version == Ignitero.version)
+    #expect(vm.version == (Ignitero.version ?? "開発ビルド"))
+    // バージョン不明でも表示が空になってはいけない。
     #expect(!vm.version.isEmpty)
   }
 }

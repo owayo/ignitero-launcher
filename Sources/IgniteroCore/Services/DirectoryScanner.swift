@@ -69,8 +69,25 @@ public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
 
   @concurrent
   public func scan(directories: [RegisteredDirectory]) async throws -> ScanResult {
-    var allDirectories: [DirectoryItem] = []
+    // 出現順を保ったままパスで一意化する。`directories` テーブルの主キーは path で、
+    // 保存は配列順の INSERT OR REPLACE（後勝ち）のため、同一パスを重複したまま渡すと
+    // 後から現れたエントリが先のエントリを無音で上書きしてしまう。
+    // 明示登録の親エントリ（検索キーワード・エディタ指定を持つ）は、別の登録の子として
+    // 自動列挙されたエントリより優先する。同種同士は先勝ちで決定的にする。
+    var directoryOrder: [String] = []
+    var directoryByPath: [String: (item: DirectoryItem, isExplicit: Bool)] = [:]
     var allApps: [AppItem] = []
+
+    func addDirectory(_ item: DirectoryItem, isExplicit: Bool) {
+      guard let existing = directoryByPath[item.path] else {
+        directoryOrder.append(item.path)
+        directoryByPath[item.path] = (item, isExplicit)
+        return
+      }
+      // 明示登録が自動列挙を置き換える場合のみ差し替える。
+      guard isExplicit, !existing.isExplicit else { return }
+      directoryByPath[item.path] = (item, isExplicit)
+    }
 
     for registered in directories {
       let normalizedPath = normalizePath(registered.path)
@@ -93,8 +110,9 @@ public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
         )
         let parentEditor = editorForOpenMode(
           registered.parentOpenMode, editor: registered.parentEditor)
-        allDirectories.append(
-          DirectoryItem(name: parentName, path: normalizedPath, editor: parentEditor))
+        addDirectory(
+          DirectoryItem(name: parentName, path: normalizedPath, editor: parentEditor),
+          isExplicit: true)
       }
 
       // 直下の子エントリを処理
@@ -121,12 +139,16 @@ public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
 
         let subEditor = editorForOpenMode(
           registered.subdirsOpenMode, editor: registered.subdirsEditor)
-        allDirectories.append(
-          DirectoryItem(name: entry, path: childPath, editor: subEditor))
+        addDirectory(
+          DirectoryItem(name: entry, path: childPath, editor: subEditor),
+          isExplicit: false)
       }
     }
 
-    return ScanResult(directories: allDirectories, apps: allApps)
+    return ScanResult(
+      directories: directoryOrder.compactMap { directoryByPath[$0]?.item },
+      apps: allApps
+    )
   }
 
   // MARK: - 非公開ヘルパー

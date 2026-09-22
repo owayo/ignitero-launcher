@@ -115,6 +115,19 @@ public struct SearchResult: Sendable {
 public struct SearchService: Sendable {
   private static let maxResults = 20
 
+  /// Fuse に渡してよいクエリ長の上限。
+  ///
+  /// fuse-swift 1.4.0 の Bitap 実装は `Fuse.swift` の
+  /// `bitArr[finish + 1] = (1 << i) - 1` で `i == 63` に到達すると
+  /// `1 << 63` が `Int.min` になり、続く `- 1` が算術オーバーフローで
+  /// プロセスごと SIGTRAP する（検索欄への長文貼り付けでアプリが落ちる）。
+  /// `i` は `floor(threshold * pattern.len)` まで伸びるため threshold=0.4 では
+  /// 158 文字が境界（157 文字までは安全なことを実測で確認）。
+  /// ライブラリ側の `maxPatternLength` は宣言されるだけで検査に使われていないため、
+  /// 呼び出し側で必ず制限する。threshold を引き上げる変更にも耐えるよう
+  /// 十分小さい値を採る。
+  private static let maxQueryLength = 64
+
   public init() {}
 
   /// 統合検索を実行する
@@ -139,16 +152,23 @@ public struct SearchService: Sendable {
         apps: apps, directories: directories, commands: commands, history: history)
     }
 
+    // 上限を超えたクエリはどの項目名にもマッチしないため、Fuse へ渡さず結果ゼロで打ち切る。
+    // 渡すとライブラリ側のオーバーフローでアプリごとクラッシュする（maxQueryLength 参照）。
+    guard normalized.count <= Self.maxQueryLength else { return [] }
+
     let fuse = Fuse(threshold: 0.4)
+    // パターンの構築（小文字化とアルファベット表の生成）は項目ごとに繰り返す必要がない。
+    // 1 度だけ作って全項目で使い回す。
+    guard let pattern = fuse.createPattern(from: normalized) else { return [] }
 
     var results: [SearchResult] = []
 
     // アプリケーション検索
     for app in apps {
-      let nameScore = fuseScore(fuse: fuse, pattern: normalized, text: app.name)
+      let nameScore = fuseScore(fuse: fuse, pattern: pattern, text: app.name)
       let originalScore: Double? =
         if let original = app.originalName {
-          fuseScore(fuse: fuse, pattern: normalized, text: original)
+          fuseScore(fuse: fuse, pattern: pattern, text: original)
         } else {
           nil
         }
@@ -161,14 +181,14 @@ public struct SearchService: Sendable {
 
     // ディレクトリ検索
     for dir in directories {
-      if let score = fuseScore(fuse: fuse, pattern: normalized, text: dir.name), score < 1.0 {
+      if let score = fuseScore(fuse: fuse, pattern: pattern, text: dir.name), score < 1.0 {
         results.append(SearchResult(directoryItem: dir, score: score))
       }
     }
 
     // カスタムコマンド検索
     for cmd in commands {
-      if let score = fuseScore(fuse: fuse, pattern: normalized, text: cmd.alias), score < 1.0 {
+      if let score = fuseScore(fuse: fuse, pattern: pattern, text: cmd.alias), score < 1.0 {
         results.append(SearchResult(customCommand: cmd, score: score))
       }
     }
@@ -246,7 +266,7 @@ public struct SearchService: Sendable {
     return Array(results.prefix(Self.maxResults).map(\.result))
   }
 
-  private func fuseScore(fuse: Fuse, pattern: String, text: String) -> Double? {
+  private func fuseScore(fuse: Fuse, pattern: Fuse.Pattern, text: String) -> Double? {
     // Fuse は isCaseSensitive=false（デフォルト）で内部に text を lowercased する。
     // 呼び出し側で再度 lowercased すると同じ処理が二重に走り、毎キー入力で無駄な
     // String アロケーションが大量発生するため、ここでは lowercased しない。

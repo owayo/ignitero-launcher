@@ -26,13 +26,24 @@ final class IgniteroAppDelegate: NSObject, NSApplicationDelegate {
 
 /// `--self-test-resources` 付きで起動された場合はリソース解決の自己診断だけを実行して
 /// 終了コードで結果を返す（`make smoke-resources` が `.app` に対して実行する）。
-/// GUI を起動しないため `sharedCoordinator` は初期化されない。
+/// `--print-version` はバンドルの `Info.plist` と実行時の自己申告値が一致するかを
+/// `make verify-bundle` が検証するための診断。
+/// いずれも GUI を起動しないため `sharedCoordinator` は初期化されない。
 @main
 enum IgniteroLauncherMain {
   @MainActor
   static func main() {
     if CommandLine.arguments.contains("--self-test-resources") {
       exit(ResourceSelfTest.run() ? EXIT_SUCCESS : EXIT_FAILURE)
+    }
+    if CommandLine.arguments.contains("--print-version") {
+      guard let version = Ignitero.version else {
+        FileHandle.standardError.write(
+          Data("error: アプリケーションバージョンを取得できない\n".utf8))
+        exit(EXIT_FAILURE)
+      }
+      print(version)
+      exit(EXIT_SUCCESS)
     }
     IgniteroApp.main()
   }

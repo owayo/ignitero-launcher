@@ -3,17 +3,23 @@ import GRDB
 
 // MARK: - CacheDatabaseProtocol関連
 
+/// キャッシュ DB へのアクセス。
+///
+/// すべて `async` にしているのは、SQLite の読み書きを呼び出し元のスレッドで
+/// 同期実行させないため。同期メソッドにすると `@MainActor` の呼び出し元
+/// （`CacheBootstrap` / `AppCoordinator`）からはアクターホップが起きず、
+/// 数百件の INSERT と WAL の fsync がそのままメインスレッドで走って UI が止まる。
 public protocol CacheDatabaseProtocol: Sendable {
-  func isEmpty() throws -> Bool
-  func saveApps(_ apps: [AppItem]) throws
+  func isEmpty() async throws -> Bool
+  func saveApps(_ apps: [AppItem]) async throws
   func loadApps() async throws -> [AppItem]
-  func saveDirectories(_ dirs: [DirectoryItem]) throws
+  func saveDirectories(_ dirs: [DirectoryItem]) async throws
   func loadDirectories() async throws -> [DirectoryItem]
   // アプリとディレクトリの両方を 1 つのトランザクションで置換する。
   // 片方だけ成功して片方が失敗した場合に、apps と directories の世代がずれた
   // 不整合キャッシュが残らないようにするために使う。
-  func saveAppsAndDirectories(apps: [AppItem], directories: [DirectoryItem]) throws
-  func clearCache() throws
+  func saveAppsAndDirectories(apps: [AppItem], directories: [DirectoryItem]) async throws
+  func clearCache() async throws
 }
 
 // MARK: - CacheDatabase関連
@@ -78,8 +84,8 @@ public actor CacheDatabase: CacheDatabaseProtocol {
 
   // MARK: - アプリ
 
-  nonisolated public func saveApps(_ apps: [AppItem]) throws {
-    try dbQueue.write { db in
+  nonisolated public func saveApps(_ apps: [AppItem]) async throws {
+    try await dbQueue.write { db in
       try db.execute(sql: "DELETE FROM apps")
       let now = ISO8601DateFormatter().string(from: Date())
       for app in apps {
@@ -98,16 +104,16 @@ public actor CacheDatabase: CacheDatabaseProtocol {
     }
   }
 
-  public func loadApps() throws -> [AppItem] {
-    try dbQueue.read { db in
+  nonisolated public func loadApps() async throws -> [AppItem] {
+    try await dbQueue.read { db in
       try AppItem.fetchAll(db)
     }
   }
 
   // MARK: - ディレクトリ
 
-  nonisolated public func saveDirectories(_ dirs: [DirectoryItem]) throws {
-    try dbQueue.write { db in
+  nonisolated public func saveDirectories(_ dirs: [DirectoryItem]) async throws {
+    try await dbQueue.write { db in
       try db.execute(sql: "DELETE FROM directories")
       let now = ISO8601DateFormatter().string(from: Date())
       for dir in dirs {
@@ -126,8 +132,8 @@ public actor CacheDatabase: CacheDatabaseProtocol {
     }
   }
 
-  public func loadDirectories() throws -> [DirectoryItem] {
-    try dbQueue.read { db in
+  nonisolated public func loadDirectories() async throws -> [DirectoryItem] {
+    try await dbQueue.read { db in
       try DirectoryItem.fetchAll(db)
     }
   }
@@ -141,8 +147,8 @@ public actor CacheDatabase: CacheDatabaseProtocol {
   nonisolated public func saveAppsAndDirectories(
     apps: [AppItem],
     directories: [DirectoryItem]
-  ) throws {
-    try dbQueue.write { db in
+  ) async throws {
+    try await dbQueue.write { db in
       let now = ISO8601DateFormatter().string(from: Date())
 
       try db.execute(sql: "DELETE FROM apps")
@@ -176,16 +182,16 @@ public actor CacheDatabase: CacheDatabaseProtocol {
 
   // MARK: - キャッシュ状態
 
-  nonisolated public func isEmpty() throws -> Bool {
-    try dbQueue.read { db in
+  nonisolated public func isEmpty() async throws -> Bool {
+    try await dbQueue.read { db in
       let appCount = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM apps") ?? 0
       let dirCount = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM directories") ?? 0
       return appCount == 0 && dirCount == 0
     }
   }
 
-  nonisolated public func clearCache() throws {
-    try dbQueue.write { db in
+  nonisolated public func clearCache() async throws {
+    try await dbQueue.write { db in
       try db.execute(sql: "DELETE FROM apps")
       try db.execute(sql: "DELETE FROM directories")
       try db.execute(sql: "DELETE FROM metadata")

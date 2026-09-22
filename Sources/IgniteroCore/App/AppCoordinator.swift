@@ -239,7 +239,12 @@ public final class AppCoordinator {
     wm.onShowLauncher = { [weak self] in
       guard let self else { return }
       self.launcherViewModel.clearSearch()
-      self.windowManager.resizeForResults(count: 0)
+      // 空クエリの検索結果 = 最近使った項目。SwiftUI の onChange は searchQuery が
+      // 既に空のときは発火しないため、ここで明示的に実行しないと
+      // 「起動直後は履歴が出ず、一度入力して消したときだけ出る」という挙動になる。
+      self.launcherViewModel.updateSearch()
+      self.windowManager.resizeForResults(
+        count: self.launcherViewModel.searchResults.count)
       self.launcherViewModel.focusTrigger += 1
     }
 
@@ -782,7 +787,13 @@ public final class AppCoordinator {
 
   /// アップデートチェックを実行する。
   private func checkForUpdates() async {
-    let result = await updateChecker.checkForUpdate(currentVersion: Ignitero.version)
+    // `.app` 以外（`swift run` 等）ではバージョンを特定できない。比較の基準が無い状態で
+    // 判定すると「常に通知」か「二度と通知しない」のどちらかに倒れるため、確認自体を行わない。
+    guard let currentVersion = Ignitero.version else {
+      Self.logger.debug("Skipping update check: application version is unavailable")
+      return
+    }
+    let result = await updateChecker.checkForUpdate(currentVersion: currentVersion)
     if let result {
       launcherViewModel.showUpdateBanner(version: result.latestVersion)
     }
@@ -790,11 +801,15 @@ public final class AppCoordinator {
 
   /// 非表示にされたアップデートバージョンを設定へ永続化する。
   private func persistDismissedUpdateVersion(_ version: String) {
-    var cache = settingsManager.settings.updateCache ?? UpdateCache()
-    cache.dismissedVersion = version
-    settingsManager.settings.updateCache = cache
     do {
-      try settingsManager.save()
+      // 保存に失敗したときメモリ上の設定も巻き戻すため、必ず updateSettings を通す。
+      // 素の代入 + save() だと「メモリは dismiss 済み・ディスクは未 dismiss」で乖離し、
+      // 次に別の設定変更が成功した際に未保存の値が一緒に永続化されてしまう。
+      try settingsManager.updateSettings { settings in
+        var cache = settings.updateCache ?? UpdateCache()
+        cache.dismissedVersion = version
+        settings.updateCache = cache
+      }
     } catch {
       Self.logger.error(
         "Failed to persist dismissed update version: \(error.localizedDescription)")

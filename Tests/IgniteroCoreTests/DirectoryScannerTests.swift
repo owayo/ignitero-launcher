@@ -738,8 +738,8 @@ struct DirectoryScannerCacheIntegrationTests {
 
     // キャッシュデータベースへ保存する
     let db = try CacheDatabase.inMemory()
-    try db.saveDirectories(result.directories)
-    try db.saveApps(result.apps)
+    try await db.saveDirectories(result.directories)
+    try await db.saveApps(result.apps)
 
     // 読み戻して内容を確認する
     let loadedDirs = try await db.loadDirectories()
@@ -900,5 +900,102 @@ struct DirectoryScannerRealFileSystemTests {
     #expect(result.apps.count == 1)
     #expect(result.apps[0].name == "TestApp")
     #expect(result.apps[0].path == appBundle.path)
+  }
+}
+
+// MARK: - 同一パスの重複排除テスト
+
+@Suite("DirectoryScanner 同一パスの重複排除")
+struct DirectoryScannerDuplicatePathTests {
+
+  /// `directories` テーブルの主キーは path で、保存は配列順の INSERT OR REPLACE（後勝ち）。
+  /// 個別登録したディレクトリが別の登録の子としても列挙されると、重複したまま返した場合に
+  /// 検索キーワードとエディタ指定が無音で上書きされる。
+  @Test("明示登録の親エントリは別登録の子エントリに上書きされない")
+  func explicitParentSurvivesChildEntryOfAnotherRegistration() async throws {
+    var fs = MockFileSystemProvider()
+    fs.directoryContents = ["/dev/proj": [], "/dev": ["proj"]]
+    fs.directoryFlags = ["/dev/proj", "/dev"]
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try await scanner.scan(directories: [
+      RegisteredDirectory(
+        path: "/dev/proj", parentOpenMode: .editor, parentEditor: "cursor",
+        parentSearchKeyword: "mp", subdirsOpenMode: .none, scanForApps: false),
+      RegisteredDirectory(
+        path: "/dev", parentOpenMode: .none, subdirsOpenMode: .finder, scanForApps: false),
+    ])
+
+    let matching = result.directories.filter { $0.path == "/dev/proj" }
+    #expect(matching.count == 1)
+    #expect(matching.first?.name == "mp")
+    #expect(matching.first?.editor == "cursor")
+  }
+
+  /// 登録順が逆でも結果が変わらないこと（順序依存の非決定的な挙動を防ぐ）。
+  @Test("登録順が逆でも明示登録の設定が残る")
+  func explicitParentWinsRegardlessOfRegistrationOrder() async throws {
+    var fs = MockFileSystemProvider()
+    fs.directoryContents = ["/dev/proj": [], "/dev": ["proj"]]
+    fs.directoryFlags = ["/dev/proj", "/dev"]
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try await scanner.scan(directories: [
+      RegisteredDirectory(
+        path: "/dev", parentOpenMode: .none, subdirsOpenMode: .finder, scanForApps: false),
+      RegisteredDirectory(
+        path: "/dev/proj", parentOpenMode: .editor, parentEditor: "cursor",
+        parentSearchKeyword: "mp", subdirsOpenMode: .none, scanForApps: false),
+    ])
+
+    let matching = result.directories.filter { $0.path == "/dev/proj" }
+    #expect(matching.count == 1)
+    #expect(matching.first?.name == "mp")
+    #expect(matching.first?.editor == "cursor")
+  }
+
+  /// 2 つの登録が同じ子ディレクトリを列挙した場合も 1 件に集約される。
+  @Test("複数の登録が同じ子を列挙しても重複しない")
+  func childListedByMultipleRegistrationsIsDeduplicated() async throws {
+    var fs = MockFileSystemProvider()
+    fs.directoryContents = ["/dev": ["proj"], "/dev/": ["proj"], "/dev/proj": []]
+    fs.directoryFlags = ["/dev", "/dev/proj"]
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try await scanner.scan(directories: [
+      RegisteredDirectory(
+        path: "/dev", parentOpenMode: .none, subdirsOpenMode: .editor,
+        subdirsEditor: "cursor", scanForApps: false),
+      // 末尾スラッシュ付きでも正規化後は同じパスを指す
+      RegisteredDirectory(
+        path: "/dev/", parentOpenMode: .none, subdirsOpenMode: .finder, scanForApps: false),
+    ])
+
+    let matching = result.directories.filter { $0.path == "/dev/proj" }
+    #expect(matching.count == 1)
+    // 先に現れた登録の設定を保持する（後勝ちで上書きしない）
+    #expect(matching.first?.editor == "cursor")
+  }
+
+  /// 明示登録どうしが重複した場合は先勝ちで決定的に振る舞う。
+  @Test("同じパスを二重に明示登録しても 1 件に集約される")
+  func duplicateExplicitRegistrationsKeepFirst() async throws {
+    var fs = MockFileSystemProvider()
+    fs.directoryContents = ["/dev/proj": []]
+    fs.directoryFlags = ["/dev/proj"]
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try await scanner.scan(directories: [
+      RegisteredDirectory(
+        path: "/dev/proj", parentOpenMode: .editor, parentEditor: "cursor",
+        parentSearchKeyword: "first", subdirsOpenMode: .none, scanForApps: false),
+      RegisteredDirectory(
+        path: "/dev/proj", parentOpenMode: .editor, parentEditor: "vscode",
+        parentSearchKeyword: "second", subdirsOpenMode: .none, scanForApps: false),
+    ])
+
+    #expect(result.directories.count == 1)
+    #expect(result.directories.first?.name == "first")
+    #expect(result.directories.first?.editor == "cursor")
   }
 }

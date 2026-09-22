@@ -51,7 +51,7 @@ public final class CacheBootstrap {
   public func performInitialScan() async -> Bool {
     let shouldScan: Bool
     do {
-      let cacheIsEmpty = try cacheDatabase.isEmpty()
+      let cacheIsEmpty = try await cacheDatabase.isEmpty()
       let updateOnStartup = settingsManager.settings.cacheUpdate.updateOnStartup
       shouldScan = cacheIsEmpty || updateOnStartup
     } catch {
@@ -97,7 +97,11 @@ public final class CacheBootstrap {
 
         guard !Task.isCancelled else { break }
 
-        await self?.runScan()
+        // 非構造化 Task は所有者が解放されても自動キャンセルされない。
+        // `self?.runScan()` のままだと self が nil になってもループが回り続け、
+        // プロセスが終わるまで空回りするタスクが残る。
+        guard let self else { break }
+        await self.runScan()
       }
     }
 
@@ -211,7 +215,7 @@ public final class CacheBootstrap {
     // 保存失敗時は ViewModel への通知を行わず、古いキャッシュとスキャン結果の
     // 整合性が崩れたまま「成功」と扱われるのを防ぐ。
     do {
-      try cacheDatabase.saveAppsAndDirectories(apps: allApps, directories: allDirectories)
+      try await cacheDatabase.saveAppsAndDirectories(apps: allApps, directories: allDirectories)
     } catch {
       Self.logger.error("Failed to save scan results: \(error.localizedDescription)")
       return false

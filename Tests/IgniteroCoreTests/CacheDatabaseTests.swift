@@ -22,7 +22,7 @@ import Testing
     AppItem(name: "Finder", path: "/System/Applications/Finder.app"),
   ]
 
-  try db.saveApps(apps)
+  try await db.saveApps(apps)
   let loaded = try await db.loadApps()
 
   #expect(loaded.count == 2)
@@ -33,10 +33,10 @@ import Testing
 @Test func cacheDatabaseSaveAppsOverwritesExisting() async throws {
   let db = try CacheDatabase.inMemory()
   let initial = [AppItem(name: "Safari", path: "/Applications/Safari.app")]
-  try db.saveApps(initial)
+  try await db.saveApps(initial)
 
   let updated = [AppItem(name: "Safari Updated", path: "/Applications/Safari.app")]
-  try db.saveApps(updated)
+  try await db.saveApps(updated)
 
   let loaded = try await db.loadApps()
   #expect(loaded.count == 1)
@@ -46,7 +46,7 @@ import Testing
 @Test func cacheDatabaseAppWithOptionalFields() async throws {
   let db = try CacheDatabase.inMemory()
   let app = AppItem(name: "Test", path: "/test.app", iconPath: nil, originalName: nil)
-  try db.saveApps([app])
+  try await db.saveApps([app])
   let loaded = try await db.loadApps()
   #expect(loaded.count == 1)
   #expect(loaded[0].iconPath == nil)
@@ -60,7 +60,7 @@ import Testing
     DirectoryItem(name: "project-b", path: "/Users/dev/project-b"),
   ]
 
-  try db.saveDirectories(dirs)
+  try await db.saveDirectories(dirs)
   let loaded = try await db.loadDirectories()
 
   #expect(loaded.count == 2)
@@ -71,44 +71,44 @@ import Testing
 @Test func cacheDatabaseSaveDirectoriesOverwritesExisting() async throws {
   let db = try CacheDatabase.inMemory()
   let initial = [DirectoryItem(name: "project", path: "/project", editor: "vscode")]
-  try db.saveDirectories(initial)
+  try await db.saveDirectories(initial)
 
   let updated = [DirectoryItem(name: "project", path: "/project", editor: "cursor")]
-  try db.saveDirectories(updated)
+  try await db.saveDirectories(updated)
 
   let loaded = try await db.loadDirectories()
   #expect(loaded.count == 1)
   #expect(loaded[0].editor == "cursor")
 }
 
-@Test func cacheDatabaseIsEmptyWhenNew() throws {
+@Test func cacheDatabaseIsEmptyWhenNew() async throws {
   let db = try CacheDatabase.inMemory()
-  let empty = try db.isEmpty()
+  let empty = try await db.isEmpty()
   #expect(empty == true)
 }
 
-@Test func cacheDatabaseIsNotEmptyAfterSavingApps() throws {
+@Test func cacheDatabaseIsNotEmptyAfterSavingApps() async throws {
   let db = try CacheDatabase.inMemory()
-  try db.saveApps([AppItem(name: "Safari", path: "/Applications/Safari.app")])
-  let empty = try db.isEmpty()
+  try await db.saveApps([AppItem(name: "Safari", path: "/Applications/Safari.app")])
+  let empty = try await db.isEmpty()
   #expect(empty == false)
 }
 
-@Test func cacheDatabaseIsNotEmptyAfterSavingDirectories() throws {
+@Test func cacheDatabaseIsNotEmptyAfterSavingDirectories() async throws {
   let db = try CacheDatabase.inMemory()
-  try db.saveDirectories([DirectoryItem(name: "proj", path: "/proj")])
-  let empty = try db.isEmpty()
+  try await db.saveDirectories([DirectoryItem(name: "proj", path: "/proj")])
+  let empty = try await db.isEmpty()
   #expect(empty == false)
 }
 
-@Test func cacheDatabaseClearCache() throws {
+@Test func cacheDatabaseClearCache() async throws {
   let db = try CacheDatabase.inMemory()
-  try db.saveApps([AppItem(name: "Safari", path: "/Applications/Safari.app")])
-  try db.saveDirectories([DirectoryItem(name: "proj", path: "/proj")])
+  try await db.saveApps([AppItem(name: "Safari", path: "/Applications/Safari.app")])
+  try await db.saveDirectories([DirectoryItem(name: "proj", path: "/proj")])
 
-  try db.clearCache()
+  try await db.clearCache()
 
-  let empty = try db.isEmpty()
+  let empty = try await db.isEmpty()
   #expect(empty == true)
 }
 
@@ -137,7 +137,7 @@ import Testing
   let db = try CacheDatabase.inMemory()
 
   // 初期データ
-  try db.saveAppsAndDirectories(
+  try await db.saveAppsAndDirectories(
     apps: [
       AppItem(name: "OldApp", path: "/Applications/OldApp.app")
     ],
@@ -147,7 +147,7 @@ import Testing
   )
 
   // まったく異なる世代のデータで置換
-  try db.saveAppsAndDirectories(
+  try await db.saveAppsAndDirectories(
     apps: [
       AppItem(name: "NewApp", path: "/Applications/NewApp.app", iconPath: "/i.png")
     ],
@@ -165,9 +165,9 @@ import Testing
   #expect(dirs.first?.editor == "cursor")
 }
 
-@Test func cacheDatabaseSaveAppsAndDirectoriesHandlesEmptyArrays() throws {
+@Test func cacheDatabaseSaveAppsAndDirectoriesHandlesEmptyArrays() async throws {
   let db = try CacheDatabase.inMemory()
-  try db.saveAppsAndDirectories(apps: [], directories: [])
-  let empty = try db.isEmpty()
+  try await db.saveAppsAndDirectories(apps: [], directories: [])
+  let empty = try await db.isEmpty()
   #expect(empty == true)
 }

@@ -1100,3 +1100,95 @@ struct UpdateCheckerCacheUpdateNoUpdateTests {
     #expect(mockSession.requestedURL == nil)
   }
 }
+
+// MARK: - checkedAt が未来日時のケース
+
+@Suite("UpdateChecker 未来日時のキャッシュ")
+@MainActor
+struct UpdateCheckerFutureTimestampTests {
+
+  /// 経過時間を上限だけで判定すると、`checkedAt` が未来のとき負値が常に上限未満となり
+  /// 無条件でキャッシュヒットする。この分岐は `checkedAt` を更新しないため、
+  /// 実時刻が追いつくまでアップデート確認が黙って止まる。
+  /// 時計ずれや他マシンの settings.json 持ち込みで起こり得る。
+  @Test("checkedAt が未来ならキャッシュを使わず再取得する")
+  func refetchesWhenCheckedAtIsInFuture() async {
+    let mockSession = MockURLSession()
+    mockSession.dataToReturn = makeReleasesJSON([
+      makeRelease(tagName: "v3.0.0")
+    ])
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    settingsManager.settings.updateCache = UpdateCache(
+      latestVersion: "2.0.0",
+      checkedAt: Date().addingTimeInterval(24 * 3600)  // 24時間先
+    )
+
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    let result = await checker.checkForUpdate(currentVersion: "1.0.0")
+
+    // 古いキャッシュ値ではなく API の結果が返る
+    #expect(result?.latestVersion == "3.0.0")
+    #expect(mockSession.requestedURL != nil)
+    // 再取得時に checkedAt が現在時刻へ更新され、未来日時が解消される
+    let updatedCheckedAt = settingsManager.settings.updateCache?.checkedAt
+    #expect(updatedCheckedAt != nil)
+    #expect(Date().timeIntervalSince(updatedCheckedAt ?? Date()) >= 0)
+  }
+
+  @Test("checkedAt がわずかに未来でも再取得する")
+  func refetchesWhenCheckedAtIsSlightlyInFuture() async {
+    let mockSession = MockURLSession()
+    mockSession.dataToReturn = makeReleasesJSON([
+      makeRelease(tagName: "v3.0.0")
+    ])
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    settingsManager.settings.updateCache = UpdateCache(
+      latestVersion: "2.0.0",
+      checkedAt: Date().addingTimeInterval(60)  // 1分先
+    )
+
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    _ = await checker.checkForUpdate(currentVersion: "1.0.0")
+    #expect(mockSession.requestedURL != nil)
+  }
+
+  /// 境界（現在時刻ちょうど）は有効なキャッシュとして扱う。
+  @Test("checkedAt が現在時刻ならキャッシュを使う")
+  func usesCacheWhenCheckedAtIsNow() async {
+    let mockSession = MockURLSession()
+    mockSession.dataToReturn = makeReleasesJSON([
+      makeRelease(tagName: "v99.0.0")
+    ])
+
+    let settingsManager = SettingsManager(configDirectory: makeTempConfigDir())
+    settingsManager.settings.updateCache = UpdateCache(
+      latestVersion: "2.0.0",
+      checkedAt: Date()
+    )
+
+    let checker = UpdateChecker(
+      session: mockSession,
+      settingsManager: settingsManager,
+      owner: "test",
+      repo: "test-repo"
+    )
+
+    let result = await checker.checkForUpdate(currentVersion: "1.0.0")
+    #expect(result?.latestVersion == "2.0.0")
+    #expect(mockSession.requestedURL == nil)
+  }
+}

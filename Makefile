@@ -79,17 +79,40 @@ bundle: build
 	@echo "Signed with: $(CODESIGN_IDENTITY)"
 	@echo "Bundle created: $(BUNDLE_DIR)"
 
-# `.app` に必要なリソースが揃っているかを検証する。
+# `.app` に必要なリソースが揃っているか、バージョンが一意かを検証する。
 verify-bundle:
+	@# SwiftPM のリソースバンドルは配置が 2 通りある。
+	@#   flat          : <name>.bundle/ja.lproj/Localizable.strings
+	@#   macOS バンドル: <name>.bundle/Contents/Resources/ja.lproj/Localizable.strings
+	@# どちらになるかはビルドシステム (debug/release) と SwiftPM の版で変わる
+	@# (2026-09-22 時点で debug は flat、release は Contents/Resources)。
+	@# 読み出しは Bundle API 経由なのでどちらでも解決できるため、検証も両方を許容する。
 	@for r in $(REQUIRED_RESOURCES); do \
-		if [ ! -e "$(BUNDLE_DIR)/Contents/Resources/$$r" ]; then \
-			echo "error: $$r が $(BUNDLE_DIR)/Contents/Resources に無い" >&2; \
+		bundle_name="$${r%%/*}"; \
+		rel="$${r#*/}"; \
+		base="$(BUNDLE_DIR)/Contents/Resources/$$bundle_name"; \
+		if [ ! -e "$$base/$$rel" ] && [ ! -e "$$base/Contents/Resources/$$rel" ]; then \
+			echo "error: $$rel が $$base (直下または Contents/Resources) に無い" >&2; \
 			echo "       ResourceBundle.resolve(named:) が中身を読めず、絵文字のローカライズ名や" >&2; \
 			echo "       キーワード辞書が黙って失われる。bundle ターゲットの配置処理を確認する。" >&2; \
 			exit 1; \
 		fi; \
 	done
 	@echo "Resource bundles: OK"
+	@# バージョンの正本は Info.plist の CFBundleShortVersionString ただ 1 つ
+	@# (release.yml が bump するのもここだけ)。アプリが別の値を自己申告すると
+	@# アップデート判定が誤ったバージョンで行われ、通知が出なくなる。
+	@# source plist → bundle へのコピー → 実行時の Bundle.main 解決までを一度に検査する。
+	@plist_version="$$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+		"$(BUNDLE_DIR)/Contents/Info.plist")"; \
+	reported_version="$$("$(BUNDLE_DIR)/Contents/MacOS/$(EXEC_NAME)" --print-version)" || { \
+		echo "error: アプリがバージョンを申告できなかった" >&2; exit 1; }; \
+	if [ "$$plist_version" != "$$reported_version" ]; then \
+		echo "error: バージョン不一致 (Info.plist=$$plist_version / アプリ=$$reported_version)" >&2; \
+		echo "       Info.plist を唯一の正本にする。Swift 側に定数を置かない。" >&2; \
+		exit 1; \
+	fi; \
+	echo "Version: $$plist_version"
 
 # `.app` を実際に起動してリソース解決の自己診断を行う。
 # ビルドディレクトリの `.bundle` を退避して `Bundle.module` の fallback を無効化するため、

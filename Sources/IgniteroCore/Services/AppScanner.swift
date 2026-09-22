@@ -14,6 +14,13 @@ public protocol AppScannerProtocol: Sendable {
   /// スキャン済みアプリが除外リストに該当するかを判定する。
   func isExcluded(_ app: AppItem, excludedApps: [String]) -> Bool
 
+  /// 構築済みの除外セットで判定する。
+  ///
+  /// 一覧へ繰り返し適用する経路（`excluding`）で `Set` を作り直さないために使う。
+  /// 配列を受け取る版だけだと、アプリ 1 件ごとに `Set(excludedApps)` が再構築されて
+  /// O(アプリ数 × 除外数) になる。
+  func isExcluded(_ app: AppItem, excludedSet: Set<String>) -> Bool
+
   /// スキャン済みアプリ一覧へ除外フィルタを適用する。
   ///
   /// `isExcluded` は `AppScanner` の実装で Info.plist を読み込むため、アプリ数分の
@@ -29,13 +36,20 @@ extension AppScannerProtocol {
   @concurrent
   public func excluding(_ apps: [AppItem], excludedApps: [String]) async -> [AppItem] {
     guard !excludedApps.isEmpty else { return apps }
-    return apps.filter { !isExcluded($0, excludedApps: excludedApps) }
+    // Set の構築は 1 回で足りる。
+    let excludedSet = Set(excludedApps)
+    return apps.filter { !isExcluded($0, excludedSet: excludedSet) }
+  }
+
+  /// 既定実装: 配列を `Set` 化してセット版へ委譲する。
+  public func isExcluded(_ app: AppItem, excludedApps: [String]) -> Bool {
+    guard !excludedApps.isEmpty else { return false }
+    return isExcluded(app, excludedSet: Set(excludedApps))
   }
 
   /// 既定実装: パス・バンドルファイル名・バンドル名・表示名・元名で照合する。
-  public func isExcluded(_ app: AppItem, excludedApps: [String]) -> Bool {
-    guard !excludedApps.isEmpty else { return false }
-    let excludedSet = Set(excludedApps)
+  public func isExcluded(_ app: AppItem, excludedSet: Set<String>) -> Bool {
+    guard !excludedSet.isEmpty else { return false }
     let bundleFileName = (app.path as NSString).lastPathComponent
     let bundleName =
       bundleFileName.hasSuffix(".app")
@@ -166,9 +180,8 @@ public struct AppScanner: AppScannerProtocol, Sendable {
   ///
   /// AppItem の名前照合に加えて Info.plist の表示名/バンドル名でも照合する
   /// （スキャン時の事前・事後チェックと同一の判定）。
-  public func isExcluded(_ app: AppItem, excludedApps: [String]) -> Bool {
-    guard !excludedApps.isEmpty else { return false }
-    let excludedSet = Set(excludedApps)
+  public func isExcluded(_ app: AppItem, excludedSet: Set<String>) -> Bool {
+    guard !excludedSet.isEmpty else { return false }
     // appItem ありの判定は Info.plist を参照しないため plist: nil で済む。
     if isExcluded(bundlePath: app.path, appItem: app, plist: nil, excludedSet: excludedSet) {
       return true

@@ -957,3 +957,55 @@ struct AppScannerIsExcludedItemTests {
     #expect(result.isEmpty)
   }
 }
+
+// MARK: - 構築済み除外セットでの判定
+
+@Suite("AppScanner isExcluded(app:excludedSet:)")
+struct AppScannerExcludedSetTests {
+
+  /// `excluding` はアプリ 1 件ごとに `Set(excludedApps)` を作り直していたため
+  /// O(アプリ数 × 除外数) になっていた。構築済みセットを受け取る版で解消する。
+  /// 配列版と同じ判定結果になることを担保する。
+  @Test("配列版と同じ判定結果を返す")
+  func matchesArrayVariant() {
+    let scanner = AppScanner(scanTargets: [])
+    let app = AppItem(
+      name: "プレビュー", path: "/Applications/Preview.app", iconPath: nil,
+      originalName: "Preview")
+
+    for excluded in [
+      ["/Applications/Preview.app"], ["Preview.app"], ["Preview"], ["プレビュー"],
+      ["Mail.app"], ["Safari", "Preview"], [],
+    ] {
+      #expect(
+        scanner.isExcluded(app, excludedSet: Set(excluded))
+          == scanner.isExcluded(app, excludedApps: excluded),
+        "除外リスト \(excluded) で判定が食い違う")
+    }
+  }
+
+  @Test("空セットでは常に除外しない")
+  func emptySetExcludesNothing() {
+    let scanner = AppScanner(scanTargets: [])
+    let app = AppItem(name: "Safari", path: "/Applications/Safari.app")
+    #expect(!scanner.isExcluded(app, excludedSet: []))
+  }
+
+  @Test("excluding はセット版の判定と一致する")
+  func excludingUsesSameJudgement() async {
+    let scanner = AppScanner(scanTargets: [])
+    let apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app"),
+      AppItem(name: "Mail", path: "/Applications/Mail.app"),
+      AppItem(name: "プレビュー", path: "/Applications/Preview.app", originalName: "Preview"),
+    ]
+    let excluded = ["Mail", "Preview"]
+
+    let filtered = await scanner.excluding(apps, excludedApps: excluded)
+    let expected = apps.filter { !scanner.isExcluded($0, excludedSet: Set(excluded)) }
+
+    #expect(filtered.map(\.path) == expected.map(\.path))
+    #expect(filtered.contains { $0.name == "Safari" })
+    #expect(!filtered.contains { $0.name == "Mail" })
+  }
+}

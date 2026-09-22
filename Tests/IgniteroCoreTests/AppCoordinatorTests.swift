@@ -1511,3 +1511,48 @@ struct AppCoordinatorSettingsChangeTests {
     #expect(coordinator.launcherViewModel.isScanning == false)
   }
 }
+
+// MARK: - ランチャー表示時の履歴反映
+
+@Suite("AppCoordinator ランチャー表示時の履歴")
+@MainActor
+struct AppCoordinatorShowLauncherHistoryTests {
+
+  /// 空クエリの検索結果 = 最近使った項目。SwiftUI の onChange は searchQuery が
+  /// 既に空のときは発火しないため、表示時に明示的に検索しないと
+  /// 「起動直後は履歴が出ず、一度入力して消したときだけ出る」という挙動になる。
+  @Test("表示時に空クエリの検索が走り履歴が反映される")
+  func showLauncherPopulatesRecentHistory() async {
+    let history = makeTempSelectionHistory()
+    history.record(keyword: "saf", path: "/Applications/Safari.app")
+
+    let coordinator = makeCoordinator(selectionHistory: history)
+    coordinator.launcherViewModel.apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app"),
+      AppItem(name: "Mail", path: "/Applications/Mail.app"),
+    ]
+    coordinator.launcherViewModel.history = history.allEntries
+    coordinator.launcherViewModel.clearSearch()
+    #expect(coordinator.launcherViewModel.searchResults.isEmpty)
+
+    // WindowManager が表示時に呼ぶコールバックを実行する
+    coordinator.windowManager.onShowLauncher?()
+
+    #expect(coordinator.launcherViewModel.searchQuery.isEmpty)
+    #expect(!coordinator.launcherViewModel.searchResults.isEmpty)
+    #expect(coordinator.launcherViewModel.searchResults.contains { $0.name == "Safari" })
+  }
+
+  @Test("履歴が無ければ結果は空のまま")
+  func showLauncherWithoutHistoryKeepsResultsEmpty() async {
+    let coordinator = makeCoordinator()
+    coordinator.launcherViewModel.apps = [
+      AppItem(name: "Safari", path: "/Applications/Safari.app")
+    ]
+    coordinator.launcherViewModel.history = []
+
+    coordinator.windowManager.onShowLauncher?()
+
+    #expect(coordinator.launcherViewModel.searchResults.isEmpty)
+  }
+}

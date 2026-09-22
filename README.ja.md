@@ -2,6 +2,23 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-09-22 追記（定期メンテナンス）:
+
+- `git fetch origin` と `git pull --rebase origin main` を実行し、未コミット変更のない `main` をリモート最新と同期
+- `depup --install --include-pinned` を実行し、KeyboardShortcuts 3.0.1 → 3.1.0、EmojiKit 3.0.1 → 3.1.0（いずれもマイナー）へ更新。GRDB.swift 7.11.1 / Fuse-Swift 1.4.0 は最新のため据え置き。破壊的変更なし
+- Terminal.app 2.15 / iTerm2 3.7.1 / Ghostty 1.3.1 / cmux 0.64.25 のローカル AppleScript dictionary を再確認。Warp 0.2026.07.01.09.21.01 は `Info.plist` に `NSAppleScriptEnabled` / `OSAScriptingDefinition` がなく `.sdef` も同梱していないため引き続き非対応で、要望 Issue warpdotdev/warp#3364 も 2026-05-20 の更新を最後に `enhancement` ラベルのまま。URL scheme はディレクトリを開くだけで任意コマンドを実行できないため代替にならず、`.command` 方式を維持
+- astro-sight で複雑度・未参照シンボル・変更影響を確認。100 行を超える関数は描画処理の 1 件のみ（121 行）、60 行超も 5 件で、挙動変更を伴うリファクタリングは不要と判断
+- コードベース全体レビュー（プロセス実行系 / データ永続化系 / UI 層 / 検索・更新系の 4 観点）で、確実なバグ 10 件を修正
+  - **検索欄への長文貼り付けでアプリが落ちる（致命的）**: fuse-swift 1.4.0 の Bitap 実装が `(1 << 63) - 1` の算術オーバーフローで SIGTRAP する。threshold=0.4 では 158 文字が境界で、157 文字までは安全なことを実測で確認。ライブラリ側の `maxPatternLength` は検査に使われていないため `SearchService` 側で上限を設けた
+  - **設定画面のフォルダ選択で UI が固まる（致命的）**: `URL.deletingLastPathComponent()` が `..` を解決せず不動点になるため、`~/Projects/../Documents` のようなパスで遡上ループが停止しなかった
+  - **登録ディレクトリの設定が無音で消える**: `DirectoryScanner` が同一パスを重複生成し、`INSERT OR REPLACE` の後勝ちで個別登録した検索キーワードとエディタ指定が上書きされていた
+  - **アップデート通知が出ない**: `Ignitero.version` のハードコードが Info.plist と食い違っていた（リリース CI は Info.plist だけを bump する）。バージョンの正本を Info.plist 1 つに集約し、`make verify-bundle` で実行時の自己申告値との一致を検査するようにした
+  - **キャッシュ保存がメインスレッドを塞ぐ**: `CacheDatabaseProtocol` が同期メソッドだったため、数百件の INSERT と WAL の fsync が `@MainActor` 上で実行されていた。全メソッドを `async` 化
+  - 最近使った項目が起動直後に表示されない、`checkedAt` が未来日時だとアップデート確認が停止する、自動更新タスクが所有者解放後も空回りする、除外判定が O(アプリ数 × 除外数) になる、`~/Applications` のエディタを起動できない、の 5 件も併せて修正
+- SwiftPM のリソースバンドルが debug は flat（`<bundle>/ja.lproj`）、release は macOS バンドル（`<bundle>/Contents/Resources/ja.lproj`）と配置が異なることが判明したため、`Makefile` の検証とテストを両形式に対応させた（読み出しは `Bundle` API 経由のため機能自体は両方で成立する）
+- テスト数を 1029 → 1053 に増加（重複排除 4 件、長大クエリ 3 件、パス解決 5 件、バージョン解決 4 件、未来日時キャッシュ 3 件、除外セット 3 件、表示時の履歴 2 件）
+- 全 1053 テスト（211 スイート）、リリースビルド、`make bundle`、`make smoke-resources` を実行して成功
+
 2026-08-28 追記（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、未コミット変更のない `main` をリモート最新と同期

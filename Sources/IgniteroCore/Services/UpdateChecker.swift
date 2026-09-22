@@ -161,16 +161,26 @@ public struct UpdateChecker: Sendable {
     let dismissedVersion = cache?.dismissedVersion
 
     // キャッシュチェック
-    if let cache, let checkedAt = cache.checkedAt,
-      Date().timeIntervalSince(checkedAt) < Self.cacheExpiry
-    {
-      Self.logger.debug("Using cached update check result")
-      return buildResult(
-        cachedVersion: cache.latestVersion,
-        currentVersion: currentVersion,
-        dismissedVersion: dismissedVersion,
-        downloadURL: cache.downloadURL
-      )
+    // 経過時間を上限だけで判定すると、checkedAt が未来日時（時計ずれ・他マシンの
+    // 設定ファイル持ち込み）のとき負値が常に上限未満となり無条件でキャッシュヒットする。
+    // この分岐は checkedAt を更新しないため、実時刻が追いつくまでアップデート確認が
+    // 黙って止まる。範囲で判定して未来日時なら再取得へ落とす。
+    if let cache, let checkedAt = cache.checkedAt {
+      let elapsed = Date().timeIntervalSince(checkedAt)
+      if (0..<Self.cacheExpiry).contains(elapsed) {
+        Self.logger.debug("Using cached update check result")
+        return buildResult(
+          cachedVersion: cache.latestVersion,
+          currentVersion: currentVersion,
+          dismissedVersion: dismissedVersion,
+          downloadURL: cache.downloadURL
+        )
+      }
+      if elapsed < 0 {
+        Self.logger.warning(
+          "Update cache checkedAt is in the future; refetching (elapsed: \(elapsed, privacy: .public))"
+        )
+      }
     }
 
     // API からフェッチ

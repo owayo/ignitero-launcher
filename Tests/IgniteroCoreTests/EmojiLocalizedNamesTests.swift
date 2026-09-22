@@ -101,20 +101,36 @@ struct EmojiLocalizedNamesLoadTableTests {
 @Suite("EmojiKit リソースレイアウトの前提")
 struct EmojiKitResourceLayoutTests {
 
-  /// ビルド済みのリソースバンドル、無ければ checkouts のリソース原本を返す。
+  /// ビルド済みのリソースバンドル、無ければ checkouts のリソース原本から
+  /// `ja.lproj` を含むディレクトリを返す。
+  ///
+  /// SwiftPM のリソースバンドルは配置が 2 通りある。
+  /// flat（`<bundle>/ja.lproj`）と macOS バンドル（`<bundle>/Contents/Resources/ja.lproj`）で、
+  /// ビルドシステムと構成によって切り替わる（2026-09-22 時点で debug は flat、release は後者）。
+  /// 読み出しは `Bundle` API 経由なのでどちらでも成立するが、ここはファイル配置そのものを
+  /// 検証するテストなので両方を探す。
   static func emojiKitResourceRoot() -> URL? {
-    if let bundle = ResourceBundle.emojiKit { return bundle.bundleURL }
-
     let fm = FileManager.default
+
+    func resourceRoot(of bundleURL: URL) -> URL? {
+      let candidates = [
+        bundleURL,
+        bundleURL.appendingPathComponent("Contents").appendingPathComponent("Resources"),
+      ]
+      return candidates.first {
+        fm.fileExists(atPath: $0.appendingPathComponent("ja.lproj").path)
+      }
+    }
+
+    if let bundle = ResourceBundle.emojiKit, let root = resourceRoot(of: bundle.bundleURL) {
+      return root
+    }
+
     let buildDir = URL(fileURLWithPath: #filePath)
       .deletingLastPathComponent()  // IgniteroCoreTests
       .deletingLastPathComponent()  // Tests
       .deletingLastPathComponent()  // リポジトリルート
       .appendingPathComponent(".build")
-
-    func hasJapaneseLproj(_ url: URL) -> Bool {
-      fm.fileExists(atPath: url.appendingPathComponent("ja.lproj").path)
-    }
 
     // .build/<triple>/<config>/EmojiKit_EmojiKit.bundle
     if let entries = try? fm.contentsOfDirectory(at: buildDir, includingPropertiesForKeys: nil) {
@@ -122,14 +138,14 @@ struct EmojiKitResourceLayoutTests {
         for config in ["debug", "release"] {
           let candidate = entry.appendingPathComponent(config)
             .appendingPathComponent("EmojiKit_EmojiKit.bundle")
-          if hasJapaneseLproj(candidate) { return candidate }
+          if let root = resourceRoot(of: candidate) { return root }
         }
       }
     }
 
     // ビルド前のリソース原本
     let checkout = buildDir.appendingPathComponent("checkouts/EmojiKit/Sources/EmojiKit/Resources")
-    return hasJapaneseLproj(checkout) ? checkout : nil
+    return resourceRoot(of: checkout)
   }
 
   @Test("ja.lproj/Localizable.strings が絵文字そのものをキーにしている")

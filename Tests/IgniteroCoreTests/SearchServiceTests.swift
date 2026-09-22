@@ -779,3 +779,56 @@ struct SearchServiceHistoryBoostEdgeCaseTests {
     #expect(results.count == 20)
   }
 }
+
+// MARK: - 長大クエリの安全性
+
+@Suite("SearchService 長大クエリ")
+struct SearchServiceLongQueryTests {
+
+  private static func sampleApps() -> [AppItem] {
+    [
+      AppItem(name: "Google Chrome", path: "/Applications/Google Chrome.app"),
+      AppItem(name: "Safari", path: "/Applications/Safari.app"),
+    ]
+  }
+
+  /// fuse-swift 1.4.0 の Bitap 実装は `(1 << i) - 1` で i == 63 に到達すると
+  /// `Int.min - 1` の算術オーバーフローを起こし、プロセスごと SIGTRAP する。
+  /// threshold=0.4 では 158 文字が境界で、検索欄への長文貼り付けだけで踏む。
+  /// 上限超過のクエリを Fuse へ渡さないことを境界前後で確認する。
+  @Test("境界長の前後でクラッシュせず結果ゼロを返す")
+  func longQueryDoesNotCrash() {
+    let service = SearchService()
+    let apps = Self.sampleApps()
+    let directories = [DirectoryItem(name: "project", path: "/dev/project")]
+    let commands = [CustomCommand(alias: "deploy", command: "npm run deploy")]
+
+    for length in [63, 64, 65, 100, 157, 158, 159, 1000] {
+      let query = String(repeating: "a", count: length)
+      let results = service.search(
+        query: query, apps: apps, directories: directories, commands: commands, history: [])
+      if length > 64 {
+        #expect(results.isEmpty, "長さ \(length) のクエリは結果ゼロで打ち切られる")
+      }
+    }
+  }
+
+  /// 日本語（全角）でも同じ経路を通る。正規化はコードポイント数を縮めない。
+  @Test("全角文字の長大クエリでもクラッシュしない")
+  func longMultibyteQueryDoesNotCrash() {
+    let service = SearchService()
+    let results = service.search(
+      query: String(repeating: "あ", count: 300),
+      apps: Self.sampleApps(), directories: [], commands: [], history: [])
+    #expect(results.isEmpty)
+  }
+
+  /// 上限ちょうどのクエリは通常どおり検索される（過剰に切り詰めていないこと）。
+  @Test("上限内のクエリは従来どおり検索できる")
+  func queryWithinLimitStillMatches() {
+    let service = SearchService()
+    let results = service.search(
+      query: "chrome", apps: Self.sampleApps(), directories: [], commands: [], history: [])
+    #expect(results.contains { $0.name == "Google Chrome" })
+  }
+}

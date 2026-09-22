@@ -176,6 +176,18 @@ public struct LauncherView: View {
     .padding(.vertical, 12)
   }
 
+  /// ランチャー左側に出すアプリアイコン。
+  ///
+  /// `body` は打鍵・選択移動のたびに再評価されるため、その都度 `.icns`（数百 KB・
+  /// 複数解像度）をディスクから読み直してデコードすると入力のたびにヒッチが出る。
+  /// 起動中に変わらない画像なのでプロセス内で 1 度だけ解決する。
+  private static let appIconImage: NSImage? = {
+    guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns") else {
+      return nil
+    }
+    return NSImage(contentsOf: url)
+  }()
+
   /// アプリアイコン (44x44)。スキャン中はローディングアニメーションを表示。
   private var appLogo: some View {
     Group {
@@ -184,9 +196,7 @@ public struct LauncherView: View {
           .font(.system(size: 24))
           .foregroundStyle(Self.ember)
           .rotationEffect(.degrees(scanRotation))
-      } else if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
-        let nsImage = NSImage(contentsOf: url)
-      {
+      } else if let nsImage = Self.appIconImage {
         Image(nsImage: nsImage)
           .resizable()
           .interpolation(.high)

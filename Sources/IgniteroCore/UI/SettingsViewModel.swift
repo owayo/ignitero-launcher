@@ -103,9 +103,9 @@ public final class SettingsViewModel {
     settingsManager.settings
   }
 
-  /// アプリケーションバージョン
+  /// アプリケーションバージョン（`.app` 以外で起動した場合は開発ビルドとして表示する）
   public var version: String {
-    Ignitero.version
+    Ignitero.version ?? "開発ビルド"
   }
 
   // MARK: - 初期化

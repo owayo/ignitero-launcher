@@ -84,22 +84,37 @@ public struct LaunchService: Launching, Sendable {
 
   // MARK: - アプリケーションパス
 
+  /// `/Applications` → `~/Applications` の順に探し、どちらにも無ければ既定パスを返す。
+  ///
+  /// アプリスキャン（`AppScanner.defaultScanTargets`）は `~/Applications` も対象に
+  /// しているため、ここだけ `/Applications` 固定だと「ランチャーの検索結果には出るのに、
+  /// エディタ／ターミナルとして開こうとすると `editorNotFound` で失敗する」という
+  /// 不整合が起きる（管理者権限の無い環境ではホーム配下へインストールするのが普通）。
+  /// 起動後にインストールされる場合があるため結果はキャッシュしない。
+  private static func resolveApplicationPath(_ appName: String) -> String {
+    let candidates = [
+      "/Applications/\(appName)",
+      NSString(string: "~/Applications/\(appName)").expandingTildeInPath,
+    ]
+    let fm = FileManager.default
+    return candidates.first { fm.fileExists(atPath: $0) } ?? candidates[0]
+  }
+
   public static func applicationPath(for editor: EditorType) -> String {
-    "/Applications/\(appName(for: editor))"
+    resolveApplicationPath(appName(for: editor))
   }
 
   public static func applicationPath(for terminal: TerminalType) -> String {
     switch terminal {
     case .terminal:
+      // Terminal.app は macOS 標準アプリなので /System を優先する。
       if FileManager.default.fileExists(atPath: terminalSystemPath) {
         terminalSystemPath
       } else {
         terminalLegacyPath
       }
-    case .iterm2: "/Applications/iTerm.app"
-    case .ghostty: "/Applications/Ghostty.app"
-    case .warp: "/Applications/Warp.app"
-    case .cmux: "/Applications/cmux.app"
+    case .iterm2, .ghostty, .warp, .cmux:
+      resolveApplicationPath(appName(for: terminal))
     }
   }
 
@@ -450,6 +465,14 @@ public struct LaunchService: Launching, Sendable {
     workingDirectory: String?,
     terminal: TerminalType
   ) async throws {
+    // 端末の存在確認を一時ファイルの作成より先に行う。逆順だと未インストールの端末を
+    // 指定したとき、書き出し済みの `.command` が削除されないまま throw して
+    // $TMPDIR にゴミが残る（cleanupStaleCommandScripts が拾うまで滞留する）。
+    let terminalPath = Self.applicationPath(for: terminal)
+    guard FileManager.default.fileExists(atPath: terminalPath) else {
+      throw LaunchError.terminalNotFound(terminal)
+    }
+
     _ = Self.cleanupStaleCommandScripts()
     let scriptContent = Self.commandScript(
       command: command,
@@ -465,10 +488,6 @@ public struct LaunchService: Launching, Sendable {
       ofItemAtPath: scriptPath.path
     )
 
-    let terminalPath = Self.applicationPath(for: terminal)
-    guard FileManager.default.fileExists(atPath: terminalPath) else {
-      throw LaunchError.terminalNotFound(terminal)
-    }
     let terminalURL = URL(fileURLWithPath: terminalPath)
     let config = NSWorkspace.OpenConfiguration()
     try await NSWorkspace.shared.open(
