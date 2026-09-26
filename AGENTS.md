@@ -30,9 +30,11 @@ Sources/
   IgniteroLauncher/         # 実行可能ターゲット (@main エントリ)
     IgniteroApp.swift
 Tests/
-  IgniteroCoreTests/        # 1053テスト (Swift Testing)
+  IgniteroCoreTests/        # 1055テスト (Swift Testing)
 .backup/                    # Tauri v2 旧実装 (参照用)
 ```
+
+補足（2026-09-26）: 選択履歴の `count` は JSON から `Int.max` を読み込める。再記録時の `count += 1` と、空クエリ検索時に同一パスの複数履歴を合算する `existing.count + entry.count` は算術オーバーフローでアプリを落とすため、上限・下限で飽和させる。履歴を記録する経路と検索結果を集約する経路の両方を境界値テストで守る。端末辞書は Terminal.app 2.15 / iTerm2 3.7.1 / Ghostty 1.3.1 / cmux 0.64.25 でコマンド入力 API を再確認。Warp 0.2026.09.16.08.27.02 は `sdef` がエラー -192 で、AppleScript 要望 Issue #3364 も未完了のため `.command` 方式を維持する。
 
 補足（2026-09-22）: 検索欄への長文貼り付けでアプリが落ちる致命的な不具合を修正した。fuse-swift 1.4.0 の Bitap 実装は `bitArr[finish + 1] = (1 << i) - 1` で `i == 63` に到達すると `1 << 63` が `Int.min` になり、続く `- 1` が算術オーバーフローでプロセスごと SIGTRAP する。`i` は `floor(threshold * pattern.len)` まで伸びるため threshold=0.4 では 158 文字が境界（157 文字までは安全、158 文字で exit 133 を実測）。ライブラリ側の `maxPatternLength` は宣言されるだけで検査に使われていないため、`SearchService` 側で `maxQueryLength=64` の上限を設けた。バージョンの正本は `Resources/Info.plist` だけになり、`Ignitero.version` は `Bundle.main` から読む Optional になった（`make verify-bundle` が Info.plist と `--print-version` の一致を検査する）。SwiftPM のリソースバンドルは debug が flat（`<bundle>/ja.lproj`）、release が macOS バンドル（`<bundle>/Contents/Resources/ja.lproj`）と配置が異なるため、`Makefile` の検証とテストは両方を許容する（読み出しは `Bundle` API 経由なのでどちらでも成立する）。Terminal.app 2.15 / iTerm2 3.7.1 / Ghostty 1.3.1 / cmux 0.64.25 の AppleScript 辞書を再確認し、Warp 0.2026.07.01.09.21.01 は引き続き非対応（要望 Issue warpdotdev/warp#3364 は 2026-05-20 の更新を最後に `enhancement` ラベルのまま）。
 

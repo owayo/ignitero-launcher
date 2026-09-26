@@ -2,6 +2,13 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-09-26 追記（定期メンテナンス）:
+
+- `main` を `origin/main` と同期し、`depup --install --include-pinned` で依存4件がすべて最新版であることを確認
+- Terminal.app 2.15 / iTerm2 3.7.1 / Ghostty 1.3.1 / cmux 0.64.25 の AppleScript 辞書でコマンド入力 API を確認。Warp 0.2026.09.16.08.27.02 は `sdef` がエラー -192 で、要望 Issue #3364 も未完了のため `.command` 方式を維持
+- astro-sight の構造・未参照シンボル・差分影響を確認し、リファクタリングを要する問題は見つからなかった
+- 履歴 JSON の `count` が `Int.max` の場合、再記録時の加算と空クエリ検索時の同一パス集計が整数オーバーフローでクラッシュする問題を修正。両経路の境界値テストを追加し、1,055件すべて成功
+
 2026-09-22 追記（定期メンテナンス）:
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、未コミット変更のない `main` をリモート最新と同期

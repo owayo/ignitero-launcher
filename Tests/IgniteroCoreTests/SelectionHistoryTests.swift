@@ -51,6 +51,25 @@ struct SelectionHistoryTests {
     #expect(results[0].count == 3)
   }
 
+  @Test("最大カウントの履歴を再記録してもオーバーフローしない")
+  func recordAtMaximumCount() throws {
+    let path = makeTempFilePath()
+    defer { cleanup(path) }
+
+    let entry = SelectionHistoryEntry(
+      keyword: "xcode", selectedPath: "/Applications/Xcode.app", count: Int.max
+    )
+    let encoder = JSONEncoder()
+    encoder.dateEncodingStrategy = .iso8601
+    try encoder.encode([entry]).write(to: URL(fileURLWithPath: path))
+
+    let history = SelectionHistory(filePath: path)
+    try history.load()
+    history.record(keyword: "xcode", path: entry.selectedPath)
+
+    #expect(history.entries(for: "xcode").first?.count == Int.max)
+  }
+
   // MARK: - 50件上限
 
   @Test("50件を超えると最も古いエントリが削除される")

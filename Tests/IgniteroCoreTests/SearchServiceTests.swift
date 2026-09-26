@@ -557,6 +557,32 @@ struct SearchServiceHistoryAggregationTests {
     #expect(results[1].path == "/Applications/Xcode.app")
   }
 
+  @Test("同一パスの履歴カウント合計が整数範囲を超えても検索できる")
+  func emptyQuerySaturatesAggregatedCount() {
+    let app = AppItem(name: "Safari", path: "/Applications/Safari.app")
+    let history = [
+      SelectionHistoryEntry(keyword: "saf", selectedPath: app.path, count: Int.max),
+      SelectionHistoryEntry(keyword: "safari", selectedPath: app.path, count: 1),
+    ]
+
+    let results = SearchService().search(
+      query: "", apps: [app], directories: [], commands: [], history: history
+    )
+
+    #expect(results.count == 1)
+    #expect(results.first?.path == app.path)
+    #expect(results.first?.score == -Double(Int.max))
+
+    let negativeHistory = [
+      SelectionHistoryEntry(keyword: "saf", selectedPath: app.path, count: Int.min),
+      SelectionHistoryEntry(keyword: "safari", selectedPath: app.path, count: -1),
+    ]
+    let negativeResults = SearchService().search(
+      query: "", apps: [app], directories: [], commands: [], history: negativeHistory
+    )
+    #expect(negativeResults.first?.score == -Double(Int.min))
+  }
+
   @Test func emptyQueryAggregatesLastUsedCorrectly() async {
     // 集約時に最新の lastUsed が採用されることを確認
     let apps = [

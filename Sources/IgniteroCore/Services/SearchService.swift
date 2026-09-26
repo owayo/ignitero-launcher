@@ -218,8 +218,9 @@ public struct SearchService: Sendable {
     var pathStats: [String: (count: Int, lastUsed: Date)] = [:]
     for entry in history {
       if let existing = pathStats[entry.selectedPath] {
+        let (combinedCount, overflow) = existing.count.addingReportingOverflow(entry.count)
         pathStats[entry.selectedPath] = (
-          count: existing.count + entry.count,
+          count: overflow ? (entry.count >= 0 ? Int.max : Int.min) : combinedCount,
           lastUsed: max(existing.lastUsed, entry.lastUsed)
         )
       } else {

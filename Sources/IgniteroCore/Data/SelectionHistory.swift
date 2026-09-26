@@ -59,7 +59,9 @@ public final class SelectionHistory: Sendable {
     storage.withLock { entries in
       if let index = entries.firstIndex(where: { $0.keyword == keyword && $0.selectedPath == path })
       {
-        entries[index].count += 1
+        if entries[index].count < Int.max {
+          entries[index].count += 1
+        }
         entries[index].lastUsed = Date()
       } else {
         let entry = SelectionHistoryEntry(keyword: keyword, selectedPath: path)
