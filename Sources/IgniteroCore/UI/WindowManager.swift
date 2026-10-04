@@ -67,9 +67,24 @@ public final class WindowManager {
   /// キーダウンイベントのローカルモニター
   private var keyEventMonitor: Any?
 
+  /// SwiftUI の更新コールスタックからウィンドウのリサイズを切り離す。
+  /// テストでは手動スケジューラーを渡し、延期と要求の集約を検証する。
+  typealias ResizeScheduler = (@escaping @MainActor @Sendable () -> Void) -> Void
+  @ObservationIgnored private let scheduleResize: ResizeScheduler
+  @ObservationIgnored private var isResizeScheduled = false
+  @ObservationIgnored private var needsResize = false
+
   // MARK: - 初期化
 
-  public init() {}
+  public convenience init() {
+    self.init(scheduleResize: { operation in
+      Task { @MainActor in operation() }
+    })
+  }
+
+  init(scheduleResize: @escaping ResizeScheduler) {
+    self.scheduleResize = scheduleResize
+  }
 
   // MARK: - ランチャーの表示状態
 
@@ -92,6 +107,8 @@ public final class WindowManager {
   /// ランチャーを表示し、カーソルがあるスクリーンの中央最前面に配置する。
   public func showLauncher() {
     onShowLauncher?()
+    // 表示・中央配置には最新の高さを使う。予約済み処理は後で何もしない。
+    applyCurrentHeight()
     isLauncherVisible = true
     centerOnScreen()
     launcherPanel?.makeKeyAndOrderFront(nil)
@@ -121,6 +138,7 @@ public final class WindowManager {
   /// ランチャーを非表示にする。
   public func hideLauncher() {
     isLauncherVisible = false
+    needsResize = false
     stopKeyEventMonitor()
     stopDismissMonitors()
     launcherPanel?.orderOut(nil)
@@ -230,19 +248,33 @@ public final class WindowManager {
     return min(computed, Self.maxHeight)
   }
 
-  /// 検索結果の件数に応じてウィンドウをリサイズする。
+  /// 検索結果の件数に応じたウィンドウのリサイズを予約する。
   ///
-  /// パネルが設定されている場合、フレームを更新して即座に反映する。
+  /// 高さの状態は即時更新し、フレームは SwiftUI の更新処理が戻ってから反映する。
+  /// 連続した要求は最新の高さへまとめ、同じ高さへの再描画を避ける。
   /// - Parameter count: 検索結果の件数
   public func resizeForResults(count: Int) {
-    let newHeight = heightForResults(count: count)
-    currentHeight = newHeight
+    currentHeight = heightForResults(count: count)
+    guard launcherPanel != nil else { return }
+    needsResize = true
+    guard !isResizeScheduled else { return }
+    isResizeScheduled = true
+    scheduleResize { [weak self] in
+      guard let self else { return }
+      self.isResizeScheduled = false
+      guard self.needsResize else { return }
+      self.applyCurrentHeight()
+    }
+  }
 
+  /// ウィンドウの上端を保ち、強制描画やアニメーションをせず高さを反映する。
+  private func applyCurrentHeight() {
+    needsResize = false
     guard let panel = launcherPanel else { return }
     var frame = panel.frame
-    let heightDelta = newHeight - frame.height
-    frame.size.height = newHeight
-    frame.origin.y -= heightDelta  // macOS は下端が原点のためリサイズ時に y を調整
-    panel.setFrame(frame, display: true, animate: false)
+    guard frame.height != currentHeight else { return }
+    frame.origin.y = frame.maxY - currentHeight
+    frame.size.height = currentHeight
+    panel.setFrame(frame, display: false, animate: false)
   }
 }

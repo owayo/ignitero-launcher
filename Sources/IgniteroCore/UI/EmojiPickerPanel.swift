@@ -255,17 +255,7 @@ public final class EmojiPickerPanel: NSPanel {
     visualEffect.wantsLayer = true
     visualEffect.layer?.cornerRadius = 12
 
-    let hostingView = SafeHostingView(rootView: view)
-    hostingView.translatesAutoresizingMaskIntoConstraints = false
-    visualEffect.addSubview(hostingView)
-    NSLayoutConstraint.activate([
-      hostingView.topAnchor.constraint(equalTo: visualEffect.topAnchor),
-      hostingView.bottomAnchor.constraint(equalTo: visualEffect.bottomAnchor),
-      hostingView.leadingAnchor.constraint(equalTo: visualEffect.leadingAnchor),
-      hostingView.trailingAnchor.constraint(equalTo: visualEffect.trailingAnchor),
-    ])
-
-    contentView = visualEffect
+    contentView = SafeHostingView.makeContainer(rootView: view, in: visualEffect)
 
     // カーソルがあるスクリーンの中央に配置
     let mouseLocation = NSEvent.mouseLocation

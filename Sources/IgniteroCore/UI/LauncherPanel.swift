@@ -5,23 +5,21 @@ import SwiftUI
 
 /// SwiftUI 内容を AppKit パネルへ埋め込む `NSHostingView` サブクラス。
 ///
-/// SwiftUI 側からウィンドウ／AppKit へのサイズフィードバックを完全に切り、
-/// ウィンドウフレームの所有権を `WindowManager` に一本化する。これにより
-/// macOS 15/26 で発生する再入的レイアウトクラッシュを防ぐ。
+/// SwiftUI 内容のサイズに基づく Auto Layout 制約を抑制する。
 ///
-/// 具体的な症状: `-[NSWindow layoutIfNeeded]` 実行中の `windowDidLayout` 通知で
-/// `NSHostingView.updateAnimatedWindowSize(_:)` が発火し、
-/// `setFrameSize` の KVO → `invalidateSafeAreaInsets` → SwiftUI ViewGraph 再計算 →
-/// `setNeedsUpdateConstraints(true)` の再要求チェーンが起き、
-/// `-[NSWindow _postWindowNeedsUpdateConstraints]` が NSException を投げて SIGABRT。
+/// `NSWindow.contentView` への直接設定は避け、`makeContainer(rootView:in:)` で
+/// AppKit コンテナの子ビューとして埋め込むこと。
+/// macOS 27 では `sizingOptions = []` でも、contentView に直接置くと
+/// `windowDidLayout` → `updateAnimatedWindowSize` がウィンドウをリサイズし、
+/// ScrollView の KVO → `setNeedsLayout` が再入して SIGABRT することがある。
 ///
-/// 対策 (Apple 公開 API のみ、Codex/OpenAI との相談で確定):
+/// サイズ制約を抑制する設定:
 /// 1. `sizingOptions = []` — SwiftUI の min/ideal/max を AppKit/NSWindow に伝えない
 /// 2. `intrinsicContentSize` は `NSView.noIntrinsicMetric` — Auto Layout に intrinsic size を渡さない
 /// 3. 自動サイズ変更: `translatesAutoresizingMaskIntoConstraints = true` + `autoresizingMask = [.width, .height]` —
-///    frame は AppKit の autoresizing で駆動し、Auto Layout 経路を回避
+///    frame は AppKit の autoresizing で駆動し、SwiftUI 内容に基づく制約を作らない
 ///
-/// `.intrinsicContentSize` 単独では今回のクラッシュ経路 (`updateAnimatedWindowSize`) は塞げない。
+/// ウィンドウフレームは AppKit 側で管理し、hosting view はコンテナの bounds に追従する。
 @MainActor
 final class SafeHostingView<Content: View>: NSHostingView<Content> {
 
@@ -39,6 +37,17 @@ final class SafeHostingView<Content: View>: NSHostingView<Content> {
 
   override var intrinsicContentSize: NSSize {
     NSSize(width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric)
+  }
+
+  /// ウィンドウの contentView に設定するための AppKit コンテナを作る。
+  /// hosting view 自身を contentView にせず、SwiftUI とウィンドウのサイズ管理を分離する。
+  static func makeContainer(rootView: Content, in container: NSView? = nil) -> NSView {
+    let container = container ?? NSView(frame: .zero)
+    container.autoresizesSubviews = true
+    let hostingView = SafeHostingView(rootView: rootView)
+    hostingView.frame = container.bounds
+    container.addSubview(hostingView)
+    return container
   }
 }
 
@@ -76,12 +85,11 @@ public final class LauncherPanel: NSPanel {
 
   /// SwiftUI ビューをパネルの contentView に設定する。
   ///
-  /// `SafeHostingView` でラップして AppKit パネルに埋め込む。
+  /// AppKit コンテナの子として `SafeHostingView` を埋め込む。
   /// 再帰的コンストレイント更新によるクラッシュを防止する。
   /// - Parameter view: 表示する SwiftUI ビュー
   public func setContentView<V: View>(_ view: V) {
-    let hostingView = SafeHostingView(rootView: view)
-    contentView = hostingView
+    contentView = SafeHostingView.makeContainer(rootView: view)
   }
 
   // MARK: - 非公開

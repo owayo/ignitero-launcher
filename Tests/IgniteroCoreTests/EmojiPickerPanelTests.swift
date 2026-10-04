@@ -4,6 +4,39 @@ import Testing
 
 @testable import IgniteroCore
 
+@Suite("EmojiPickerPanel Hosted Content", .serialized)
+@MainActor
+struct EmojiPickerPanelHostedContentTests {
+  @Test func hostedContentFollowsPanelFrameUsingAutoresizing() async throws {
+    let panel = EmojiPickerPanel()
+    defer {
+      panel.dismissPanel()
+      panel.close()
+    }
+    panel.show { _ in }
+    try await Task.sleep(for: .milliseconds(30))
+    let container = try #require(panel.contentView as? NSVisualEffectView)
+    let hostingView = try #require(container.subviews.first)
+
+    #expect(container.material == .hudWindow)
+    #expect(hostingView.translatesAutoresizingMaskIntoConstraints)
+    #expect(hostingView.autoresizingMask == [.width, .height])
+    #expect(
+      hostingView.intrinsicContentSize
+        == NSSize(
+          width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric
+        ))
+    #expect(hostingView.window === panel)
+
+    for height: CGFloat in [480, 300, 600, 480] {
+      panel.setFrame(NSRect(x: 100, y: 100, width: 380, height: height), display: false)
+      panel.layoutIfNeeded()
+      #expect(panel.frame.height == height)
+      #expect(hostingView.frame == container.bounds)
+    }
+  }
+}
+
 // MARK: - EmojiPickerPanel テスト
 
 @Suite("EmojiPickerPanel")

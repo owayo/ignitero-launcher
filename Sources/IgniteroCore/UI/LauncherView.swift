@@ -100,6 +100,7 @@ public struct LauncherView: View {
       }
     }
     .frame(width: WindowManager.width)
+    .frame(maxHeight: .infinity, alignment: .top)
     .background {
       ZStack {
         RoundedRectangle(cornerRadius: 12)

@@ -4,6 +4,190 @@ import Testing
 
 @testable import IgniteroCore
 
+// MARK: - SwiftUI 更新中の同期リサイズ防止
+
+@Suite("WindowManager Deferred Resize", .serialized)
+@MainActor
+struct WindowManagerDeferredResizeTests {
+  @MainActor
+  private final class ManualScheduler {
+    var operations: [@MainActor @Sendable () -> Void] = []
+
+    func schedule(_ operation: @escaping @MainActor @Sendable () -> Void) {
+      operations.append(operation)
+    }
+
+    func run() {
+      let pending = operations
+      operations.removeAll()
+      for operation in pending { operation() }
+    }
+  }
+
+  private final class RecordingPanel: NSPanel {
+    var frameRequests: [(frame: NSRect, display: Bool, animate: Bool)] = []
+
+    init() {
+      super.init(
+        contentRect: NSRect(x: 100, y: 100, width: 680, height: WindowManager.minHeight),
+        styleMask: [.borderless, .nonactivatingPanel],
+        backing: .buffered,
+        defer: true
+      )
+      frameRequests.removeAll()
+    }
+
+    override func setFrame(_ frameRect: NSRect, display flag: Bool, animate animateFlag: Bool) {
+      frameRequests.append((frameRect, flag, animateFlag))
+      super.setFrame(frameRect, display: flag, animate: animateFlag)
+    }
+  }
+
+  @Test func consecutiveRequestsDeferAndApplyOnlyLatestHeight() {
+    let scheduler = ManualScheduler()
+    let manager = WindowManager(scheduleResize: scheduler.schedule)
+    let panel = RecordingPanel()
+    manager.launcherPanel = panel
+    defer { panel.close() }
+    let originalFrame = panel.frame
+
+    manager.resizeForResults(count: 1)
+    manager.resizeForResults(count: 0)
+    manager.resizeForResults(count: 80)
+
+    #expect(manager.currentHeight == WindowManager.maxHeight)
+    #expect(panel.frame == originalFrame)
+    #expect(panel.frameRequests.isEmpty)
+    #expect(scheduler.operations.count == 1)
+
+    scheduler.run()
+    #expect(panel.frame.height == WindowManager.maxHeight)
+    #expect(panel.frameRequests.count == 1)
+    #expect(panel.frameRequests.allSatisfy { !$0.display && !$0.animate })
+  }
+
+  @Test func unchangedHeightSkipsResizeButRepairsAnOutdatedFrame() {
+    let scheduler = ManualScheduler()
+    let manager = WindowManager(scheduleResize: scheduler.schedule)
+    let panel = RecordingPanel()
+    manager.launcherPanel = panel
+    defer { panel.close() }
+
+    manager.resizeForResults(count: 0)
+    scheduler.run()
+    #expect(panel.frameRequests.isEmpty)
+
+    panel.setFrame(NSRect(x: 100, y: 100, width: 680, height: 500), display: false, animate: false)
+    panel.frameRequests.removeAll()
+    manager.resizeForResults(count: 0)
+    scheduler.run()
+    #expect(panel.frame.height == WindowManager.minHeight)
+    #expect(panel.frameRequests.count == 1)
+  }
+
+  @Test func resizeKeepsUpperEdgeAtThePositionUsedWhenApplying() {
+    let scheduler = ManualScheduler()
+    let manager = WindowManager(scheduleResize: scheduler.schedule)
+    let panel = RecordingPanel()
+    manager.launcherPanel = panel
+    defer { panel.close() }
+
+    manager.resizeForResults(count: 80)
+    panel.setFrameOrigin(NSPoint(x: 250, y: 400))
+    let movedFrame = panel.frame
+    scheduler.run()
+
+    #expect(panel.frame.maxY == movedFrame.maxY)
+    #expect(panel.frame.minX == movedFrame.minX)
+    #expect(panel.frame.width == movedFrame.width)
+    #expect(panel.frame.height == WindowManager.maxHeight)
+  }
+
+  @Test func showAppliesLatestHeightBeforeCenteringAndQueuedResizeDoesNothing() {
+    let scheduler = ManualScheduler()
+    let manager = WindowManager(scheduleResize: scheduler.schedule)
+    let panel = RecordingPanel()
+    manager.launcherPanel = panel
+    manager.onShowLauncher = { [weak manager] in manager?.resizeForResults(count: 2) }
+    defer {
+      manager.hideLauncher()
+      panel.close()
+    }
+
+    manager.resizeForResults(count: 80)
+    manager.showLauncher()
+    #expect(panel.frame.height == manager.heightForResults(count: 2))
+    if let screen =
+      NSScreen.screens.first(where: { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) })
+      ?? NSScreen.main
+    {
+      let visible = screen.visibleFrame
+      #expect(abs(panel.frame.midY - (visible.maxY - visible.height * 0.25)) < 1)
+    }
+
+    let shownFrame = panel.frame
+    let requestCount = panel.frameRequests.count
+    scheduler.run()
+    #expect(panel.frame == shownFrame)
+    #expect(panel.frameRequests.count == requestCount)
+  }
+
+  @Test func hideDiscardsPendingResizeAndNextShowUsesDesiredHeight() {
+    let scheduler = ManualScheduler()
+    let manager = WindowManager(scheduleResize: scheduler.schedule)
+    let panel = RecordingPanel()
+    manager.launcherPanel = panel
+    defer {
+      manager.hideLauncher()
+      panel.close()
+    }
+
+    manager.resizeForResults(count: 80)
+    manager.hideLauncher()
+    scheduler.run()
+    #expect(panel.frameRequests.isEmpty)
+    #expect(manager.currentHeight == WindowManager.maxHeight)
+
+    manager.showLauncher()
+    #expect(panel.frame.height == WindowManager.maxHeight)
+  }
+
+  @Test func newRequestAfterShowUsesTheAlreadyScheduledOperation() {
+    let scheduler = ManualScheduler()
+    let manager = WindowManager(scheduleResize: scheduler.schedule)
+    let panel = RecordingPanel()
+    manager.launcherPanel = panel
+    defer {
+      manager.hideLauncher()
+      panel.close()
+    }
+
+    manager.resizeForResults(count: 80)
+    manager.showLauncher()
+    manager.resizeForResults(count: 0)
+    #expect(scheduler.operations.count == 1)
+    #expect(panel.frame.height == WindowManager.maxHeight)
+    scheduler.run()
+    #expect(panel.frame.height == WindowManager.minHeight)
+  }
+
+  @Test func queuedResizeDoesNotRetainTheManager() {
+    let scheduler = ManualScheduler()
+    let panel = RecordingPanel()
+    defer { panel.close() }
+    var manager: WindowManager? = WindowManager(scheduleResize: scheduler.schedule)
+    manager?.launcherPanel = panel
+    manager?.resizeForResults(count: 80)
+    weak var releasedManager: WindowManager?
+    releasedManager = manager
+    manager = nil
+
+    #expect(releasedManager == nil)
+    scheduler.run()
+    #expect(panel.frameRequests.isEmpty)
+  }
+}
+
 // MARK: - WindowManager 初期状態 テスト
 
 @Suite("WindowManager Initial State")

@@ -705,7 +705,7 @@ public final class AppCoordinator {
       width: WindowManager.width,
       height: WindowManager.minHeight
     )
-    launcherPanel.setFrame(frame, display: true)
+    launcherPanel.setFrame(frame, display: false, animate: false)
   }
 
   /// キャッシュを再構築し、ビューモデルにデータを再読み込みする。

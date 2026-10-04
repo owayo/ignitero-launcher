@@ -137,8 +137,7 @@ public final class TerminalPickerPanel: NSPanel {
   ///
   /// - Parameter view: 表示する SwiftUI ビュー
   public func setContentView<V: View>(_ view: V) {
-    let hostingView = SafeHostingView(rootView: view)
-    contentView = hostingView
+    contentView = SafeHostingView.makeContainer(rootView: view)
   }
 
   // MARK: - 表示／終了
@@ -169,7 +168,8 @@ public final class TerminalPickerPanel: NSPanel {
 
     setFrame(
       NSRect(x: x, y: y, width: panelSize, height: panelSize),
-      display: true
+      display: false,
+      animate: false
     )
 
     // アプリをアクティブにしてからパネルを最前面に表示

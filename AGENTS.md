@@ -30,7 +30,7 @@ Sources/
   IgniteroLauncher/         # 実行可能ターゲット (@main エントリ)
     IgniteroApp.swift
 Tests/
-  IgniteroCoreTests/        # 1055テスト (Swift Testing)
+  IgniteroCoreTests/        # 1065テスト (Swift Testing)
 .backup/                    # Tauri v2 旧実装 (参照用)
 ```
 
@@ -45,6 +45,10 @@ Tests/
 補足（2026-08-02）: `CacheDatabase` のインメモリ生成は `inMemory()` ファクトリで意図を明示する。`Settings` / `RegisteredDirectory` は未知の enum rawValue だけを既定値へ落とし、他の設定を保持する。`SelectionHistory` は上限超過時に追加直後の新規エントリを削除候補から除外し、既存履歴のうち保持スコアが最低のものを削除する。
 
 補足（2026-06-29）: LaunchService の `runCmuxPing` は macOS 26 の SwiftPM テスト環境で短命プロセスの終了検出が 1 秒を超えることがあるため、5 秒上限で待機する。`Process` の stdout/stderr 破棄には `FileHandle.nullDevice` を使わず、各プロセス専用に書き込み用 `/dev/null` ハンドルを開いて終了後に閉じる（`FileHandle.nullDevice` を stdout/stderr に渡すと子プロセス終了検出が進まず false negative になる環境がある）。
+
+補足（2026-10-04）: macOS 27.0.1 で `NSHostingView.windowDidLayout` → `updateAnimatedWindowSize` → ウィンドウリサイズ → `AppKitScrollView.didChangeValue(forKey:)` → `_postWindowNeedsLayout` の再入により SIGABRT が発生した。クラッシュ時のパネルは 680×4528pt まで膨張していた（本来の最大高さは 500pt）。`sizingOptions = []`・`noIntrinsicMetric`・autoresizing の設定だけではこの直接リサイズ経路を防げないため、hosting view を `NSWindow.contentView` に直接設定しない。Launcher/Editor/Terminal/Emoji の全パネルは `SafeHostingView.makeContainer(rootView:in:)` で AppKit コンテナの子へ埋め込む。Emoji は `NSVisualEffectView` を渡して背景を保持し、四辺の Auto Layout 制約を作らず autoresizing で追従させる。ウィンドウのサイズ管理は AppKit 側に任せる。
+
+`WindowManager.resizeForResults` は高さの状態を即時更新し、実フレームの変更は MainActor の次の処理へ延期して連続要求を集約する。SwiftUI の `onChange` 内で同期 `setFrame(display: true)` を実行しない。同じ実フレーム高さなら何もせず、変更時も `display: false, animate: false` とし、反映時点の上端を保つ。表示直前は最新の高さを同期反映してから中央配置し、非表示時は保留要求を捨てる。延期だけで CATransaction の外へ出る保証はないため、コンテナ構造が主対策。回帰検証は同期 `layoutIfNeeded` だけで済ませず、実際の LauncherView を表示し、検索件数変更・選択スクロール・アニメーション・非同期表示サイクルを通して途中のリサイズも上限内に収まるか確認する。短時間の負荷テストでは元の SIGABRT 自体は再現していないため、テスト成功を長時間常駐後の再発がない証明とは扱わない。
 
 ## 開発コマンド
 
