@@ -1,6 +1,7 @@
 APP_NAME := IgniteroLauncher
 EXEC_NAME := IgniteroLauncher
 BUNDLE_ID := com.owayo.ignitero.launcher
+LOG_SUBSYSTEM := com.ignitero.launcher
 BUILD_DIR := .build
 RELEASE_BIN := $(BUILD_DIR)/release/$(EXEC_NAME)
 DEBUG_BIN := $(BUILD_DIR)/debug/$(EXEC_NAME)
@@ -195,9 +196,11 @@ dev: build-debug
 	@echo "Signed with: $(CODESIGN_IDENTITY)"
 	@"$(BUNDLE_DIR)/Contents/MacOS/$(EXEC_NAME)"
 
+# アプリの os.Logger は全箇所 subsystem "com.ignitero.launcher" で書いている (バンドル ID とは別)。
+# バンドル ID で絞ると 1 件も表示されない。
 log:
-	@echo "Streaming logs for $(BUNDLE_ID)... (Ctrl+C to stop)"
-	@log stream --predicate 'subsystem == "$(BUNDLE_ID)"' --level debug
+	@echo "Streaming logs for $(LOG_SUBSYSTEM)... (Ctrl+C to stop)"
+	@log stream --predicate 'subsystem == "$(LOG_SUBSYSTEM)"' --level debug
 
 clean:
 	swift package clean
