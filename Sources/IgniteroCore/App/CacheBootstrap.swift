@@ -20,6 +20,9 @@ public final class CacheBootstrap {
   public var autoUpdateTask: Task<Void, Never>?
   public private(set) var lastScanDate: Date?
 
+  /// スキャン中に届いた再スキャン要求（何度届いても 1 回にまとめる）。
+  @ObservationIgnored private var rescanRequested = false
+
   // MARK: - コールバック
 
   /// スキャン完了（DB 保存後）に呼ばれるコールバック。
@@ -121,6 +124,7 @@ public final class CacheBootstrap {
   ///
   /// saveApps/saveDirectories が DELETE+INSERT を同一トランザクションで行うため、
   /// 事前の clearCache は不要（スキャン失敗時に空キャッシュが残る事故も防げる）。
+  /// スキャン中に呼ばれた場合は、走行中のスキャンの終了後に再スキャンを予約して戻る。
   public func rebuildCache() async {
     await runScan()
   }
@@ -165,15 +169,41 @@ public final class CacheBootstrap {
   }
 
   /// アプリスキャンとディレクトリスキャンを実行し、結果をデータベースに保存する。
-  /// - Returns: スキャンが完了しキャッシュが更新された場合は `true`
+  ///
+  /// スキャン中に届いた要求は捨てずに予約し、走行中のスキャンが終わったあとに
+  /// 最新の設定でもう一度だけスキャンする。走行中のスキャンは開始時点の設定の
+  /// コピーで動くため、要求を捨てるとその間の設定変更（除外アプリ・登録ディレクトリ）が
+  /// 次の起動・自動更新・手動再構築までキャッシュへ反映されない。
+  /// - Returns: 最後のスキャンが完了しキャッシュが更新された場合は `true`。
+  ///   予約だけして戻った場合は `false`
   @discardableResult
   private func runScan() async -> Bool {
     guard !isScanning else {
-      Self.logger.info("Scan already in progress; skipping")
+      rescanRequested = true
+      Self.logger.info("Scan already in progress; rescan scheduled")
       return false
     }
     isScanning = true
     defer { isScanning = false }
+
+    var succeeded: Bool
+    repeat {
+      rescanRequested = false
+      succeeded = await scanOnce()
+    } while rescanRequested
+    return succeeded
+  }
+
+  /// スキャンを 1 回実行し、結果をデータベースに保存する。
+  /// - Returns: スキャンが完了しキャッシュが更新された場合は `true`
+  private func scanOnce() async -> Bool {
+    // 設定ファイルを読めていない（I/O エラー）間は settings が既定値のままなので、
+    // スキャンすると登録ディレクトリ・除外アプリの無いキャッシュで置き換えてしまう。
+    // 既存キャッシュを保持し、設定が読み直せるまでスキャンしない。
+    guard !settingsManager.loadFailed else {
+      Self.logger.warning("Settings failed to load; keeping existing cache without scanning")
+      return false
+    }
 
     let settings = settingsManager.settings
 

@@ -1494,7 +1494,7 @@ struct AppCoordinatorSettingsChangeTests {
     #expect(settings.settings.updateCache?.dismissedVersion == "99.0.0")
   }
 
-  @Test("再構築中の再入はスキップされる")
+  @Test("再構築中の要求は再スキャンとして予約され、状態が固着しない")
   @MainActor
   func rebuildReentryIsSkipped() async throws {
     let mockDB = MockCacheDB(isEmpty: true)
@@ -1502,6 +1502,7 @@ struct AppCoordinatorSettingsChangeTests {
     await coordinator.start()
 
     // 並行で2回起動しても再構築は完了し、状態固着が起きない
+    // （2 回目は捨てられず、1 回目の終了後の再スキャンとして予約される）
     mockDB.saveAppsCalled = false
     async let first: Void = coordinator.rebuildCacheAndReload()
     async let second: Void = coordinator.rebuildCacheAndReload()
@@ -1554,5 +1555,222 @@ struct AppCoordinatorShowLauncherHistoryTests {
     coordinator.windowManager.onShowLauncher?()
 
     #expect(coordinator.launcherViewModel.searchResults.isEmpty)
+  }
+}
+
+// MARK: - ディレクトリの開き先（Finder 指定）
+
+@Suite("AppCoordinator ディレクトリの開き先")
+@MainActor
+struct AppCoordinatorDirectoryOpenTargetTests {
+
+  private func openDirectory(
+    _ item: DirectoryItem, defaultEditor: EditorType = .cursor
+  ) async -> (path: String, editor: EditorType?)? {
+    let settings = makeTempSettingsManager()
+    settings.settings.defaultEditor = defaultEditor
+    let launchService = MockLaunchService()
+    let coordinator = makeCoordinator(settingsManager: settings, launchService: launchService)
+
+    coordinator.executeResult(SearchResult(directoryItem: item, score: 0))
+    _ = await waitUntil { launchService.openDirectoryCalledWith != nil }
+    return launchService.openDirectoryCalledWith
+  }
+
+  @Test("Finder 指定は editor: nil（Finder で開く）で渡す")
+  func finderDirectoryOpensInFinder() async throws {
+    let call = try #require(
+      await openDirectory(DirectoryItem(name: "p", path: "/tmp/p", opensInFinder: true)))
+    #expect(call.path == "/tmp/p")
+    #expect(call.editor == nil)
+  }
+
+  @Test("エディタ未指定は既定エディタで開く")
+  func unspecifiedEditorUsesDefault() async throws {
+    let call = try #require(
+      await openDirectory(DirectoryItem(name: "p", path: "/tmp/p"), defaultEditor: .zed))
+    #expect(call.editor == .zed)
+  }
+
+  @Test("個別指定のエディタで開く")
+  func explicitEditorIsUsed() async throws {
+    let call = try #require(
+      await openDirectory(DirectoryItem(name: "p", path: "/tmp/p", editor: "vscode")))
+    #expect(call.editor == .vscode)
+  }
+
+  @Test("未知のエディタ指定は既定エディタで開く")
+  func unknownEditorFallsBackToDefault() async throws {
+    let call = try #require(
+      await openDirectory(
+        DirectoryItem(name: "p", path: "/tmp/p", editor: "no-such-editor"), defaultEditor: .zed))
+    #expect(call.editor == .zed)
+  }
+}
+
+// MARK: - 設定ファイルの読込失敗時の保護
+
+@Suite("AppCoordinator 設定の読込失敗時")
+@MainActor
+struct AppCoordinatorSettingsLoadFailureTests {
+
+  /// settings.json の代わりに同名ディレクトリを置き、I/O エラーで読めない状態にする
+  private func makeUnreadableSettingsManager() throws -> SettingsManager {
+    let dir = FileManager.default.temporaryDirectory
+      .appendingPathComponent("ignitero-coord-unreadable-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(
+      at: dir.appendingPathComponent("settings.json"), withIntermediateDirectories: true)
+    return SettingsManager(configDirectory: dir)
+  }
+
+  @Test("既定設定でスキャンしてキャッシュを置き換えず、登録ディレクトリとコマンドの履歴も消さない")
+  func startKeepsCacheAndHistoryWhenSettingsCannotBeRead() async throws {
+    let settings = try makeUnreadableSettingsManager()
+    // キャッシュが空なので、通常なら起動時に必ずスキャンして保存する
+    let mockDB = MockCacheDB(isEmpty: true)
+    let history = makeTempSelectionHistory()
+    history.record(keyword: "proj", path: "/Users/dev/project")
+    history.record(keyword: "dev", path: "command://abc-123")
+
+    let coordinator = makeCoordinator(
+      settingsManager: settings, cacheDatabase: mockDB, selectionHistory: history)
+    await coordinator.start()
+
+    #expect(settings.loadFailed)
+    #expect(mockDB.saveAppsCalled == false)
+    #expect(mockDB.saveDirectoriesCalled == false)
+    let paths = Set(history.allEntries.map(\.selectedPath))
+    #expect(paths.contains("/Users/dev/project"))
+    #expect(paths.contains("command://abc-123"))
+  }
+
+  @Test("手動の再構築も既存キャッシュを保持する")
+  func rebuildKeepsCacheWhenSettingsCannotBeRead() async throws {
+    let settings = try makeUnreadableSettingsManager()
+    let mockDB = MockCacheDB(isEmpty: false)
+    let coordinator = makeCoordinator(settingsManager: settings, cacheDatabase: mockDB)
+    await coordinator.start()
+
+    await coordinator.rebuildCacheAndReload()
+
+    #expect(mockDB.saveAppsCalled == false)
+    #expect(coordinator.launcherViewModel.isScanning == false)
+  }
+}
+
+// MARK: - 履歴 purge の判定
+
+@Suite("AppCoordinator 読めない登録ディレクトリの履歴保護")
+struct AppCoordinatorUnverifiedRootTests {
+
+  private func entries(_ paths: [String]) -> [SelectionHistoryEntry] {
+    paths.map { SelectionHistoryEntry(keyword: "k", selectedPath: $0) }
+  }
+
+  @Test("キャッシュに配下の項目が無い登録ディレクトリの履歴は残す（外付けドライブ未接続など）")
+  func historyUnderRootWithoutCachedItemsIsProtected() {
+    let protected = AppCoordinator.historyPathsUnderUnverifiedRoots(
+      registeredRoots: ["/Volumes/External/Projects/"],
+      cachedPaths: ["/Applications/Safari.app", "/Users/dev/other"],
+      history: entries([
+        "/Volumes/External/Projects/app",
+        "/Volumes/External/Projects",
+        "/Volumes/External/ProjectsArchive/x",
+        "/Users/dev/deleted",
+      ]))
+
+    #expect(protected == ["/Volumes/External/Projects/app", "/Volumes/External/Projects"])
+  }
+
+  @Test("キャッシュに配下の項目がある登録ディレクトリは保護しない（削除済みの子は消してよい）")
+  func historyUnderVerifiedRootIsNotProtected() {
+    let protected = AppCoordinator.historyPathsUnderUnverifiedRoots(
+      registeredRoots: ["/Users/dev/projects"],
+      cachedPaths: ["/Users/dev/projects", "/Users/dev/projects/alive"],
+      history: entries(["/Users/dev/projects/deleted", "/Users/dev/projects/alive"]))
+
+    #expect(protected.isEmpty)
+  }
+
+  @Test("登録ディレクトリが無ければ何も保護しない")
+  func noRegisteredRootsProtectsNothing() {
+    let protected = AppCoordinator.historyPathsUnderUnverifiedRoots(
+      registeredRoots: [],
+      cachedPaths: [],
+      history: entries(["/anything"]))
+
+    #expect(protected.isEmpty)
+  }
+
+  @Test("ルート / の登録はキャッシュに何かあれば確認済みとみなす")
+  func rootSlashIsVerifiedByAnyCachedItem() {
+    let protected = AppCoordinator.historyPathsUnderUnverifiedRoots(
+      registeredRoots: ["/"],
+      cachedPaths: ["/Applications/Safari.app"],
+      history: entries(["/Users/dev/x"]))
+
+    #expect(protected.isEmpty)
+  }
+
+  @Test("読めない登録ディレクトリの配下の履歴は起動時の purge で消えない")
+  @MainActor
+  func startDoesNotPurgeHistoryUnderUnreadableRoot() async throws {
+    let settings = makeTempSettingsManager()
+    settings.settings.registeredDirectories = [
+      RegisteredDirectory(
+        path: "/Volumes/External/Projects", parentOpenMode: .editor, subdirsOpenMode: .editor,
+        scanForApps: false)
+    ]
+    // start() は設定ファイルを読み直すため、登録ディレクトリを保存しておく
+    try settings.save()
+    let history = makeTempSelectionHistory()
+    history.record(keyword: "p", path: "/Volumes/External/Projects/app")
+    history.record(keyword: "g", path: "/Users/dev/gone")
+
+    // スキャナは読めない登録ディレクトリを丸ごと飛ばすため、配下は何も返らない
+    let coordinator = makeCoordinator(
+      settingsManager: settings, cacheDatabase: MockCacheDB(isEmpty: true),
+      selectionHistory: history)
+    await coordinator.start()
+
+    let paths = Set(history.allEntries.map(\.selectedPath))
+    #expect(paths.contains("/Volumes/External/Projects/app"))
+    // 登録ディレクトリと無関係で存在しない項目は従来どおり消す
+    #expect(!paths.contains("/Users/dev/gone"))
+  }
+}
+
+// MARK: - カラーピッカーの HEX 変換
+
+@Suite("AppCoordinator カラーピッカーの HEX 変換")
+struct AppCoordinatorHexStringTests {
+
+  @Test("8bit 値は四捨五入する（sRGB 変換の誤差で 1 小さくならない）")
+  func roundsInsteadOfTruncating() {
+    // 11/255 を色空間変換すると 10.99999… になる。切り捨てでは #0A になっていた
+    let almostEleven = CGFloat(11) / 255 - 0.000_003
+    #expect(AppCoordinator.hexString(red: almostEleven, green: 0, blue: 0) == "#0B0000")
+  }
+
+  @Test("端の値と中間値")
+  func boundaryValues() {
+    #expect(AppCoordinator.hexString(red: 0, green: 0, blue: 0) == "#000000")
+    #expect(AppCoordinator.hexString(red: 1, green: 1, blue: 1) == "#FFFFFF")
+    #expect(AppCoordinator.hexString(red: 0.5, green: 0.5, blue: 0.5) == "#808080")
+  }
+
+  @Test("範囲外と NaN は 0〜255 に収める（停止しない）")
+  func outOfRangeAndNaNAreClamped() {
+    #expect(AppCoordinator.hexString(red: -0.2, green: 1.4, blue: .nan) == "#00FF00")
+  }
+
+  @Test("8bit の全値が往復で一致する")
+  func everyByteRoundTrips() {
+    for value in 0...255 {
+      let component = CGFloat(value) / 255
+      let expected = String(format: "#%02X%02X%02X", value, value, value)
+      #expect(
+        AppCoordinator.hexString(red: component, green: component, blue: component) == expected)
+    }
   }
 }

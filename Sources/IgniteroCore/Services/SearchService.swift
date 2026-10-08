@@ -54,6 +54,8 @@ public struct SearchResult: Sendable {
   public let iconPath: String?
   public let originalName: String?
   public let editor: String?
+  /// ディレクトリを Finder で開くか（`DirectoryItem.opensInFinder` を引き継ぐ）。
+  public let opensInFinder: Bool
   public let command: String?
   public let workingDirectory: String?
 
@@ -65,6 +67,7 @@ public struct SearchResult: Sendable {
     self.iconPath = appItem.iconPath
     self.originalName = appItem.originalName
     self.editor = nil
+    self.opensInFinder = false
     self.command = nil
     self.workingDirectory = nil
   }
@@ -77,6 +80,7 @@ public struct SearchResult: Sendable {
     self.iconPath = nil
     self.originalName = nil
     self.editor = directoryItem.editor
+    self.opensInFinder = directoryItem.opensInFinder
     self.command = nil
     self.workingDirectory = nil
   }
@@ -89,6 +93,7 @@ public struct SearchResult: Sendable {
     self.iconPath = nil
     self.originalName = nil
     self.editor = nil
+    self.opensInFinder = false
     self.command = customCommand.command
     self.workingDirectory = customCommand.workingDirectory
   }
@@ -101,8 +106,18 @@ public struct SearchResult: Sendable {
     self.iconPath = nil
     self.originalName = nil
     self.editor = nil
+    self.opensInFinder = false
     self.command = nil
     self.workingDirectory = nil
+  }
+
+  /// ディレクトリを開くエディタの `EditorType.rawValue`。
+  ///
+  /// Finder 指定なら `nil`、個別指定が無ければ `defaultEditorRawValue`（既定エディタ）を返す。
+  /// 実行時の解決（`AppCoordinator.executeResult`）と「〜で開く」の表示で同じ規則を使い、
+  /// 表示と実際に開くアプリが食い違わないようにする。
+  public func directoryEditorRawValue(defaultEditorRawValue: String) -> String? {
+    opensInFinder ? nil : (editor ?? defaultEditorRawValue)
   }
 }
 

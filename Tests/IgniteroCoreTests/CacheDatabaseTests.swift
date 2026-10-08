@@ -171,3 +171,105 @@ import Testing
   let empty = try await db.isEmpty()
   #expect(empty == true)
 }
+
+// MARK: - Finder 指定（opens_in_finder）
+
+@Test func cacheDatabasePersistsOpensInFinderThroughBothSavePaths() async throws {
+  let db = try CacheDatabase.inMemory()
+  let directories = [
+    DirectoryItem(name: "finder-dir", path: "/Users/dev/finder", opensInFinder: true),
+    DirectoryItem(name: "default-editor-dir", path: "/Users/dev/default"),
+    DirectoryItem(name: "zed-dir", path: "/Users/dev/zed", editor: "zed"),
+  ]
+
+  // スキャン経路（結合保存）
+  try await db.saveAppsAndDirectories(apps: [], directories: directories)
+  var loaded = try await db.loadDirectories()
+  #expect(loaded.first { $0.path == "/Users/dev/finder" }?.opensInFinder == true)
+  #expect(loaded.first { $0.path == "/Users/dev/default" }?.opensInFinder == false)
+  #expect(loaded.first { $0.path == "/Users/dev/zed" }?.opensInFinder == false)
+
+  // 単体置換の経路
+  try await db.saveDirectories(directories.reversed())
+  loaded = try await db.loadDirectories()
+  #expect(Set(loaded.map(\.path)) == Set(directories.map(\.path)))
+  #expect(loaded.first { $0.path == "/Users/dev/finder" }?.opensInFinder == true)
+  #expect(loaded.first { $0.path == "/Users/dev/finder" }?.editor == nil)
+}
+
+/// v1 のキャッシュは Finder 指定を持たないため、v2 のマイグレーションで列を足したうえで
+/// 空にし、次回起動時の「キャッシュが空なら必ずスキャン」で作り直させる。
+@Test func cacheDatabaseMigratesV1CacheByAddingColumnAndClearingRows() async throws {
+  let dbPath = FileManager.default.temporaryDirectory
+    .appendingPathComponent("test_cache_v1_\(UUID().uuidString).db").path
+  defer {
+    for suffix in ["", "-wal", "-shm"] {
+      try? FileManager.default.removeItem(atPath: dbPath + suffix)
+    }
+  }
+
+  // v1 のスキーマとデータを持つ DB を用意する（マイグレーション記録も v1 まで）
+  do {
+    let queue = try DatabaseQueue(path: dbPath)
+    var migrator = DatabaseMigrator()
+    migrator.registerMigration("v1") { db in
+      try db.create(table: "apps") { t in
+        t.column("name", .text).notNull()
+        t.primaryKey("path", .text)
+        t.column("icon_path", .text)
+        t.column("original_name", .text)
+        t.column("last_updated", .text).notNull()
+      }
+      try db.create(table: "directories") { t in
+        t.column("name", .text).notNull()
+        t.primaryKey("path", .text)
+        t.column("editor", .text)
+        t.column("last_updated", .text).notNull()
+      }
+      try db.create(table: "metadata") { t in
+        t.primaryKey("key", .text)
+        t.column("value", .text).notNull()
+      }
+    }
+    try migrator.migrate(queue)
+    try await queue.write { db in
+      try db.execute(
+        sql: "INSERT INTO apps (name, path, last_updated) VALUES ('A', '/Applications/A.app', 'x')")
+      try db.execute(
+        sql: "INSERT INTO directories (name, path, editor, last_updated) VALUES ('d', '/d', NULL, 'x')")
+    }
+    try queue.close()
+  }
+
+  let db = try CacheDatabase(path: dbPath)
+  #expect(try await db.isEmpty())
+
+  // 新しい列で保存・読込できる
+  try await db.saveAppsAndDirectories(
+    apps: [], directories: [DirectoryItem(name: "d", path: "/d", opensInFinder: true)])
+  let loaded = try await db.loadDirectories()
+  #expect(loaded.count == 1)
+  #expect(loaded.first?.opensInFinder == true)
+}
+
+@Test func cacheDatabaseMigrationDoesNotClearAgainOnReopen() async throws {
+  let dbPath = FileManager.default.temporaryDirectory
+    .appendingPathComponent("test_cache_reopen_\(UUID().uuidString).db").path
+  defer {
+    for suffix in ["", "-wal", "-shm"] {
+      try? FileManager.default.removeItem(atPath: dbPath + suffix)
+    }
+  }
+
+  do {
+    let db = try CacheDatabase(path: dbPath)
+    try await db.saveAppsAndDirectories(
+      apps: [AppItem(name: "A", path: "/Applications/A.app")],
+      directories: [DirectoryItem(name: "d", path: "/d", opensInFinder: true)])
+  }
+
+  // 2 回目以降の起動ではマイグレーションが走らず、キャッシュは保持される
+  let reopened = try CacheDatabase(path: dbPath)
+  #expect(try await reopened.isEmpty() == false)
+  #expect(try await reopened.loadDirectories().first?.opensInFinder == true)
+}

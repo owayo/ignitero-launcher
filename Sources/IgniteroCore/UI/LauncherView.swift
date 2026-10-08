@@ -361,8 +361,7 @@ public struct LauncherView: View {
           .lineLimit(1)
 
         if result.kind == .directory {
-          let editor = result.editor ?? viewModel.defaultEditorRawValue
-          Text("\(editorDisplayName(editor))で開く")
+          Text(directoryOpenLabel(for: result))
             .font(.system(size: 11))
             .foregroundStyle(.secondary)
             .italic()
@@ -432,7 +431,9 @@ public struct LauncherView: View {
             .foregroundStyle(.secondary)
         }
       case .directory:
-        directoryIcon(editor: result.editor ?? viewModel.defaultEditorRawValue)
+        directoryIcon(
+          editor: result.directoryEditorRawValue(
+            defaultEditorRawValue: viewModel.defaultEditorRawValue))
       case .command:
         Image(systemName: "terminal.fill")
           .font(.system(size: 26))
@@ -482,6 +483,17 @@ public struct LauncherView: View {
   /// エディタ rawValue から表示名を取得
   private func editorDisplayName(_ rawValue: String) -> String {
     EditorType(rawValue: rawValue)?.displayName ?? rawValue
+  }
+
+  /// ディレクトリ行の「〜で開く」表示（Finder 指定なら Finder）
+  private func directoryOpenLabel(for result: SearchResult) -> String {
+    guard
+      let editor = result.directoryEditorRawValue(
+        defaultEditorRawValue: viewModel.defaultEditorRawValue)
+    else {
+      return "Finderで開く"
+    }
+    return "\(editorDisplayName(editor))で開く"
   }
 
   // MARK: - 結果の補足

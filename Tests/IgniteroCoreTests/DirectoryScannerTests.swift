@@ -319,9 +319,75 @@ struct DirectoryScannerEditorAssignmentTests {
     let scanner = DirectoryScanner(fileSystemProvider: fs)
     let result = try await scanner.scan(directories: [registered])
 
+    #expect(result.directories.count == 2)
     for dir in result.directories {
       #expect(dir.editor == nil)
+      // editor == nil は「既定エディタ」と同じ値なので、Finder 指定は別のフラグで表す
+      #expect(dir.opensInFinder)
     }
+  }
+
+  @Test("エディタ＋デフォルト指定は Finder 指定にならない（editor == nil でも既定エディタ）")
+  func editorModeWithDefaultEditorIsNotFinder() async throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/projects"
+    fs.directoryContents[basePath] = ["sub-a"]
+    fs.directoryFlags = [basePath, "\(basePath)/sub-a"]
+    fs.existingPaths = [basePath, "\(basePath)/sub-a"]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .editor,
+      subdirsOpenMode: .editor,
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try await scanner.scan(directories: [registered])
+
+    #expect(result.directories.count == 2)
+    for dir in result.directories {
+      #expect(dir.editor == nil)
+      #expect(!dir.opensInFinder)
+    }
+  }
+
+  @Test("親と子で開き方が違う場合はそれぞれのフラグを持つ")
+  func parentFinderAndSubdirsEditorAreDistinguished() async throws {
+    var fs = MockFileSystemProvider()
+    let basePath = "/Users/dev/projects"
+    fs.directoryContents[basePath] = ["sub-a"]
+    fs.directoryFlags = [basePath, "\(basePath)/sub-a"]
+    fs.existingPaths = [basePath, "\(basePath)/sub-a"]
+
+    let registered = RegisteredDirectory(
+      path: basePath,
+      parentOpenMode: .finder,
+      subdirsOpenMode: .editor,
+      subdirsEditor: "zed",
+      scanForApps: false
+    )
+
+    let scanner = DirectoryScanner(fileSystemProvider: fs)
+    let result = try await scanner.scan(directories: [registered])
+
+    let parent = try #require(result.directories.first { $0.path == basePath })
+    let child = try #require(result.directories.first { $0.path == "\(basePath)/sub-a" })
+    #expect(parent.opensInFinder)
+    #expect(parent.editor == nil)
+    #expect(!child.opensInFinder)
+    #expect(child.editor == "zed")
+  }
+
+  @Test(
+    "登録パスの正規化は末尾のスラッシュだけを除く",
+    arguments: [
+      ("/Users/dev/projects/", "/Users/dev/projects"),
+      ("/Users/dev/projects", "/Users/dev/projects"),
+      ("/", "/"),
+    ])
+  func normalizedRegisteredPathDropsTrailingSlash(input: String, expected: String) {
+    #expect(DirectoryScanner.normalizedRegisteredPath(input) == expected)
   }
 }
 

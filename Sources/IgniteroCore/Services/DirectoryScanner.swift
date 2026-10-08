@@ -111,7 +111,9 @@ public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
         let parentEditor = editorForOpenMode(
           registered.parentOpenMode, editor: registered.parentEditor)
         addDirectory(
-          DirectoryItem(name: parentName, path: normalizedPath, editor: parentEditor),
+          DirectoryItem(
+            name: parentName, path: normalizedPath, editor: parentEditor,
+            opensInFinder: registered.parentOpenMode == .finder),
           isExplicit: true)
       }
 
@@ -140,7 +142,9 @@ public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
         let subEditor = editorForOpenMode(
           registered.subdirsOpenMode, editor: registered.subdirsEditor)
         addDirectory(
-          DirectoryItem(name: entry, path: childPath, editor: subEditor),
+          DirectoryItem(
+            name: entry, path: childPath, editor: subEditor,
+            opensInFinder: registered.subdirsOpenMode == .finder),
           isExplicit: false)
       }
     }
@@ -154,6 +158,12 @@ public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
   // MARK: - 非公開ヘルパー
 
   private func normalizePath(_ path: String) -> String {
+    Self.normalizedRegisteredPath(path)
+  }
+
+  /// 登録ディレクトリのパスを走査時と同じ形（末尾のスラッシュを除く）にそろえる。
+  /// 履歴 purge の判定（AppCoordinator）もこの形でキャッシュのパスと突き合わせる。
+  static func normalizedRegisteredPath(_ path: String) -> String {
     if path != "/", path.hasSuffix("/") {
       return String(path.dropLast())
     }
@@ -177,6 +187,8 @@ public struct DirectoryScanner: DirectoryScannerProtocol, Sendable {
     return lastPathComponent(of: normalizedPath)
   }
 
+  /// エディタで開く場合のエディタ指定を返す（`nil` は既定エディタ）。
+  /// Finder 指定は `DirectoryItem.opensInFinder` で表すため、ここでは `nil` を返す。
   private func editorForOpenMode(_ mode: OpenMode, editor: String?) -> String? {
     switch mode {
     case .editor:

@@ -404,11 +404,14 @@ public final class AppCoordinator {
         case .app:
           try await launchService.launchApp(at: result.path)
         case .directory:
-          let editorType =
-            result.editor.flatMap { EditorType(rawValue: $0) }
-            ?? settingsManager.settings.defaultEditor
+          // Finder 指定は editor: nil で openDirectory の Finder 分岐へ渡す。
+          // 個別指定が無い・未知のエディタは既定エディタで開く。
+          let defaultEditor = settingsManager.settings.defaultEditor
+          let editorType: EditorType? = result.directoryEditorRawValue(
+            defaultEditorRawValue: defaultEditor.rawValue
+          ).map { EditorType(rawValue: $0) ?? defaultEditor }
           Self.logger.info(
-            "Open directory: result.editor=\(result.editor ?? "nil", privacy: .public), defaultEditor=\(self.settingsManager.settings.defaultEditor.rawValue, privacy: .public), resolved=\(editorType.rawValue, privacy: .public)"
+            "Open directory: result.editor=\(result.editor ?? "nil", privacy: .public), opensInFinder=\(result.opensInFinder, privacy: .public), defaultEditor=\(defaultEditor.rawValue, privacy: .public), resolved=\(editorType?.rawValue ?? "finder", privacy: .public)"
           )
           try await launchService.openDirectory(result.path, editor: editorType)
         case .command:
@@ -519,10 +522,8 @@ public final class AppCoordinator {
     NSColorSampler().show { selectedColor in
       guard let selectedColor else { return }
       guard let color = selectedColor.usingColorSpace(.sRGB) else { return }
-      let r = Int(color.redComponent * 255)
-      let g = Int(color.greenComponent * 255)
-      let b = Int(color.blueComponent * 255)
-      let hex = String(format: "#%02X%02X%02X", r, g, b)
+      let hex = Self.hexString(
+        red: color.redComponent, green: color.greenComponent, blue: color.blueComponent)
       Task { @MainActor in
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(hex, forType: .string)
@@ -711,10 +712,13 @@ public final class AppCoordinator {
   /// キャッシュを再構築し、ビューモデルにデータを再読み込みする。
   ///
   /// 再読込は CacheBootstrap.onScanCompleted 経由で行われる。
-  /// 再構築中の再入（メニュー連打・設定変更・自動更新との並走）は無視する。
+  /// 再構築中の要求（メニュー連打・設定変更・自動更新との並走）は捨てずに、
+  /// 走行中のスキャンが終わったあとの再スキャンとして CacheBootstrap に予約する。
+  /// 捨てると、スキャン中に変えた除外アプリ・登録ディレクトリがキャッシュへ反映されない。
   public func rebuildCacheAndReload() async {
     guard !cacheBootstrap.isScanning else {
-      Self.logger.info("Cache rebuild already in progress; skipping")
+      Self.logger.info("Cache rebuild already in progress; rescan scheduled")
+      await cacheBootstrap.rebuildCache()
       return
     }
     launcherViewModel.isScanning = true
@@ -772,12 +776,20 @@ public final class AppCoordinator {
     // キャッシュ DB、スキャナー、カスタムコマンド識別子をすべて有効とみなす。
     // キャッシュ読込に失敗した場合は validPaths が不完全になり
     // 有効な履歴まで消してしまうため、purge をスキップする。
-    if cacheLoadSucceeded {
+    // 設定ファイルを読めていない（I/O エラー）間も、登録ディレクトリとコマンドが既定値（空）の
+    // まま validPaths が作られ、終了時の保存で履歴の消失が永続化されるため purge しない。
+    if cacheLoadSucceeded, !settingsManager.loadFailed {
       var validPaths = Set<String>()
       for app in launcherViewModel.apps { validPaths.insert(app.path) }
       for dir in launcherViewModel.directories { validPaths.insert(dir.path) }
       for command in launcherViewModel.commands { validPaths.insert(command.historyIdentifier) }
       for app in settingsViewModel.allApps { validPaths.insert(app.path) }
+      validPaths.formUnion(
+        Self.historyPathsUnderUnverifiedRoots(
+          registeredRoots: settingsManager.settings.registeredDirectories.map(\.path),
+          cachedPaths: launcherViewModel.apps.map(\.path)
+            + launcherViewModel.directories.map(\.path),
+          history: selectionHistory.allEntries))
       selectionHistory.purgeInvalidPaths(validPaths)
     }
 
@@ -832,5 +844,56 @@ public final class AppCoordinator {
     let dir = home.appendingPathComponent(".config/ignitero-launcher")
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     return dir.appendingPathComponent("selection_history.json").path
+  }
+
+  // MARK: - 履歴 purge の判定
+
+  /// キャッシュで中身を確かめられない登録ディレクトリ配下の履歴パスを返す。
+  ///
+  /// DirectoryScanner は読めない登録ディレクトリ（外付けドライブ未接続・権限拒否）を丸ごと
+  /// 飛ばすため、その配下はキャッシュにも validPaths にも入らない。消えたとみなして purge すると、
+  /// ドライブを接続し直しても使用回数と最近使った項目が戻らない。
+  /// キャッシュに配下の項目が 1 件も無い登録ディレクトリは「前回のスキャンで中身を
+  /// 確かめられなかった」とみなし、その配下の履歴を残す。キャッシュだけを読む起動経路でも
+  /// 同じ判定になり、未接続のボリュームへの I/O も発生しない。
+  /// （本当に削除された登録ディレクトリの履歴も残るが、検索結果には復元されず、
+  /// 履歴の上限超過時に保持スコアの低い順で追い出される。）
+  /// - Parameters:
+  ///   - registeredRoots: 設定に登録されたディレクトリのパス
+  ///   - cachedPaths: キャッシュにあるアプリ・ディレクトリのパス
+  ///   - history: 選択履歴
+  /// - Returns: purge の対象から外す履歴パス
+  nonisolated static func historyPathsUnderUnverifiedRoots(
+    registeredRoots: [String],
+    cachedPaths: [String],
+    history: [SelectionHistoryEntry]
+  ) -> Set<String> {
+    func isUnder(_ path: String, root: String) -> Bool {
+      path == root || path.hasPrefix(root == "/" ? "/" : root + "/")
+    }
+
+    let unverifiedRoots = Set(registeredRoots.map(DirectoryScanner.normalizedRegisteredPath))
+      .filter { root in !cachedPaths.contains { isUnder($0, root: root) } }
+    guard !unverifiedRoots.isEmpty else { return [] }
+
+    return Set(
+      history.map(\.selectedPath).filter { path in
+        unverifiedRoots.contains { isUnder(path, root: $0) }
+      })
+  }
+
+  // MARK: - カラーピッカー
+
+  /// sRGB の各成分（0〜1）を `#RRGGBB` に変換する。
+  ///
+  /// 8bit への変換は四捨五入する。切り捨てると、画面の色空間から sRGB へ変換したときの
+  /// 誤差（例: 11/255 が 10.99999… になる）で元の色より 1 小さい値になる。
+  /// 範囲外と NaN は 0〜255 に収める（`Int(_:)` は NaN で停止するため）。
+  nonisolated static func hexString(red: CGFloat, green: CGFloat, blue: CGFloat) -> String {
+    func byte(_ component: CGFloat) -> Int {
+      guard !component.isNaN else { return 0 }
+      return Int((min(max(component, 0), 1) * 255).rounded())
+    }
+    return String(format: "#%02X%02X%02X", byte(red), byte(green), byte(blue))
   }
 }

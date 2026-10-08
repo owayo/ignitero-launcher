@@ -229,3 +229,52 @@ struct EditorTypeShortcutKeyTests {
     }
   }
 }
+
+// MARK: - ディレクトリの開き方（Finder 指定）
+
+@Suite("ディレクトリの開き方 (Finder 指定)")
+struct DirectoryOpenTargetTests {
+
+  @Test("opens_in_finder を持たない古い JSON は Finder 指定なしとして読む")
+  func decodingWithoutOpensInFinderDefaultsToFalse() throws {
+    let json = #"{"name":"proj","path":"/Users/dev/proj","editor":"zed"}"#
+    let item = try JSONDecoder().decode(DirectoryItem.self, from: Data(json.utf8))
+    #expect(item.opensInFinder == false)
+    #expect(item.editor == "zed")
+  }
+
+  @Test("Finder 指定は Codable の往復で保たれる")
+  func opensInFinderRoundTrips() throws {
+    let original = DirectoryItem(name: "proj", path: "/Users/dev/proj", opensInFinder: true)
+    let data = try JSONEncoder().encode(original)
+    let decoded = try JSONDecoder().decode(DirectoryItem.self, from: data)
+    #expect(decoded == original)
+  }
+
+  @Test("SearchResult は DirectoryItem の Finder 指定を引き継ぐ")
+  func searchResultCarriesOpensInFinder() {
+    let finder = SearchResult(
+      directoryItem: DirectoryItem(name: "a", path: "/a", opensInFinder: true), score: 0)
+    let editor = SearchResult(
+      directoryItem: DirectoryItem(name: "b", path: "/b", editor: "zed"), score: 0)
+    #expect(finder.opensInFinder)
+    #expect(!editor.opensInFinder)
+    #expect(!SearchResult(appItem: AppItem(name: "X", path: "/X.app"), score: 0).opensInFinder)
+  }
+
+  @Test("開くエディタの解決: Finder 指定は nil、未指定は既定エディタ、個別指定はその値")
+  func directoryEditorRawValueRules() {
+    let finder = SearchResult(
+      directoryItem: DirectoryItem(name: "a", path: "/a", editor: "zed", opensInFinder: true),
+      score: 0)
+    let unspecified = SearchResult(
+      directoryItem: DirectoryItem(name: "b", path: "/b"), score: 0)
+    let explicit = SearchResult(
+      directoryItem: DirectoryItem(name: "c", path: "/c", editor: "zed"), score: 0)
+
+    // Finder 指定は editor の値に関わらず Finder（nil）
+    #expect(finder.directoryEditorRawValue(defaultEditorRawValue: "cursor") == nil)
+    #expect(unspecified.directoryEditorRawValue(defaultEditorRawValue: "cursor") == "cursor")
+    #expect(explicit.directoryEditorRawValue(defaultEditorRawValue: "cursor") == "zed")
+  }
+}

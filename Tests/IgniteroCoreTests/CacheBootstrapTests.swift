@@ -685,3 +685,150 @@ struct CacheBootstrapTests {
         == ["/Applications/Safari.app", "/Users/dev/tools/Tool.app"])
   }
 }
+
+// MARK: - モック: 1 回目のスキャンを止めておける AppScanner
+
+/// スキャン中に届く再構築要求を再現するため、1 回目の scanApplications を release() まで止める。
+private final class GatedAppScanner: AppScannerProtocol, @unchecked Sendable {
+  private let lock = NSLock()
+  private var continuation: CheckedContinuation<Void, Never>?
+  private var calls = 0
+  let apps: [AppItem]
+
+  init(apps: [AppItem]) {
+    self.apps = apps
+  }
+
+  var callCount: Int { lock.withLock { calls } }
+  var isWaiting: Bool { lock.withLock { continuation != nil } }
+
+  func scanApplications(excludedApps: [String]) async throws -> [AppItem] {
+    let call = lock.withLock { () -> Int in
+      calls += 1
+      return calls
+    }
+    if call == 1 {
+      await withCheckedContinuation { continuation in
+        lock.withLock { self.continuation = continuation }
+      }
+    }
+    return apps
+  }
+
+  func release() {
+    let pending = lock.withLock { () -> CheckedContinuation<Void, Never>? in
+      defer { continuation = nil }
+      return continuation
+    }
+    pending?.resume()
+  }
+}
+
+@MainActor
+private func waitForCondition(
+  timeout: Duration = .seconds(5), _ condition: () -> Bool
+) async -> Bool {
+  let clock = ContinuousClock()
+  let deadline = clock.now.advanced(by: timeout)
+  while clock.now < deadline {
+    if condition() { return true }
+    await Task.yield()
+  }
+  return condition()
+}
+
+@Suite("CacheBootstrap スキャン中の要求と設定の読込失敗")
+@MainActor
+struct CacheBootstrapRescanTests {
+
+  private func makeSettingsManager() -> SettingsManager {
+    SettingsManager(
+      configDirectory: FileManager.default.temporaryDirectory
+        .appendingPathComponent("ignitero-rescan-\(UUID().uuidString)"))
+  }
+
+  @Test("スキャン中の再構築要求は捨てずに、終了後に最新の設定でもう一度スキャンする")
+  func rebuildDuringScanRescansWithLatestSettings() async throws {
+    let mockDB = CacheBootstrapMockDB(isEmpty: false)
+    let scanner = GatedAppScanner(apps: [
+      AppItem(name: "Keep", path: "/Applications/Keep.app"),
+      AppItem(name: "Drop", path: "/Applications/Drop.app"),
+    ])
+    let settings = makeSettingsManager()
+    let bootstrap = CacheBootstrap(
+      settingsManager: settings,
+      cacheDatabase: mockDB,
+      appScanner: scanner,
+      directoryScanner: CacheBootstrapMockDirScanner()
+    )
+
+    let first = Task { await bootstrap.rebuildCache() }
+    #expect(await waitForCondition { scanner.isWaiting })
+    #expect(bootstrap.isScanning)
+
+    // 1 回目のスキャン（開始時点の設定のコピーで走っている）の最中に除外設定を変える
+    settings.settings.excludedApps = ["/Applications/Drop.app"]
+    await bootstrap.rebuildCache()  // 予約だけして戻る
+
+    scanner.release()
+    await first.value
+
+    #expect(scanner.callCount == 2)
+    // 最後に保存されたのは変更後の設定によるスキャン結果
+    #expect(mockDB.savedApps.map(\.path) == ["/Applications/Keep.app"])
+    #expect(bootstrap.isScanning == false)
+  }
+
+  @Test("スキャン中に要求が何度届いても再スキャンは 1 回にまとめる")
+  func multipleRequestsDuringScanCoalesce() async throws {
+    let mockDB = CacheBootstrapMockDB(isEmpty: false)
+    let scanner = GatedAppScanner(apps: [])
+    let bootstrap = CacheBootstrap(
+      settingsManager: makeSettingsManager(),
+      cacheDatabase: mockDB,
+      appScanner: scanner,
+      directoryScanner: CacheBootstrapMockDirScanner()
+    )
+
+    let first = Task { await bootstrap.rebuildCache() }
+    #expect(await waitForCondition { scanner.isWaiting })
+    await bootstrap.rebuildCache()
+    await bootstrap.rebuildCache()
+    await bootstrap.rebuildCache()
+    scanner.release()
+    await first.value
+
+    #expect(scanner.callCount == 2)
+  }
+
+  @Test("設定ファイルを読めない間はスキャンせず、既存キャッシュを保持する")
+  func scanIsSkippedWhileSettingsFailedToLoad() async throws {
+    let dir = FileManager.default.temporaryDirectory
+      .appendingPathComponent("ignitero-rescan-unreadable-\(UUID().uuidString)")
+    // settings.json の代わりに同名ディレクトリを置き、I/O エラーで読めない状態にする
+    try FileManager.default.createDirectory(
+      at: dir.appendingPathComponent("settings.json"), withIntermediateDirectories: true)
+    let settings = SettingsManager(configDirectory: dir)
+    #expect(throws: (any Error).self) { try settings.load() }
+    #expect(settings.loadFailed)
+
+    let mockDB = CacheBootstrapMockDB(isEmpty: true)
+    let bootstrap = CacheBootstrap(
+      settingsManager: settings,
+      cacheDatabase: mockDB,
+      appScanner: CacheBootstrapMockAppScanner(apps: [
+        AppItem(name: "Safari", path: "/Applications/Safari.app")
+      ]),
+      directoryScanner: CacheBootstrapMockDirScanner()
+    )
+
+    // キャッシュが空でも（通常なら必ずスキャンする）既定設定では置き換えない
+    let didScan = await bootstrap.performInitialScan()
+    await bootstrap.rebuildCache()
+
+    #expect(didScan == false)
+    #expect(mockDB.saveAppsCalled == false)
+    #expect(mockDB.saveDirectoriesCalled == false)
+    #expect(bootstrap.lastScanDate == nil)
+  }
+}

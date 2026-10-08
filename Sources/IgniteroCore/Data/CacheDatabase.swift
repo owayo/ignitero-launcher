@@ -79,6 +79,19 @@ public actor CacheDatabase: CacheDatabaseProtocol {
         t.column("value", .text).notNull()
       }
     }
+    migrator.registerMigration("v2") { db in
+      // 「Finder で開く」を「既定エディタで開く」（editor = NULL）と区別するための列。
+      try db.alter(table: "directories") { t in
+        t.add(column: "opens_in_finder", .boolean).notNull().defaults(to: false)
+      }
+      // v1 の行は Finder 指定を持たないため、そのまま使うと Finder 指定のディレクトリが
+      // 既定エディタで開き続ける。キャッシュは再生成できるので空にし、
+      // CacheBootstrap.performInitialScan の「キャッシュが空なら必ずスキャン」で作り直させる
+      // （起動時更新を無効にしている環境でも次の起動で正しい値になる）。
+      try db.execute(sql: "DELETE FROM apps")
+      try db.execute(sql: "DELETE FROM directories")
+      try db.execute(sql: "DELETE FROM metadata")
+    }
     try migrator.migrate(queue)
   }
 
@@ -119,10 +132,10 @@ public actor CacheDatabase: CacheDatabaseProtocol {
       for dir in dirs {
         try db.execute(
           sql: """
-            INSERT OR REPLACE INTO directories (name, path, editor, last_updated)
-            VALUES (?, ?, ?, ?)
+            INSERT OR REPLACE INTO directories (name, path, editor, opens_in_finder, last_updated)
+            VALUES (?, ?, ?, ?, ?)
             """,
-          arguments: [dir.name, dir.path, dir.editor, now]
+          arguments: [dir.name, dir.path, dir.editor, dir.opensInFinder, now]
         )
       }
       try db.execute(
@@ -166,10 +179,10 @@ public actor CacheDatabase: CacheDatabaseProtocol {
       for dir in directories {
         try db.execute(
           sql: """
-            INSERT OR REPLACE INTO directories (name, path, editor, last_updated)
-            VALUES (?, ?, ?, ?)
+            INSERT OR REPLACE INTO directories (name, path, editor, opens_in_finder, last_updated)
+            VALUES (?, ?, ?, ?, ?)
             """,
-          arguments: [dir.name, dir.path, dir.editor, now]
+          arguments: [dir.name, dir.path, dir.editor, dir.opensInFinder, now]
         )
       }
 
