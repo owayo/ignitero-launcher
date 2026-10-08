@@ -57,6 +57,13 @@ for leftover in .build/*/*/*.bundle"${SUFFIX}"; do
 done
 
 for bundle in .build/*/*/*.bundle; do
+  # 前回の退避物が戻せずに残っている (上の unhide が warning で残した) と、
+  # `mv` は退避先ディレクトリの中へ入れ子で移し、終了時の restore が古い退避物を
+  # 本物として戻してしまう。中身を確かめずに続行しない。
+  if [ -e "${bundle}${SUFFIX}" ]; then
+    echo "error: ${bundle}${SUFFIX} が残っている。中身を確認して削除してから再実行する" >&2
+    exit 1
+  fi
   mv "${bundle}" "${bundle}${SUFFIX}"
   HIDDEN+=("${bundle}")
 done
