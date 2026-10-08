@@ -13,15 +13,9 @@ public final class EditorPickerState {
 
   // MARK: - ショートカットキー対応
 
-  /// エディタに対応するショートカットキーを返す。
+  /// エディタに対応するショートカットキーを返す（対応表は `EditorType.shortcutKey`）。
   public static func shortcutKey(for editor: EditorType) -> String {
-    switch editor {
-    case .windsurf: "w"
-    case .cursor: "c"
-    case .vscode: "v"
-    case .antigravity: "a"
-    case .zed: "z"
-    }
+    editor.shortcutKey
   }
 
   /// ショートカットキーに対応するエディタを返す。
@@ -29,14 +23,7 @@ public final class EditorPickerState {
   /// - Parameter key: ショートカットキー文字列
   /// - Returns: 対応する `EditorType`、未知のキーの場合は `nil`
   public static func editor(forShortcutKey key: String) -> EditorType? {
-    switch key {
-    case "w": .windsurf
-    case "c": .cursor
-    case "v": .vscode
-    case "a": .antigravity
-    case "z": .zed
-    default: nil
-    }
+    EditorType(shortcutKey: key)
   }
 
   // MARK: - 状態

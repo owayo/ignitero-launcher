@@ -182,3 +182,50 @@ struct EditorTypeDisplayNameTests {
     #expect(EditorType.antigravity.supportsCodeWorkspace == true)
   }
 }
+
+// MARK: - EditorType ショートカットキー テスト
+
+@Suite("EditorType ShortcutKey")
+struct EditorTypeShortcutKeyTests {
+
+  @Test func shortcutKeysAreUniqueSingleLowercaseCharacters() {
+    let keys = EditorType.allCases.map(\.shortcutKey)
+    // 重複があると逆引きで後ろのエディタが選べなくなる
+    #expect(Set(keys).count == keys.count)
+    for key in keys {
+      #expect(key.count == 1)
+      #expect(key == key.lowercased())
+    }
+  }
+
+  @Test func reverseLookupRoundTripsForAllCases() {
+    for editor in EditorType.allCases {
+      #expect(EditorType(shortcutKey: editor.shortcutKey) == editor)
+    }
+  }
+
+  @Test(arguments: ["", "x", "W", " w", "w ", "ww"])
+  func unknownOrUnnormalizedKeysReturnNil(key: String) {
+    // charactersIgnoringModifiers をそのまま照合するため、大文字や空白付きは一致させない
+    #expect(EditorType(shortcutKey: key) == nil)
+  }
+
+  @MainActor
+  @Test func pickerAndRadialDisplayUseSameKeys() {
+    // ラジアル表示に出るキーと、ピッカーが実際に受け付けるキーが一致すること
+    let editors = EditorType.allCases.map { type in
+      EditorInfo(id: type, name: type.displayName, appName: "\(type.rawValue).app", installed: true)
+    }
+    let items = RadialPickerItemFactory.editorItems(from: editors)
+    for (editor, item) in zip(EditorType.allCases, items) {
+      #expect(item.shortcutKey == EditorPickerState.shortcutKey(for: editor))
+      #expect(item.shortcutKey.flatMap { EditorPickerState.editor(forShortcutKey: $0) } == editor)
+    }
+  }
+
+  @Test func launchServiceDisplayNameMatchesModel() {
+    for editor in EditorType.allCases {
+      #expect(LaunchService.displayName(for: editor) == editor.displayName)
+    }
+  }
+}

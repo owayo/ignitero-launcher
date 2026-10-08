@@ -100,17 +100,6 @@ public enum RadialPickerGeometry {
 /// EditorInfo / TerminalInfo から RadialPickerItem を生成するファクトリ。
 public enum RadialPickerItemFactory {
 
-  /// エディタタイプに対応するショートカットキーを返す（MainActor 非依存）。
-  private static func shortcutKey(for editor: EditorType) -> String {
-    switch editor {
-    case .windsurf: "w"
-    case .cursor: "c"
-    case .vscode: "v"
-    case .antigravity: "a"
-    case .zed: "z"
-    }
-  }
-
   /// EditorInfo 配列から RadialPickerItem 配列を生成する。
   ///
   /// 各エディタにはショートカットキーが付与される（w/c/v/a/z）。
@@ -122,7 +111,7 @@ public enum RadialPickerItemFactory {
       RadialPickerItem(
         id: editor.id.rawValue,
         name: editor.name,
-        shortcutKey: shortcutKey(for: editor.id),
+        shortcutKey: editor.id.shortcutKey,
         installed: editor.installed,
         iconPath: editor.iconPath
       )

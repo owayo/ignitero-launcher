@@ -50,14 +50,9 @@ public struct LaunchService: Launching, Sendable {
     }
   }
 
+  /// エディタの表示名（対応表は `EditorType.displayName`）。
   public static func displayName(for editor: EditorType) -> String {
-    switch editor {
-    case .windsurf: "Windsurf"
-    case .cursor: "Cursor"
-    case .vscode: "Visual Studio Code"
-    case .antigravity: "Antigravity"
-    case .zed: "Zed"
-    }
+    editor.displayName
   }
 
   // MARK: - ターミナルアプリ名マッピング
@@ -175,7 +170,7 @@ public struct LaunchService: Launching, Sendable {
         end tell
         """
     case .cmux:
-      // cmux 0.64.22 で確認した AppleScript API を使用する。
+      // cmux 0.65.0 で確認した AppleScript API を使用する。
       // cmux の sdef には Ghostty のような `send key` が無いため、`input text` に改行を含めて確定する。
       return """
         tell application "cmux"
