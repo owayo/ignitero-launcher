@@ -611,3 +611,63 @@ struct SettingsManagerTests {
     #expect(manager.settings.excludedApps == ["Feedback Assistant.app"])
   }
 }
+
+// MARK: - キーの欠落・null・空配列の区別
+
+@Suite("Settings デコード: 欠落キーと空配列の区別")
+struct SettingsMissingKeyDecodingTests {
+
+  @Test("空の JSON は既定値（登録ディレクトリは既定の Chrome Apps）になる")
+  func emptyObjectFallsBackToDefaults() throws {
+    let settings = try JSONDecoder().decode(Settings.self, from: Data("{}".utf8))
+    #expect(
+      settings.registeredDirectories.map(\.path)
+        == Settings.defaultRegisteredDirectories.map(\.path))
+    #expect(settings.customCommands.isEmpty)
+    #expect(settings.excludedApps.isEmpty)
+    #expect(settings.defaultEditor == .cursor)
+    #expect(settings.defaultTerminal == .terminal)
+    #expect(settings.cacheUpdate.updateOnStartup)
+    #expect(settings.updateCache == nil)
+  }
+
+  @Test("null は欠落と同じく既定値になる")
+  func nullValuesFallBackToDefaults() throws {
+    let json = """
+      {"registered_directories": null, "custom_commands": null, "excluded_apps": null,
+       "default_editor": null, "cache_update": null, "update_cache": null}
+      """
+    let settings = try JSONDecoder().decode(Settings.self, from: Data(json.utf8))
+    #expect(
+      settings.registeredDirectories.map(\.path)
+        == Settings.defaultRegisteredDirectories.map(\.path))
+    #expect(settings.customCommands.isEmpty)
+    #expect(settings.excludedApps.isEmpty)
+    #expect(settings.defaultEditor == .cursor)
+  }
+
+  /// 登録ディレクトリをすべて削除したユーザーの設定 ([]) で、既定の登録が復活しないこと
+  @Test("明示的な空配列は既定値で置き換えない")
+  func explicitEmptyRegisteredDirectoriesStayEmpty() throws {
+    let json = #"{"registered_directories": [], "default_editor": "zed"}"#
+    let settings = try JSONDecoder().decode(Settings.self, from: Data(json.utf8))
+    #expect(settings.registeredDirectories.isEmpty)
+    #expect(settings.defaultEditor == .zed)
+  }
+
+  @Test("空配列の設定は保存と読み込みの往復でも空のまま")
+  @MainActor
+  func emptyRegisteredDirectoriesRoundTripThroughFile() throws {
+    let dir = FileManager.default.temporaryDirectory
+      .appendingPathComponent("ignitero-settings-empty-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: dir) }
+
+    let manager = SettingsManager(configDirectory: dir)
+    manager.settings.registeredDirectories = []
+    try manager.save()
+
+    let reloaded = SettingsManager(configDirectory: dir)
+    try reloaded.load()
+    #expect(reloaded.settings.registeredDirectories.isEmpty)
+  }
+}
