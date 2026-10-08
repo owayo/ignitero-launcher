@@ -131,3 +131,39 @@ struct ShortcutDisplayFormatterTests {
     }
   }
 }
+
+// MARK: - 通常文字キーと範囲外のキーコード
+
+@MainActor
+@Suite("ShortcutDisplayFormatter 通常文字キーと壊れた値")
+struct ShortcutDisplayFormatterCharacterKeyTests {
+
+  @Test("通常の文字キーはキーボードレイアウトの文字を大文字で表示する")
+  func letterKeyUsesKeyboardLayout() throws {
+    // 文字はレイアウトに依存する（Dvorak などでは A 以外になる）ため、1 文字であることと
+    // keySymbol がその大文字であることだけを確かめる
+    let character = try #require(ShortcutDisplayFormatter.characterFromKeyCode(kVK_ANSI_A))
+    #expect(character.count == 1)
+    #expect(
+      ShortcutDisplayFormatter.keySymbol(forCarbonKeyCode: kVK_ANSI_A) == character.uppercased())
+
+    let shortcut = KeyboardShortcuts.Shortcut(carbonKeyCode: kVK_ANSI_A, carbonModifiers: optionKey)
+    #expect(ShortcutDisplayFormatter.string(for: shortcut) == "⌥" + character.uppercased())
+  }
+
+  /// UserDefaults に保存されたショートカットの値は範囲が検証されない。
+  /// 壊れて範囲外になっていても `UInt16(_:)` で停止せず「?」と表示する。
+  @Test("UInt16 に収まらないキーコードは停止せず ? と表示する", arguments: [-1, 65_536, Int.max, Int.min])
+  func outOfRangeKeyCodeDoesNotTrap(keyCode: Int) {
+    #expect(ShortcutDisplayFormatter.characterFromKeyCode(keyCode) == nil)
+    #expect(ShortcutDisplayFormatter.keySymbol(forCarbonKeyCode: keyCode) == "?")
+    let shortcut = KeyboardShortcuts.Shortcut(carbonKeyCode: keyCode, carbonModifiers: cmdKey)
+    #expect(ShortcutDisplayFormatter.string(for: shortcut) == "⌘?")
+  }
+
+  @Test("Help とテンキーの Clear は専用記号で表示する")
+  func helpAndKeypadClearSymbols() {
+    #expect(ShortcutDisplayFormatter.specialKeySymbol(forCarbonKeyCode: kVK_Help) == "?⃝")
+    #expect(ShortcutDisplayFormatter.specialKeySymbol(forCarbonKeyCode: kVK_ANSI_KeypadClear) == "⌧")
+  }
+}

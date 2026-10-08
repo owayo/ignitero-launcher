@@ -95,7 +95,10 @@ public enum ShortcutDisplayFormatter {
   /// `KeyboardShortcuts.Shortcut.keyToCharacter()` と同等の UCKeyTranslate ベース実装。
   @MainActor
   public static func characterFromKeyCode(_ keyCode: Int) -> String? {
-    guard
+    // 仮想キーコードは UInt16 の範囲。保存されたショートカット（UserDefaults）の値が壊れて
+    // 範囲外になっていると `UInt16(_:)` が停止し、設定画面を開いた瞬間に落ちるため、
+    // 表示できないキーとして扱う。
+    guard let virtualKeyCode = UInt16(exactly: keyCode),
       let source = TISCopyCurrentASCIICapableKeyboardLayoutInputSource()?.takeRetainedValue(),
       let layoutDataPointer = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData)
     else {
@@ -114,7 +117,7 @@ public enum ShortcutDisplayFormatter {
 
     let error = UCKeyTranslate(
       keyLayout,
-      UInt16(keyCode),
+      virtualKeyCode,
       UInt16(kUCKeyActionDisplay),
       0,
       UInt32(LMGetKbdType()),

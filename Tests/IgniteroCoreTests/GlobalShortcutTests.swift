@@ -205,3 +205,27 @@ struct GlobalShortcutManagerToggleIMETests {
     #expect(imeController.switchToASCIICallCount == 2)
   }
 }
+
+// MARK: - ホットキー登録値の変換
+
+@Suite("GlobalShortcutManager ホットキー登録値")
+struct GlobalShortcutHotKeyParameterTests {
+
+  @Test("既定の Option+Space はそのまま Carbon の値になる")
+  func validShortcutConverts() throws {
+    let shortcut = KeyboardShortcuts.Shortcut(.space, modifiers: [.option])
+    let parameters = try #require(GlobalShortcutManager.carbonHotKeyParameters(for: shortcut))
+    #expect(parameters.keyCode == UInt32(shortcut.carbonKeyCode))
+    #expect(parameters.modifiers == UInt32(shortcut.carbonModifiers))
+  }
+
+  /// UserDefaults の値が壊れて負になっていても、起動時の登録で停止しない。
+  /// 修飾キーは KeyboardShortcuts の初期化時に正規化されるため、範囲外になり得るのはキーコードだけ。
+  @Test(
+    "UInt32 に収まらないキーコードは登録しない（nil）",
+    arguments: [(-1, 2048), (Int.min, 0), (Int.max, 256)])
+  func invalidValuesAreRejected(keyCode: Int, modifiers: Int) {
+    let shortcut = KeyboardShortcuts.Shortcut(carbonKeyCode: keyCode, carbonModifiers: modifiers)
+    #expect(GlobalShortcutManager.carbonHotKeyParameters(for: shortcut) == nil)
+  }
+}

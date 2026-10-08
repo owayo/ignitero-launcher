@@ -62,6 +62,22 @@ public final class GlobalShortcutManager {
   /// Carbonホットキーのシグネチャは"IGNT"
   nonisolated static let hotKeySignature: UInt32 = 0x4947_4E54
 
+  /// Carbon の `RegisterEventHotKey` に渡すキーコードと修飾キーを返す。
+  ///
+  /// ショートカットは UserDefaults に整数のまま保存され、値の範囲は検証されない。
+  /// 壊れて負の値などになっていると `UInt32(_:)` が停止し、起動のたびにアプリが落ち続けるため、
+  /// `UInt32` に収まらない値は `nil`（登録しない）として扱う。
+  nonisolated static func carbonHotKeyParameters(
+    for shortcut: KeyboardShortcuts.Shortcut
+  ) -> (keyCode: UInt32, modifiers: UInt32)? {
+    guard let keyCode = UInt32(exactly: shortcut.carbonKeyCode),
+      let modifiers = UInt32(exactly: shortcut.carbonModifiers)
+    else {
+      return nil
+    }
+    return (keyCode, modifiers)
+  }
+
   // MARK: - プロパティ
 
   /// ランチャーウィンドウの表示/非表示を管理する WindowManager
@@ -134,8 +150,14 @@ public final class GlobalShortcutManager {
       return
     }
 
-    let keyCode = UInt32(shortcut.carbonKeyCode)
-    let modifiers = UInt32(shortcut.carbonModifiers)
+    guard let parameters = Self.carbonHotKeyParameters(for: shortcut) else {
+      Self.logger.error(
+        "Invalid shortcut values: keyCode=\(shortcut.carbonKeyCode), modifiers=\(shortcut.carbonModifiers)"
+      )
+      return
+    }
+    let keyCode = parameters.keyCode
+    let modifiers = parameters.modifiers
 
     Self.logger.notice(
       "Registering Carbon hotkey: keyCode=\(keyCode), modifiers=\(modifiers)")
