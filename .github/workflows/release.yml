@@ -15,6 +15,8 @@ env:
   APP_NAME: IgniteroLauncher
   BUNDLE_NAME: IgniteroLauncher.app
   DMG_NAME: IgniteroLauncher.dmg
+  # mise.lock に記録した URL と checksum でのみツールを取得し、lock の書き換えも禁じる。
+  MISE_LOCKED: "1"
 
 jobs:
   prepare-release:
@@ -24,7 +26,7 @@ jobs:
       version: ${{ steps.bump.outputs.version }}
       tag: ${{ steps.bump.outputs.tag }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -95,7 +97,7 @@ jobs:
     # を持つ macos-26 系を使用する。
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare-release.outputs.tag }}
 
@@ -108,10 +110,12 @@ jobs:
           echo "macOS SDK: ${sdk_version}"
           [[ "${sdk_version}" == 26.* ]]
 
-      - name: Setup Python
-        uses: actions/setup-python@v6
+      - name: Setup tools (mise)
+        # Python の版は mise.toml が正。Swift は Xcode のものを使う (mise では管理しない)。
+        uses: jdx/mise-action@v4
         with:
-          python-version: '3.12'
+          minimum_release_age: 14d   # mise 本体は公開から 14 日以上たった最新の版
+          cache: false               # 配布物にキャッシュを持ち込まず、mise.lock の checksum で検証して取得する
 
       - name: Generate emoji keywords
         run: python3 scripts/update_emoji_keywords.py
@@ -179,7 +183,7 @@ jobs:
           echo "DMG_FILE=${DMG_FILE}" >> $GITHUB_ENV
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: dmg-${{ matrix.arch }}
           path: ${{ env.DMG_FILE }}
@@ -191,12 +195,12 @@ jobs:
     if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare-release.outputs.tag }}
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: ./artifacts
 

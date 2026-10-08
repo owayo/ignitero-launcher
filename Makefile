@@ -12,6 +12,35 @@ ENTITLEMENTS := Resources/$(APP_NAME).entitlements
 # swift-frontend がクラッシュするため、最適化だけを無効化して release 出力を生成する。
 RELEASE_SWIFT_FLAGS := -Xswiftc -Onone
 
+# 引数なしの `make` は絵文字キーワード辞書を生成する (従来どおり)。
+# 下の mise の要否判定がこの値を参照するため、先頭ターゲットに頼らず明示する。
+.DEFAULT_GOAL := emoji-keywords
+
+# ツールチェーン: mise.toml で固定したツール (python) は `$(RUN) <tool>` で呼ぶ。
+# `mise install` は PATH に載せないため、素の `python3` だとシェルで mise を activate して
+# いない環境 (IDE・GUI から起動した make など) で別の版が動く。`mise exec` は mise.toml を
+# 自動で trust して解決するので、clone 直後でも手動の `mise trust` が要らない。
+# mise が無いときに黙って PATH のツールへ落とすと版のずれに気付けないため止める。
+# mise を使わない場合は SYSTEM_TOOLS=1 で PATH のツールを明示的に使う。
+# Swift は Xcode のツールチェーンを使う (mise では管理しない) ため $(RUN) を付けない。
+MISE_CANDIDATES ?= $(HOME)/.local/bin/mise /opt/homebrew/bin/mise /usr/local/bin/mise
+# mise.toml のツールを呼ばないターゲット。判定は make がファイルを読む時点で動くため、
+# 追加するときはこの行に足す (後ろで += しても効かない)。
+NO_MISE_TARGETS := build-debug test dev verify-bundle verify-sign log clean
+ifeq ($(SYSTEM_TOOLS),1)
+RUN :=
+else
+ifndef MISE
+MISE := $(firstword $(shell command -v mise 2>/dev/null) $(wildcard $(MISE_CANDIDATES)))
+endif
+ifeq ($(MISE),)
+ifneq ($(filter-out $(NO_MISE_TARGETS),$(or $(MAKECMDGOALS),$(.DEFAULT_GOAL))),)
+$(error mise が見つかりません。https://mise.jdx.dev から導入するか、PATH のツールを使う場合は SYSTEM_TOOLS=1 を付けてください)
+endif
+endif
+RUN := $(if $(MISE),$(MISE) exec --,)
+endif
+
 # ad-hoc 署名 (--sign -) は再ビルドのたびに cdhash が変わるため、TCC が
 # 「別アプリ」と見なしてアクセシビリティ権限が毎回無効化される (設定のチェックは
 # 残るので「許可しているのに Option+Space が効かない」という壊れ方をする)。
@@ -38,7 +67,7 @@ REQUIRED_RESOURCES := \
 .PHONY: build build-debug bundle install run dev clean test log emoji-keywords verify-sign verify-bundle smoke-resources
 
 emoji-keywords:
-	@python3 scripts/update_emoji_keywords.py
+	@$(RUN) python3 scripts/update_emoji_keywords.py
 
 build: emoji-keywords
 	swift build -c release $(RELEASE_SWIFT_FLAGS)

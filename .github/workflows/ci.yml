@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+env:
+  # mise.lock に記録した URL と checksum でのみツールを取得し、lock の書き換えも禁じる。
+  MISE_LOCKED: "1"
+
 jobs:
   build:
     # Package.swift の platforms: [.macOS(.v26)] と Xcode 26 / Swift 6.3 系 (macOS 26 SDK)
@@ -11,7 +15,7 @@ jobs:
     runs-on: macos-26
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Verify Xcode and Swift
         run: |
@@ -22,10 +26,12 @@ jobs:
           echo "macOS SDK: ${sdk_version}"
           [[ "${sdk_version}" == 26.* ]]
 
-      - name: Setup Python
-        uses: actions/setup-python@v6
+      - name: Setup tools (mise)
+        # Python の版は mise.toml が正。Swift は Xcode のものを使う (mise では管理しない)。
+        uses: jdx/mise-action@v4
         with:
-          python-version: '3.12'
+          minimum_release_age: 14d   # mise 本体は公開から 14 日以上たった最新の版
+          cache: false               # 毎回 mise.lock の checksum で検証して取得する
 
       - name: Generate emoji keywords
         run: python3 scripts/update_emoji_keywords.py

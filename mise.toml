@@ -1,0 +1,12 @@
+# このリポジトリのツールチェーン。ローカル (Makefile) と CI の両方がここを正とする。
+# 版を変えたら `mise lock --platform macos-arm64,macos-x64` で mise.lock も作り直す。
+#
+# Swift は Xcode のツールチェーン (macOS 26 SDK) を使うため mise では管理しない。
+# mise 自身の版はここに書けない (CI は jdx/mise-action が公開から 14 日以上たった版を入れる)。
+
+# mise.lock は書式 2。これより古い mise は lock を読めず、--locked なしだと書式 1 へ黙って書き戻す
+min_version = "2026.9.7"
+
+[tools]
+# scripts/update_emoji_keywords.py (絵文字キーワード辞書の生成) が使う
+python = "3.12.14"
