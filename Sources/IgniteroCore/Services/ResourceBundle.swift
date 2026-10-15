@@ -2,7 +2,7 @@ import Foundation
 
 /// SwiftPM が生成するリソースバンドルを `Bundle.module` を踏まずに解決する。
 ///
-/// `Bundle.module` を `.app` 配置で使ってはいけない。SwiftPM が生成する
+/// `Bundle.module` を `.app` 配置で使ってはいけない。旧 SwiftPM が生成する
 /// `resource_bundle_accessor.swift` の探索先は
 ///
 /// 1. `Bundle.main.bundleURL` 直下（= `.app/` のルート、`Contents/` と同階層）
@@ -15,12 +15,14 @@ import Foundation
 /// `.build` を消すか他マシンへ配布した瞬間 `fatalError` で SIGTRAP する。
 ///
 /// 実例（2026-09-01）: `.build` の生成物が消えた状態で絵文字検索を実行したところ
-/// `EmojiKit/resource_bundle_accessor.swift:12: Fatal error: could not load resource
+/// 実際のエラーは `EmojiKit/resource_bundle_accessor.swift:12: Fatal error: could not load resource
 /// bundle` でアプリ全体がクラッシュした。`Bundle.module` は非 Optional なので
 /// 呼び出し側で握ることもできない。
 ///
 /// そのため解決は常にこのヘルパー経由で行い、失敗時は `nil` を返して
 /// 呼び出し側が機能を縮退させる（fail-open）。
+/// Swift 6.4 の新ビルド方式は `Bundle.main.resourceURL` も探索するが、
+/// 対応対象の旧ビルド方式との互換性を保つため、この解決口を引き続き使う。
 public enum ResourceBundle {
 
   /// IgniteroCore 自身のリソースバンドル（`emoji_keywords_ja.json` 等）。

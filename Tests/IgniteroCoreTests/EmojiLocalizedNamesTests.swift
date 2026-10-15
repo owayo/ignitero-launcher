@@ -14,13 +14,15 @@ struct EmojiLocalizedNamesLocaleCandidatesTests {
     // EmojiKit のバンドルは `ja.lproj` しか持たないため、`ja_JP` で引けない場合に
     // 言語コード単体で再試行できないと日本語名が一切引けなくなる。
     let candidates = EmojiLocalizedNames.localeCandidates(for: Locale(identifier: "ja_JP"))
-    #expect(candidates == ["ja_JP", "ja"])
+    #expect(candidates.first == "ja_JP")
+    #expect(candidates.last == "ja")
   }
 
   @Test("言語コードのみの識別子は重複候補を作らない")
   func languageOnlyIdentifierHasNoDuplicate() {
     let candidates = EmojiLocalizedNames.localeCandidates(for: Locale(identifier: "ja"))
-    #expect(candidates == ["ja"])
+    #expect(candidates.first == "ja")
+    #expect(Set(candidates).count == candidates.count)
   }
 
   @Test("英語ロケールでも識別子と言語コードの両方を候補にする")
@@ -46,8 +48,9 @@ struct EmojiLocalizedNamesLoadTableTests {
     let root = container.appendingPathComponent("Fake_Fake.bundle")
     let lproj = root.appendingPathComponent("\(lang).lproj")
     try FileManager.default.createDirectory(at: lproj, withIntermediateDirectories: true)
-    try (entries as NSDictionary).write(
-      to: lproj.appendingPathComponent("Localizable.strings"), atomically: true)
+    try #require(
+      (entries as NSDictionary).write(
+        to: lproj.appendingPathComponent("Localizable.strings"), atomically: true))
 
     guard let bundle = Bundle(url: root) else {
       throw CocoaError(.fileNoSuchFile)
@@ -89,6 +92,25 @@ struct EmojiLocalizedNamesLoadTableTests {
     let table = EmojiLocalizedNames.loadTable(bundle: bundle, locale: Locale(identifier: "de"))
     #expect(table.isEmpty)
   }
+
+  @Test(
+    "地域・文字体系付きの同梱辞書を地域ロケールから読める",
+    arguments: [("zh-Hans", "zh_CN"), ("zh-Hans", "zh-Hans-CN"), ("pt-BR", "pt_BR")])
+  func readsScriptAndRegionalLocalizations(localization: String, identifier: String) throws {
+    let (bundle, cleanup) = try makeBundle(lang: localization, entries: ["😀": "地域別の顔"])
+    defer { try? cleanup() }
+    let table = EmojiLocalizedNames.loadTable(
+      bundle: bundle, locale: Locale(identifier: identifier))
+    #expect(table["😀"] == "地域別の顔")
+  }
+
+  @Test("同じ言語でも別の文字体系の辞書にはフォールバックしない")
+  func doesNotUseSimplifiedChineseForTraditionalLocale() throws {
+    let (bundle, cleanup) = try makeBundle(lang: "zh-Hans", entries: ["😀": "简体字"])
+    defer { try? cleanup() }
+    let table = EmojiLocalizedNames.loadTable(bundle: bundle, locale: Locale(identifier: "zh_TW"))
+    #expect(table.isEmpty)
+  }
 }
 
 // MARK: - EmojiKit のリソースレイアウト前提
@@ -127,12 +149,12 @@ struct EmojiKitResourceLayoutTests {
     }
 
     let buildDir = URL(fileURLWithPath: #filePath)
-      .deletingLastPathComponent()  // IgniteroCoreTests
-      .deletingLastPathComponent()  // Tests
+      .deletingLastPathComponent()  // テストケースのディレクトリ
+      .deletingLastPathComponent()  // テストのルート
       .deletingLastPathComponent()  // リポジトリルート
       .appendingPathComponent(".build")
 
-    // .build/<triple>/<config>/EmojiKit_EmojiKit.bundle
+    // .build/<triple>/<config>/EmojiKit_EmojiKit.bundle を探索する。
     if let entries = try? fm.contentsOfDirectory(at: buildDir, includingPropertiesForKeys: nil) {
       for entry in entries {
         for config in ["debug", "release"] {
@@ -183,7 +205,7 @@ struct EmojiKitResourceLayoutTests {
   }
 }
 
-// MARK: - ResourceBundle
+// MARK: - リソースバンドルの解決
 
 @Suite("ResourceBundle の解決")
 struct ResourceBundleResolveTests {

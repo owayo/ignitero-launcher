@@ -68,16 +68,25 @@ public enum EmojiLocalizedNames {
 
   /// `.lproj` の探索順を返す。
   ///
-  /// EmojiKit のバンドルは `ja.lproj` / `zh-hans.lproj` のように言語コード基準で
-  /// 構成されているため、`ja_JP` のような完全な識別子で引けないケースを
-  /// 言語コード単体でフォールバックする（EmojiKit `Bundle+Locale` と同じ順序）。
+  /// 識別子の区切りと、`zh-Hans` / `pt-BR` のような文字体系・地域の違いを扱う。
+  /// 別言語や別の文字体系へはフォールバックせず、未対応言語は空辞書へ縮退させる。
   static func localeCandidates(for locale: Locale) -> [String] {
     var candidates = [locale.identifier]
-    if let language = locale.language.languageCode?.identifier,
-      language != locale.identifier
-    {
-      candidates.append(language)
+
+    func append(_ name: String) {
+      if !candidates.contains(name) { candidates.append(name) }
     }
+
+    if let language = locale.language.languageCode?.identifier {
+      let script = locale.language.script?.identifier
+      let region = locale.region?.identifier
+      if let script, let region { append("\(language)-\(script)-\(region)") }
+      append(locale.identifier(.bcp47))
+      if let region { append("\(language)-\(region)") }
+      if let script { append("\(language)-\(script)") }
+      append(language)
+    }
+
     return candidates
   }
 }

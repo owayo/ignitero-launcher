@@ -9,4 +9,4 @@ min_version = "2026.9.7"
 
 [tools]
 # scripts/update_emoji_keywords.py (絵文字キーワード辞書の生成) が使う
-python = "3.12.14"
+python = "3.14.8"

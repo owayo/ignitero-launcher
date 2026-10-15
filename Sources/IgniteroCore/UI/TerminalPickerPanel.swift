@@ -107,7 +107,7 @@ public final class TerminalPickerPanel: NSPanel {
   /// パネルはメインウィンドウにならない（アクセサリパネルのため）
   override public var canBecomeMain: Bool { false }
 
-  // MARK: - Key Handling関連
+  // MARK: - キーイベント処理
 
   override public func keyDown(with event: NSEvent) {
     switch event.keyCode {

@@ -569,7 +569,7 @@ struct SettingsManagerTests {
       {
         "registered_directories": [
           {
-            "path": "/Users/owa/projects",
+            "path": "/Users/test/projects",
             "parent_open_mode": "editor",
             "parent_editor": "windsurf",
             "parent_search_keyword": "prj",

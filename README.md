@@ -82,14 +82,25 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-09-26確認）
+#### ターミナル自動化方式（2026-10-15確認）
 
-- macOSターミナル: AppleScript（`do script`）を維持（ローカル Terminal.app 2.15 で確認）
-- iTerm2: AppleScript（`create window with default profile` + `write text`）を維持（ローカル iTerm2 3.7.1 の辞書で確認）。現行ドキュメントでは AppleScript はメンテナンスモードだが、コマンド実行 API は利用可能
-- Warp: AppleScript dictionary 非対応。公式ドキュメントは URI Scheme / Launch Configurations / Tab Configs を案内し、ローカルの Warp 0.2026.09.16.08.27.02 でも `sdef` がエラー -192 で辞書を取得できないため `.command` ファイル方式を維持。`Info.plist` に `NSAppleScriptEnabled` / `OSAScriptingDefinition` がなく `Contents/Resources` にも `.sdef` を持たないため標準スイートすら定義されておらず、要望 Issue（warpdotdev/warp#3364、2023-07 起票）も未完了。URL scheme（`warp://action/new_window?path=`）はディレクトリを開くだけで任意コマンドを実行できないため代替にならない
-- Ghostty: AppleScript（公式ドキュメントでは 1.3.0 で導入、ローカル Ghostty 1.3.1 で `new window` + `input text "...\n"` を確認）。辞書には `send key` もあるが、現行実装は cmux と同じく改行込みの `input text` で実行を確定する。AppleScript が無効な環境では `.command` ファイル方式へフォールバック
-- cmux: AppleScript（ローカル cmux 0.64.25 で `new window` + `input text "...\n"` を確認）でカスタムコマンドを実行。公式の主経路は CLI / Socket API だが、現行の AppleScript 優先 + CLI フォールバックを維持する。`send key` は辞書にないため改行込みの `input text` で実行を確定する。失敗時とディレクトリを開く操作は引き続き CLI / Socket API を使用し、CLI ping は起動失敗時の例外クラッシュと無応答時のハングを防ぎ、5 秒以内に正常終了した場合のみ成功扱い
-  - **注意**: ディレクトリを cmux で開く場合は Settings → Automation → Socket Control Mode を「Automation mode」に設定する必要があります
+実機の AppleScript 辞書と公式資料を確認した結果です。
+
+| ターミナル | 実機のバージョン | コマンド実行方式 |
+|---|---|---|
+| Terminal.app | 2.15 | AppleScript の `do script` |
+| iTerm2 | 3.7.1 | AppleScript の `create window with default profile` + `write text` |
+| Ghostty | 1.3.1 | AppleScript の `new window` + `input text "...\n"`。失敗時は `.command` |
+| cmux | 0.65.1 | AppleScript の `new window` + `input text "...\n"`。失敗時は CLI / Socket API |
+| Warp | 0.2026.09.16.08.27.02 | AppleScript 辞書がないため `.command` |
+
+[iTerm2 の公式資料](https://iterm2.com/documentation-scripting.html)では AppleScript はメンテナンスモードですが、上記 API は利用できます。[Ghostty は 1.3.0 で対応を導入](https://ghostty.org/docs/features/applescript)しました。1.3 系は preview 扱いのため、1.4 以降へ更新したら辞書を再確認してください。cmux の対応コマンドは[公式の辞書](https://github.com/manaflow-ai/cmux/blob/main/Resources/cmux.sdef)でも確認できます。cmux には `send key` がないため、改行を含めた `input text` で実行を確定します。
+
+Warp は実機の `sdef` がエラー -192 となり、`Info.plist` の `NSAppleScriptEnabled` / `OSAScriptingDefinition` と `.sdef` ファイルもありません。[AppleScript の対応要望](https://github.com/warpdotdev/warp/issues/3364)は未完了です。[URI Scheme](https://docs.warp.dev/terminal/more-features/uri-scheme)は任意のコマンドを実行せず、[制御 CLI の仕様](https://github.com/warpdotdev/warp/blob/master/specs/warp-control-cli/PRODUCT.md)も入力の確定を対象外としているため、既存の `.command` 方式を維持します。
+
+- 作業ディレクトリの `~` は実行時に展開します。移動に失敗した場合、`;`・`||`・改行を含む複合コマンドも全体を実行しません。
+- cmux でディレクトリを開く操作は CLI / Socket API を使います。CLI は Homebrew の配置を優先し、解決したアプリの同梱 CLI も探索するため、`~/Applications/cmux.app` でも利用できます。起動後のインストールにも追従します。
+- cmux でディレクトリを開く場合は Settings → Automation → Socket Control Mode を「Automation mode」に設定してください。CLI ping は正常終了を確認し、5 秒で打ち切ります。
 
 ### アップデート通知
 - GitHub Releases（`owayo/ignitero-launcher`）を確認し、新バージョンがあれば起動後に通知
@@ -186,6 +197,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - macOS 26以降
 - Swift 6.2以降
 - Xcode 26以降
+- [mise](https://mise.jdx.dev)（`make build` / `make bundle` / `make install` が絵文字キーワード辞書の生成に使う Python の版を `mise.toml` で固定している。mise を使わない場合は `SYSTEM_TOOLS=1` を付けると PATH の `python3` を使う）
 
 ## インストール
 
@@ -442,6 +454,8 @@ make log
 # ビルドキャッシュ削除
 make clean
 ```
+
+ツールの版は `mise.toml` が正です（Python のみ。Swift は Xcode のツールチェーンを使います）。Makefile は Python を `mise exec --` 経由で呼ぶため、シェルで `mise activate` していなくても固定した版で動きます。mise が見つからない場合は Python を使うターゲットが停止するので、PATH のツールを使うときは `make build SYSTEM_TOOLS=1` のように明示してください。CI も `jdx/mise-action` で同じ `mise.toml` と `mise.lock`（取得元 URL と checksum）を使います。
 
 ## ライセンス
 

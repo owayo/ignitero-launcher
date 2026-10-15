@@ -59,7 +59,7 @@ public final class EditorPickerState {
     self.availableEditors = availableEditors
   }
 
-  // MARK: - Key Handling関連
+  // MARK: - キーイベント処理
 
   /// ショートカットキーを処理する。
   ///

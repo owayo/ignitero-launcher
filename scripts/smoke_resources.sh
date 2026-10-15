@@ -1,12 +1,13 @@
 #!/bin/bash
 # `.app` としてパッケージされた状態でリソース解決が成立しているかを検証する。
 #
-# `Bundle.module` は `.app` では解決できない。SwiftPM が生成する accessor の探索先は
+# 旧 SwiftPM の `Bundle.module` は `.app` では解決できない。accessor の探索先は
 # 「`.app/` ルート直下」と「ビルド時に焼き込まれた `.build/<triple>/<config>/` の
 # 絶対パス」の 2 つだけで、`Contents/Resources` を見ない。ルート直下へ置くと codesign が
 # unsealed contents として拒否するため、開発マシンでは常に後者で解決されている。
 # つまり `.app` にリソースを入れ忘れても開発マシンでは動いてしまい、`.build` を消した
 # ときと配布物でだけクラッシュする（2026-09-01 に絵文字検索で実際に落ちた）。
+# Swift 6.4 の新ビルド方式は .build/out/Products/<config>/ に出力するため、両配置を検証する。
 #
 # そこで焼き込み先の `.bundle` を一時的にリネームして fallback を無効化し、
 # `.app` 内のリソースだけで自己診断が通ることを確かめる。`.build` ごと移動すると
@@ -51,12 +52,12 @@ trap restore EXIT
 
 # 前回の中断で残ったものがあれば先に戻す。
 shopt -s nullglob
-for leftover in .build/*/*/*.bundle"${SUFFIX}"; do
+for leftover in .build/*/*/*.bundle"${SUFFIX}" .build/out/Products/*/*.bundle"${SUFFIX}"; do
   unhide "${leftover}"
   echo "note: 前回の中断で残っていた ${leftover} を処理した"
 done
 
-for bundle in .build/*/*/*.bundle; do
+for bundle in .build/*/*/*.bundle .build/out/Products/*/*.bundle; do
   # 前回の退避物が戻せずに残っている (上の unhide が warning で残した) と、
   # `mv` は退避先ディレクトリの中へ入れ子で移し、終了時の restore が古い退避物を
   # 本物として戻してしまう。中身を確かめずに続行しない。
@@ -69,6 +70,11 @@ for bundle in .build/*/*/*.bundle; do
 done
 shopt -u nullglob
 
-echo "Bundle.module の fallback を ${#HIDDEN[@]} 件退避した (.build/<triple>/<config>/*.bundle)"
+if [ "${#HIDDEN[@]}" -eq 0 ]; then
+  echo "error: ビルド側のリソースバンドルが見つからず、配布状態を検証できない" >&2
+  exit 1
+fi
+
+echo "ビルド側のリソースバンドルを ${#HIDDEN[@]} 件退避した"
 echo "--- ${APP} で自己診断を実行 ---"
 "${EXEC}" --self-test-resources

@@ -13,8 +13,8 @@ import Testing
 /// それが 2 つ目の正本になってしまうため、書式の妥当性だけを検証する。
 private func sourceInfoPlistURL() -> URL {
   URL(fileURLWithPath: #filePath)
-    .deletingLastPathComponent()  // IgniteroCoreTests
-    .deletingLastPathComponent()  // Tests
+    .deletingLastPathComponent()  // テストケースのディレクトリ
+    .deletingLastPathComponent()  // テストのルート
     .deletingLastPathComponent()  // リポジトリルート
     .appendingPathComponent("Resources/Info.plist")
 }

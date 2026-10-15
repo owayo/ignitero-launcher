@@ -8,7 +8,7 @@ import SwiftUI
 public enum RadialPickerMode: Sendable {
   /// エディタ選択モード（Windsurf/Cursor/VS Code/Antigravity/Zed）
   case editor
-  /// ターミナル選択モード（Terminal/iTerm2/Ghostty/Warp）
+  /// ターミナル選択モード（Terminal/iTerm2/Ghostty/Warp/cmux）
   case terminal
 }
 

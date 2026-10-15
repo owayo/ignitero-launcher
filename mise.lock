@@ -3,16 +3,16 @@
 lockfile_version = 2
 
 [[tools.python]]
-version = "3.12.14"
+version = "3.14.8"
 backend = "core:python"
-specifiers = ["3.12.14"]
+specifiers = ["3.14.8"]
 
 [tools.python."platforms.macos-arm64"]
-checksum = "sha256:1bb3e53d231ee2c8881e8daf6426f4dd95bff0dda496af0f3af300357aa998d0"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260929/cpython-3.12.14+20260929-aarch64-apple-darwin-install_only_stripped.tar.gz"
+checksum = "sha256:994adadc202c5df0b4570192cc9a70e3f2c131e512f4a125c56efa8562f44b28"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.14.8+20261013-aarch64-apple-darwin-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.macos-x64"]
-checksum = "sha256:62891cf4a32ed18b6b4174def999184b5186371422c52dd92d941401db0f0e41"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260929/cpython-3.12.14+20260929-x86_64-apple-darwin-install_only_stripped.tar.gz"
+checksum = "sha256:f0137337ecf6234b30c9c955219dae2d71e1a00387c4d204d6c6929e24bf9a90"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.14.8+20261013-x86_64-apple-darwin-install_only_stripped.tar.gz"
 provenance = "github-attestations"

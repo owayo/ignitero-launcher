@@ -2,6 +2,19 @@
 
 このリポジトリの日本語版 README は [README.md](./README.md) に統合しています。
 
+2026-10-15 追記（定期メンテナンス）:
+
+- `main` をリモートと同期し、開始時にあったドキュメントの変更を保持。`depup --install --include-pinned` で Swift の4依存が最新版であることを確認し、Python を 3.12.14 → 3.14.8 へ更新。`mise.lock` は書式2を維持
+- Terminal.app 2.15 / iTerm2 3.7.1 / Ghostty 1.3.1 / cmux 0.65.1 の実機辞書と公式資料を再確認。Warp は引き続き AppleScript 辞書を持たず `.command` 方式を維持。調査資料は [README.md の端末対応表](./README.md#ターミナル自動化方式2026-10-15確認)に記載
+- 作業ディレクトリが存在しないとき、`cd ... && a; b` の後半が別のディレクトリで実行される問題を修正。AppleScript と cmux CLI が同じ生成処理を使い、`cd ... && eval '<コマンド全体>'` で移動成功時だけ実行する。bash / zsh で修正前の実行漏れと修正後の抑止を確認
+- 設定画面の入力例 `~/Projects` が引用符内で展開されず実行に失敗する問題を修正。AppleScript / CLI / `.command` の全経路で実行時にチルダを展開
+- `~/Applications` にだけ cmux を置くと同梱 CLI を見つけられない問題を修正。CLI の探索をアプリの解決先に合わせ、実行権限のない候補を飛ばす。起動後の追加にも追従
+- `zh_CN` / `pt_BR` のロケールで同梱の `zh-Hans` / `pt-BR` 辞書を読めず、絵文字名で検索できない問題を修正。地域・文字体系の候補を追加し、未対応言語や別の文字体系にはフォールバックしない
+- astro-sight で全体の構造・複雑度・未参照シンボルを確認。特殊キー対応表の switch（複雑度39）は責務が一つのため維持し、確定バグに関係するコマンド生成だけを共通化。既存の英語コメントも日本語へ修正（ツール指示と DocC の構文は維持）
+- Swift 6.4 の出力配置で配布リソース検証が退避0件のまま成功する問題を修正。旧・新配置の両方を対象にし、0件はエラーに変更。自己診断の成否にかかわらず復元されることもテスト
+
+- Swift 6.4 / macOS 27.0.1 で全1,123テスト成功。リリースビルドと、ビルド側バンドル8件を退避した配布リソース自己診断も成功。Python の構文・基本 lint、ShellCheck を確認。Swift Format の既存の行長警告2件は処理の不具合ではないため維持
+
 2026-09-26 追記（定期メンテナンス）:
 
 - `main` を `origin/main` と同期し、`depup --install --include-pinned` で依存4件がすべて最新版であることを確認
@@ -13,7 +26,7 @@
 
 - `git fetch origin` と `git pull --rebase origin main` を実行し、未コミット変更のない `main` をリモート最新と同期
 - `depup --install --include-pinned` を実行し、KeyboardShortcuts 3.0.1 → 3.1.0、EmojiKit 3.0.1 → 3.1.0（いずれもマイナー）へ更新。GRDB.swift 7.11.1 / Fuse-Swift 1.4.0 は最新のため据え置き。破壊的変更なし
-- Terminal.app 2.15 / iTerm2 3.7.1 / Ghostty 1.3.1 / cmux 0.64.25 のローカル AppleScript dictionary を再確認。Warp 0.2026.07.01.09.21.01 は `Info.plist` に `NSAppleScriptEnabled` / `OSAScriptingDefinition` がなく `.sdef` も同梱していないため引き続き非対応で、要望 Issue warpdotdev/warp#3364 も 2026-05-20 の更新を最後に `enhancement` ラベルのまま。URL scheme はディレクトリを開くだけで任意コマンドを実行できないため代替にならず、`.command` 方式を維持
+- Terminal.app 2.15 / iTerm2 3.7.1 / Ghostty 1.3.1 / cmux 0.64.25 のローカル AppleScript dictionary を再確認。Warp 0.2026.07.01.09.21.01 は `Info.plist` に `NSAppleScriptEnabled` / `OSAScriptingDefinition` がなく `.sdef` も同梱していないため引き続き非対応で、要望 Issue warpdotdev/warp#3364 も 2026-05-20 の更新を最後に `enhancement` / `triaged` / `area:window-tabs-panes` ラベルが付いたまま未対応。URL scheme はディレクトリを開くだけで任意コマンドを実行できないため代替にならず、`.command` 方式を維持
 - astro-sight で複雑度・未参照シンボル・変更影響を確認。100 行を超える関数は描画処理の 1 件のみ（121 行）、60 行超も 5 件で、挙動変更を伴うリファクタリングは不要と判断
 - コードベース全体レビュー（プロセス実行系 / データ永続化系 / UI 層 / 検索・更新系の 4 観点）で、確実なバグ 10 件を修正
   - **検索欄への長文貼り付けでアプリが落ちる（致命的）**: fuse-swift 1.4.0 の Bitap 実装が `(1 << 63) - 1` の算術オーバーフローで SIGTRAP する。threshold=0.4 では 158 文字が境界で、157 文字までは安全なことを実測で確認。ライブラリ側の `maxPatternLength` は検査に使われていないため `SearchService` 側で上限を設けた

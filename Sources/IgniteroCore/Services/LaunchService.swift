@@ -24,17 +24,22 @@ public struct LaunchService: Launching, Sendable {
   private static let staleCommandScriptTTL: TimeInterval = 5 * 60
   private static let terminalSystemPath = "/System/Applications/Utilities/Terminal.app"
   private static let terminalLegacyPath = "/Applications/Utilities/Terminal.app"
-  private static let cmuxCLIPath: String = {
-    // Homebrew (Apple Silicon → Intel フォールバック) → アプリバンドル内 CLI の順に探索
-    let candidates = [
-      "/opt/homebrew/bin/cmux",
-      "/usr/local/bin/cmux",
-      "/Applications/cmux.app/Contents/Resources/bin/cmux",
-    ]
-    let fm = FileManager.default
-    return candidates.first { fm.fileExists(atPath: $0) }
-      ?? "/Applications/cmux.app/Contents/Resources/bin/cmux"
-  }()
+  private static var cmuxCLIPath: String {
+    // 起動後のインストールと ~/Applications 配置にも、アプリの探索結果に合わせて追従する。
+    resolveCmuxCLIPath(applicationPath: applicationPath(for: .cmux))
+  }
+
+  static func resolveCmuxCLIPath(
+    applicationPath: String,
+    preferredPaths: [String] = ["/opt/homebrew/bin/cmux", "/usr/local/bin/cmux"]
+  ) -> String {
+    let bundledPath = (applicationPath as NSString)
+      .appendingPathComponent("Contents/Resources/bin/cmux")
+    // Homebrew（Apple Silicon → Intel）を優先し、実行できない候補は飛ばす。
+    return (preferredPaths + [bundledPath]).first {
+      FileManager.default.isExecutableFile(atPath: $0)
+    } ?? bundledPath
+  }
 
   public init() {}
 
@@ -132,13 +137,7 @@ public struct LaunchService: Launching, Sendable {
     command: String,
     workingDirectory: String?
   ) -> String {
-    let fullCommand: String
-    if let wd = workingDirectory {
-      // `cd --` で `-` 始まりのディレクトリ名が cd のオプションと誤認されるのを防ぐ。
-      fullCommand = "cd -- \(shellEscaped(wd)) && \(command)"
-    } else {
-      fullCommand = command
-    }
+    let fullCommand = shellCommand(command, workingDirectory: workingDirectory)
     let scriptCommand = appleScriptEscaped(fullCommand)
 
     switch terminal {
@@ -196,7 +195,7 @@ public struct LaunchService: Launching, Sendable {
       // 作業ディレクトリが消えている場合に別の cwd（通常 $HOME）でコマンドが
       // 実行されるのを防ぐ。AppleScript 経路の `cd ... && ...` と挙動を揃える。
       // `cd --` で `-` 始まりのディレクトリ名が bash で cd のオプションと誤認されるのを防ぐ。
-      lines.append("cd -- \(shellEscaped(wd)) || exit 1")
+      lines.append("\(directoryChangeCommand(wd)) || exit 1")
     }
     lines.append(command)
     lines.append("exit")
@@ -207,6 +206,20 @@ public struct LaunchService: Launching, Sendable {
     // POSIX シェル向けに単一引用符でラップし、内部の単一引用符を安全にエスケープする。
     let escaped = value.replacingOccurrences(of: "'", with: "'\"'\"'")
     return "'\(escaped)'"
+  }
+
+  /// AppleScript と cmux CLI に渡すシェル入力を組み立てる。
+  static func shellCommand(_ command: String, workingDirectory: String?) -> String {
+    guard let workingDirectory else { return command }
+    // 本体を eval の引数にまとめ、cd 失敗時に `;`・`||`・改行以降も実行されるのを防ぐ。
+    // サブシェルを使わないため、export や cd の効果は対話シェルに残る。
+    return "\(directoryChangeCommand(workingDirectory)) && eval \(shellEscaped(command))"
+  }
+
+  private static func directoryChangeCommand(_ directory: String) -> String {
+    // 引用符内ではシェルが ~ を展開しないため、保存値を変えず実行時だけ展開する。
+    let expanded = NSString(string: directory).expandingTildeInPath
+    return "cd -- \(shellEscaped(expanded))"
   }
 
   static func normalizedDirectoryPath(_ path: String) -> String {
@@ -497,13 +510,7 @@ public struct LaunchService: Launching, Sendable {
     workingDirectory: String?
   ) async throws {
     try await Self.ensureCmuxRunning()
-    let fullCommand: String
-    if let wd = workingDirectory {
-      // `cd --` で `-` 始まりのディレクトリ名が cd のオプションと誤認されるのを防ぐ。
-      fullCommand = "cd -- \(Self.shellEscaped(wd)) && \(command)"
-    } else {
-      fullCommand = command
-    }
+    let fullCommand = shellCommand(command, workingDirectory: workingDirectory)
     try Self.createAndFocusCmuxWorkspace(command: fullCommand)
   }
 
