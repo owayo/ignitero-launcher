@@ -147,6 +147,20 @@ public final class LauncherViewModel {
     checkForCalculatorExpression()
   }
 
+  /// データ更新後も、同じ種別・パスの項目が残っていれば選択を引き継ぐ。
+  /// コマンドのパスは永続化された command://UUID なので、編集後も同一項目を識別できる。
+  public func refreshSearchResults() {
+    let selection = confirmSelection()
+    updateSearch()
+    if let selection,
+      let index = searchResults.firstIndex(where: {
+        $0.kind == selection.kind && $0.path == selection.path
+      })
+    {
+      selectedIndex = index
+    }
+  }
+
   // MARK: - 選択移動
 
   /// 選択を 1 つ上に移動する。先頭の場合は移動しない。

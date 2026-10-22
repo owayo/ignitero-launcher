@@ -236,7 +236,9 @@ import Testing
       try db.execute(
         sql: "INSERT INTO apps (name, path, last_updated) VALUES ('A', '/Applications/A.app', 'x')")
       try db.execute(
-        sql: "INSERT INTO directories (name, path, editor, last_updated) VALUES ('d', '/d', NULL, 'x')")
+        sql:
+          "INSERT INTO directories (name, path, editor, last_updated) VALUES ('d', '/d', NULL, 'x')"
+      )
     }
     try queue.close()
   }

@@ -60,11 +60,11 @@ jobs:
           NEW_VERSION="${YEAR}.${MONTH}.${NEW_COUNTER}"
           echo "New version: ${NEW_VERSION}"
 
-          # Update Info.plist version
+          # Info.plist のバージョンを更新する
           sed -i "s|<string>${CURRENT}</string>|<string>${NEW_VERSION}</string>|" Resources/Info.plist
 
-          echo "version=${NEW_VERSION}" >> $GITHUB_OUTPUT
-          echo "tag=v${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${NEW_VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Commit and tag
         if: ${{ !inputs.dry_run }}
@@ -180,7 +180,7 @@ jobs:
             -ov -format UDZO \
             "${DMG_FILE}"
           xattr -cr "${DMG_FILE}"
-          echo "DMG_FILE=${DMG_FILE}" >> $GITHUB_ENV
+          echo "DMG_FILE=${DMG_FILE}" >> "$GITHUB_ENV"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7

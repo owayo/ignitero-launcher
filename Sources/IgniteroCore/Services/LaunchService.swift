@@ -234,7 +234,8 @@ public struct LaunchService: Launching, Sendable {
       .replacingOccurrences(of: "\\", with: "\\\\")
       .replacingOccurrences(of: "\"", with: "\\\"")
       .replacingOccurrences(of: "\n", with: "\\n")
-      .replacingOccurrences(of: "\r", with: "")
+      // CR も文字列の一部なので削除せず、AppleScript のエスケープで保持する。
+      .replacingOccurrences(of: "\r", with: "\\r")
   }
 
   /// Process の stdout/stderr 破棄用に、各プロセス専用の書き込みハンドルを開く。

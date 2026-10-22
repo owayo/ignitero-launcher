@@ -1,20 +1,20 @@
-# Swift Package Manager
+# Swift Package Manager の生成物
 .build/
 .swiftpm/
 Package.resolved
 
-# Xcode
+# Xcode の生成物
 *.xcodeproj/
 *.xcworkspace/
 xcuserdata/
 DerivedData/
 
-# macOS
+# macOS の管理ファイル
 .DS_Store
 
 # Python (scripts/ のバイトコードキャッシュ)
 __pycache__/
 *.py[cod]
 
-# Backup (Tauri legacy)
+# 旧 Tauri 実装のバックアップ
 .backup/

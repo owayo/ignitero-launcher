@@ -82,7 +82,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 - Terminal.app は `/System/Applications/Utilities/Terminal.app` を優先し、存在しない環境では従来パスにフォールバック
 - 例: `dev` → `pnpm dev`、`build` → `pnpm build`
 
-#### ターミナル自動化方式（2026-10-15確認）
+#### ターミナル自動化方式（2026-10-22確認）
 
 実機の AppleScript 辞書と公式資料を確認した結果です。
 
@@ -91,7 +91,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 | Terminal.app | 2.15 | AppleScript の `do script` |
 | iTerm2 | 3.7.1 | AppleScript の `create window with default profile` + `write text` |
 | Ghostty | 1.3.1 | AppleScript の `new window` + `input text "...\n"`。失敗時は `.command` |
-| cmux | 0.65.1 | AppleScript の `new window` + `input text "...\n"`。失敗時は CLI / Socket API |
+| cmux | 0.65.2 | AppleScript の `new window` + `input text "...\n"`。失敗時は CLI / Socket API |
 | Warp | 0.2026.09.16.08.27.02 | AppleScript 辞書がないため `.command` |
 
 [iTerm2 の公式資料](https://iterm2.com/documentation-scripting.html)では AppleScript はメンテナンスモードですが、上記 API は利用できます。[Ghostty は 1.3.0 で対応を導入](https://ghostty.org/docs/features/applescript)しました。1.3 系は preview 扱いのため、1.4 以降へ更新したら辞書を再確認してください。cmux の対応コマンドは[公式の辞書](https://github.com/manaflow-ai/cmux/blob/main/Resources/cmux.sdef)でも確認できます。cmux には `send key` がないため、改行を含めた `input text` で実行を確定します。
@@ -99,6 +99,7 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 Warp は実機の `sdef` がエラー -192 となり、`Info.plist` の `NSAppleScriptEnabled` / `OSAScriptingDefinition` と `.sdef` ファイルもありません。[AppleScript の対応要望](https://github.com/warpdotdev/warp/issues/3364)は未完了です。[URI Scheme](https://docs.warp.dev/terminal/more-features/uri-scheme)は任意のコマンドを実行せず、[制御 CLI の仕様](https://github.com/warpdotdev/warp/blob/master/specs/warp-control-cli/PRODUCT.md)も入力の確定を対象外としているため、既存の `.command` 方式を維持します。
 
 - 作業ディレクトリの `~` は実行時に展開します。移動に失敗した場合、`;`・`||`・改行を含む複合コマンドも全体を実行しません。
+- AppleScript へ渡すコマンドと作業パスは、CR（復帰文字）もエスケープして保持します。
 - cmux でディレクトリを開く操作は CLI / Socket API を使います。CLI は Homebrew の配置を優先し、解決したアプリの同梱 CLI も探索するため、`~/Applications/cmux.app` でも利用できます。起動後のインストールにも追従します。
 - cmux でディレクトリを開く場合は Settings → Automation → Socket Control Mode を「Automation mode」に設定してください。CLI ping は正常終了を確認し、5 秒で打ち切ります。
 
@@ -149,6 +150,8 @@ Warp は実機の `sdef` がエラー -192 となり、`Info.plist` の `NSApple
   - 自動更新（1〜24時間間隔で設定可能）
   - 手動更新（ステータスバーまたは設定画面から）
 - ステータスバーの「キャッシュを再構築」もスキャン結果を確実に DB へ保存し、ビューモデルへ再読込
+- ランチャー表示中にキャッシュやコマンド設定が更新されたら、入力中のクエリで検索結果も再計算。空クエリの履歴表示にも反映し、削除済みの項目や編集前のコマンドが残るのを防止
+- 更新後も同じ項目があれば選択を引き継ぎ、自動更新による選択位置のリセットを防止
 - アイコンキャッシュは自動更新と手動再構築が並行しても破損しないよう原子的書き込み（`Data.write(options: .atomic)`）で保護
 
 ### UI/UX

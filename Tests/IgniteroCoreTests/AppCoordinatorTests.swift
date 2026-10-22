@@ -1513,6 +1513,85 @@ struct AppCoordinatorSettingsChangeTests {
   }
 }
 
+@Suite("AppCoordinator 表示中の検索結果更新")
+struct AppCoordinatorVisibleSearchRefreshTests {
+  @Test("キャッシュ更新後は入力を変えずに最新の検索結果を表示する", arguments: ["sample", ""])
+  @MainActor
+  func cacheCompletionRefreshesResults(query: String) async {
+    let oldApp = AppItem(name: "Sample Old", path: "/Applications/SampleOld.app")
+    let newApp = AppItem(name: "Sample New", path: "/Applications/SampleNew.app")
+    let database = MockCacheDB(isEmpty: false)
+    database.loadedApps = [oldApp]
+    let history = makeTempSelectionHistory()
+    history.record(keyword: "sample", path: oldApp.path)
+    history.record(keyword: "sample", path: newApp.path)
+    let coordinator = makeCoordinator(
+      cacheDatabase: database, appScanner: MockAppScanner(apps: [oldApp, newApp]),
+      selectionHistory: history)
+    await coordinator.start()
+    defer {
+      coordinator.windowManager.hideLauncher()
+      coordinator.shutdown()
+    }
+    coordinator.windowManager.showLauncher()
+    coordinator.launcherViewModel.searchQuery = query
+    coordinator.launcherViewModel.updateSearch()
+    #expect(coordinator.launcherViewModel.searchResults.map(\.path) == [oldApp.path])
+
+    database.loadedApps = [newApp]
+    await coordinator.cacheBootstrap.rebuildCache()
+
+    #expect(coordinator.launcherViewModel.searchQuery == query)
+    #expect(coordinator.launcherViewModel.searchResults.map(\.path) == [newApp.path])
+    #expect(coordinator.launcherViewModel.confirmSelection()?.path == newApp.path)
+  }
+
+  @Test("表示中のコマンド追加・編集・削除が検索結果にも即時反映される")
+  @MainActor
+  func commandChangesRefreshResults() async throws {
+    let coordinator = makeCoordinator()
+    await coordinator.start()
+    defer {
+      coordinator.windowManager.hideLauncher()
+      coordinator.shutdown()
+    }
+    coordinator.windowManager.showLauncher()
+    coordinator.launcherViewModel.searchQuery = "build"
+    coordinator.launcherViewModel.updateSearch()
+    #expect(coordinator.launcherViewModel.searchResults.isEmpty)
+
+    try coordinator.settingsViewModel.addCommand(
+      alias: "build", command: "echo before", workingDirectory: nil)
+    #expect(coordinator.launcherViewModel.confirmSelection()?.command == "echo before")
+
+    var command = try #require(coordinator.settingsManager.settings.customCommands.first)
+    command.command = "echo after"
+    try coordinator.settingsViewModel.updateCommand(at: 0, command)
+    #expect(coordinator.launcherViewModel.confirmSelection()?.command == "echo after")
+
+    try coordinator.settingsViewModel.removeCommand(at: 0)
+    #expect(coordinator.launcherViewModel.searchResults.isEmpty)
+    #expect(coordinator.launcherViewModel.searchQuery == "build")
+  }
+
+  @Test("非表示中のデータ更新ではクリア済みの検索結果を復活させない")
+  @MainActor
+  func hiddenLauncherKeepsResultsCleared() async throws {
+    let coordinator = makeCoordinator()
+    await coordinator.start()
+    defer { coordinator.shutdown() }
+    coordinator.launcherViewModel.searchQuery = "build"
+    coordinator.dismissLauncher()
+
+    try coordinator.settingsViewModel.addCommand(
+      alias: "build", command: "echo done", workingDirectory: nil)
+    await coordinator.cacheBootstrap.rebuildCache()
+
+    #expect(coordinator.launcherViewModel.searchQuery.isEmpty)
+    #expect(coordinator.launcherViewModel.searchResults.isEmpty)
+  }
+}
+
 // MARK: - ランチャー表示時の履歴反映
 
 @Suite("AppCoordinator ランチャー表示時の履歴")

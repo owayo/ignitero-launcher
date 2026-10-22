@@ -31,7 +31,7 @@ Sources/
   IgniteroLauncher/         # 実行可能ターゲット (@main エントリ)
     IgniteroApp.swift
 Tests/
-  IgniteroCoreTests/        # 1123テスト (Swift Testing)
+  IgniteroCoreTests/        # 1130テスト (Swift Testing)
 .backup/                    # Tauri v2 旧実装 (参照用)
 ```
 
@@ -54,6 +54,8 @@ Tests/
 `WindowManager.resizeForResults` は高さの状態を即時更新し、実フレームの変更は MainActor の次の処理へ延期して連続要求を集約する。SwiftUI の `onChange` 内で同期 `setFrame(display: true)` を実行しない。同じ実フレーム高さなら何もせず、変更時も `display: false, animate: false` とし、反映時点の上端を保つ。表示直前は最新の高さを同期反映してから中央配置し、非表示時は保留要求を捨てる。延期だけで CATransaction の外へ出る保証はないため、コンテナ構造が主対策。回帰検証は同期 `layoutIfNeeded` だけで済ませず、実際の LauncherView を表示し、検索件数変更・選択スクロール・アニメーション・非同期表示サイクルを通して途中のリサイズも上限内に収まるか確認する。短時間の負荷テストでは元の SIGABRT 自体は再現していないため、テスト成功を長時間常駐後の再発がない証明とは扱わない。
 
 補足（2026-10-15、配布リソース検証）: Swift 6.4 の新ビルド方式では `.build/debug` / `.build/release` が `.build/out/Products/Debug` / `Release` へのリンクとなる。`smoke_resources.sh` が旧配置の `.build/*/*/*.bundle` だけを探すと、退避0件のまま検証が成功してしまう。新配置の `.build/out/Products/*/*.bundle` も復旧・退避対象に含め、0件なら検証未実施として失敗させる。`.app/Contents/Resources` は退避しない。新方式の accessor は `Bundle.main.resourceURL` も探索するが、対応対象の Swift 6.2 / 6.3 の旧方式では解決できないため、ライブラリ API の使用禁止と `ResourceBundle` 経由の解決は緩めない。`SmokeResourcesTests` は旧・新配置でビルド側だけが隠れることと、自己診断の成功・失敗のどちらでも復元されることを検証する。
+
+補足（2026-10-22）: キャッシュ・コマンドの再読込ではデータ一覧の差し替えだけで終えず、ランチャー表示中なら現在のクエリで `refreshSearchResults()` を呼ぶ。選択中の項目が更新後もあれば種別とパスで選択を引き継ぎ、自動更新による選択の先頭リセットを防ぐ。検索文字列の `onChange` はデータ変更では発火しないため、呼ばないと削除済みの項目や編集前のコマンドを実行できてしまう。キャッシュ再読込では履歴 purge と ViewModel の履歴反映を済ませてから再検索し、空クエリの履歴も最新にする。非表示中は `clearSearch()` の状態を保持する。`LaunchService.appleScriptEscaped` は CR を削除せず `\r` にエスケープし、コマンドと作業パスを保持する。回帰テストでは生成した文字列リテラルだけを AppleScript で復元し、端末へイベントを送らず一致を確かめる。端末辞書は cmux 0.65.2 で再確認済み。Terminal.app / iTerm2 / Ghostty / cmux は AppleScript、Warp は辞書非対応のため `.command` を維持する。
 
 ## 開発コマンド
 
@@ -234,4 +236,4 @@ warning を残す（`make log`）。無音で機能が消えるのを避ける�
 - `Tests/IgniteroCoreTests/EmojiLocalizedNamesTests.swift` が、バンドル未解決でも空辞書に縮退すること・疑似バンドルの `Localizable.strings` を読めること・`standardMatches` が辞書なしでも Unicode 名で一致することを保証する
 
 # currentDate
-Today's date is 2026-10-15.
+Today's date is 2026-10-22.

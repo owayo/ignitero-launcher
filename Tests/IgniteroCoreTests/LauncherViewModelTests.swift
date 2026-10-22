@@ -969,3 +969,67 @@ struct LauncherViewModelCalculatorExpressionEdgeCaseTests {
     #expect(vm.calculatorResult == "1")
   }
 }
+
+@Suite("データ更新時の検索結果と選択")
+@MainActor
+struct LauncherViewModelSearchRefreshTests {
+  @Test("表示位置が変わっても選択中のアプリをパスで引き継ぐ")
+  func preservesSelectedAppAfterReordering() {
+    let vm = LauncherViewModel()
+    let first = AppItem(name: "Sample", path: "/Applications/First.app")
+    let selected = AppItem(name: "Sample", path: "/Applications/Selected.app")
+    let added = AppItem(name: "Sample", path: "/Applications/Added.app")
+    vm.apps = [first, selected]
+    vm.searchQuery = "sample"
+    vm.updateSearch()
+    vm.selectedIndex = 1
+    #expect(vm.confirmSelection()?.path == selected.path)
+
+    vm.apps = [added, first, selected]
+    vm.refreshSearchResults()
+
+    #expect(vm.selectedIndex == 2)
+    #expect(vm.confirmSelection()?.path == selected.path)
+  }
+
+  @Test("編集後も同じコマンドIDの選択と最新のコマンド内容を保持する")
+  func preservesSelectedCommandAfterEditing() {
+    let vm = LauncherViewModel()
+    let first = CustomCommand(alias: "build", command: "echo first")
+    var selected = CustomCommand(alias: "build", command: "echo before")
+    vm.commands = [first, selected]
+    vm.searchQuery = "build"
+    vm.updateSearch()
+    vm.selectedIndex = 1
+    #expect(vm.confirmSelection()?.path == selected.historyIdentifier)
+
+    selected.command = "echo after"
+    vm.commands = [CustomCommand(alias: "build", command: "echo added"), first, selected]
+    vm.refreshSearchResults()
+
+    #expect(vm.selectedIndex == 2)
+    #expect(vm.confirmSelection()?.path == selected.historyIdentifier)
+    #expect(vm.confirmSelection()?.command == "echo after")
+  }
+
+  @Test("選択項目が消えた場合は先頭へ戻り、全件削除では未選択になる")
+  func removedSelectionFallsBackToFirstResult() {
+    let vm = LauncherViewModel()
+    let first = AppItem(name: "Sample", path: "/Applications/First.app")
+    let selected = AppItem(name: "Sample", path: "/Applications/Selected.app")
+    vm.apps = [first, selected]
+    vm.searchQuery = "sample"
+    vm.updateSearch()
+    vm.selectedIndex = 1
+
+    vm.apps = [first]
+    vm.refreshSearchResults()
+    #expect(vm.selectedIndex == 0)
+    #expect(vm.confirmSelection()?.path == first.path)
+
+    vm.apps = []
+    vm.refreshSearchResults()
+    #expect(vm.searchResults.isEmpty)
+    #expect(vm.confirmSelection() == nil)
+  }
+}

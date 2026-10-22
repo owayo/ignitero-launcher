@@ -660,6 +660,10 @@ public final class AppCoordinator {
     launcherViewModel.defaultEditorRawValue = settingsManager.settings.defaultEditor.rawValue
     let terminalType = settingsManager.settings.defaultTerminal
     launcherViewModel.defaultTerminalName = LaunchService.displayName(for: terminalType)
+    // データだけの変更では検索文字列の onChange が発火せず、古いコマンドが残る。
+    if windowManager.isLauncherVisible {
+      launcherViewModel.refreshSearchResults()
+    }
   }
 
   // MARK: - 非公開ヘルパー
@@ -795,6 +799,11 @@ public final class AppCoordinator {
 
     // 履歴を読み込む
     launcherViewModel.history = selectionHistory.allEntries
+    // 入力中のクエリと空クエリの履歴表示を、最新のキャッシュ・履歴で再計算する。
+    // 非表示中は clearSearch でクリアした状態を維持する。
+    if windowManager.isLauncherVisible {
+      launcherViewModel.refreshSearchResults()
+    }
   }
 
   /// アップデートチェックを実行する。

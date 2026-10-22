@@ -164,6 +164,7 @@ struct ShortcutDisplayFormatterCharacterKeyTests {
   @Test("Help とテンキーの Clear は専用記号で表示する")
   func helpAndKeypadClearSymbols() {
     #expect(ShortcutDisplayFormatter.specialKeySymbol(forCarbonKeyCode: kVK_Help) == "?⃝")
-    #expect(ShortcutDisplayFormatter.specialKeySymbol(forCarbonKeyCode: kVK_ANSI_KeypadClear) == "⌧")
+    #expect(
+      ShortcutDisplayFormatter.specialKeySymbol(forCarbonKeyCode: kVK_ANSI_KeypadClear) == "⌧")
   }
 }

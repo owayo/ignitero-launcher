@@ -315,6 +315,31 @@ struct LaunchServiceAppleScriptEscapingEdgeCaseTests {
     #expect(script.contains("\\n"))
   }
 
+  @Test(
+    "AppleScript の文字列に変換してもコマンドと作業パスの制御文字を保持する",
+    arguments: [TerminalType.terminal, .iterm2, .ghostty, .cmux], ["\r", "\r\n"])
+  @MainActor
+  func appleScriptCommandRoundTrips(terminal: TerminalType, lineBreak: String) throws {
+    let command = "printf '%s' 'line\(lineBreak)break\n\\\"日本語'"
+    let directory = "/tmp/line\(lineBreak)break"
+    let script = LaunchService.appleScript(
+      for: terminal, command: command, workingDirectory: directory)
+    let regex = try NSRegularExpression(
+      pattern: #"(?m)^\s*(?:do script|write text|input text) ("(?:\\.|[^"\\])*")"#)
+    let match = try #require(
+      regex.firstMatch(
+        in: script, range: NSRange(script.startIndex..., in: script)))
+    let range = try #require(Range(match.range(at: 1), in: script))
+
+    // アプリへイベントを送らず、AppleScript 自身に文字列リテラルを復元させる。
+    let decoder = try #require(NSAppleScript(source: "return \(script[range])"))
+    var error: NSDictionary?
+    let decoded = decoder.executeAndReturnError(&error).stringValue
+    #expect(error == nil)
+    let suffix = terminal == .ghostty || terminal == .cmux ? "\n" : ""
+    #expect(decoded == LaunchService.shellCommand(command, workingDirectory: directory) + suffix)
+  }
+
   @Test func appleScriptEscapesEmptyCommand() {
     let script = LaunchService.appleScript(
       for: .terminal,
