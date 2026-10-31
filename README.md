@@ -385,7 +385,7 @@ xattr -d com.apple.quarantine "/Applications/Ignitero Launcher.app"
 - **データ**: GRDB.swift (SQLite), JSON 永続化
 - **検索**: Fuse-Swift（ファジー検索）
 - **ショートカット**: KeyboardShortcuts (`Option` + `Space`)
-- **テスト**: Swift Testing (1053テスト)
+- **テスト**: Swift Testing
 - **パッケージ**: Swift Package Manager
 - **最小OS**: macOS 26
 
@@ -459,6 +459,24 @@ make clean
 ```
 
 ツールの版は `mise.toml` が正です（Python のみ。Swift は Xcode のツールチェーンを使います）。Makefile は Python を `mise exec --` 経由で呼ぶため、シェルで `mise activate` していなくても固定した版で動きます。mise が見つからない場合は Python を使うターゲットが停止するので、PATH のツールを使うときは `make build SYSTEM_TOOLS=1` のように明示してください。CI も `jdx/mise-action` で同じ `mise.toml` と `mise.lock`（取得元 URL と checksum）を使います。
+
+### 検索性能の比較
+
+履歴による検索順位の調整は、クエリごとに完全一致・前方一致の履歴をパス別に照合します。
+同じ一致種別では最初の履歴を使い、完全一致を優先します。空クエリの履歴表示では使用回数と日時による順位を保ちます。
+履歴JSONの使用回数が負でも、古い履歴を整理する際の比較が壊れないようにしています。
+
+```bash
+# 通常のテストではスキップする比較用ベンチマーク
+IGNITERO_SEARCH_BENCHMARK=1 swift test --filter SearchBenchmarkTests
+
+# 同じビルドのまま、別プロセスで繰り返す
+IGNITERO_SEARCH_BENCHMARK=1 swift test --skip-build --filter SearchBenchmarkTests
+```
+
+ベンチマークは20・500・2,000アプリと履歴50件を使い、各ケースを5回ウォームアップして7標本を記録します。
+時間の合否判定は行いません。ビルド条件をそろえ、別プロセスを3回起動してCPU時間・経過時間・最大RSSを比較してください。
+[2026-10-31の点検記録](docs/maintenance-2026-10-31.md)に、測定条件・生データ・採用しなかった変更も記載しています。
 
 ## ライセンス
 
