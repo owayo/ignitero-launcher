@@ -1,3 +1,9 @@
 [submodule "Native/ocrus"]
 	path = Native/ocrus
 	url = https://github.com/owayo/ocrus.git
+[submodule "Native/ai-usage"]
+	path = Native/ai-usage
+	url = https://github.com/owayo/ai-usage.git
+[submodule "Native/get-md"]
+	path = Native/get-md
+	url = https://github.com/owayo/get-md.git

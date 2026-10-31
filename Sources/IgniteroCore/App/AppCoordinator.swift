@@ -85,6 +85,7 @@ public final class AppCoordinator {
   public let emojiPickerPanel: EmojiPickerPanel
 
   public let ocrCoordinator = OCRCoordinator()
+  public let embeddedToolsCoordinator = EmbeddedToolsCoordinator()
 
   /// 起動処理がすべて完了し、操作可能な状態かどうか
   public private(set) var isReady: Bool = false
@@ -203,6 +204,9 @@ public final class AppCoordinator {
 
     // ランチャーパネルを WindowManager に接続する
     wm.launcherPanel = self.launcherPanel
+    embeddedToolsCoordinator.model.onActivityChanged = { [weak wm] active in
+      if active { wm?.showPicker() } else { wm?.hidePicker() }
+    }
     ocrCoordinator.onActivityChanged = { [weak wm] active in
       if active { wm?.showPicker() } else { wm?.hidePicker() }
     }
@@ -240,10 +244,13 @@ public final class AppCoordinator {
     menuBarActions.onRebuildCache = { [weak self] in
       await self?.rebuildCacheAndReload()
     }
+    menuBarActions.onShowAIUsage = { [weak self] in self?.showAIUsage() }
+    menuBarActions.onConvertMarkdown = { [weak self] in self?.showMarkdown() }
     menuBarActions.onCaptureText = { [weak self] in self?.startOCR() }
 
     wm.onShowLauncher = { [weak self] in
       guard let self else { return }
+      self.embeddedToolsCoordinator.close()
       self.launcherViewModel.clearSearch()
       // 空クエリの検索結果 = 最近使った項目。SwiftUI の onChange は searchQuery が
       // 既に空のときは発火しないため、ここで明示的に実行しないと
@@ -271,6 +278,7 @@ public final class AppCoordinator {
       self.terminalPickerPanel.dismiss()
       self.emojiPickerPanel.dismissPanel()
       self.ocrCoordinator.cancel()
+      self.embeddedToolsCoordinator.close()
     }
   }
 
@@ -333,6 +341,7 @@ public final class AppCoordinator {
   ///
   /// ショートカットの解除、自動更新の停止、状態の保存を行う。
   public func shutdown() {
+    embeddedToolsCoordinator.close()
     ocrCoordinator.cancel()
     // ショートカットを解除する
     globalShortcut.teardown()
@@ -372,6 +381,12 @@ public final class AppCoordinator {
     // へ復元できないため履歴ブースト・最近使った項目に出ない。記録すると keyword ごとに別エントリが
     // 際限なく蓄積し、最大 50 件の履歴枠を圧迫して正規のアプリ/ディレクトリ履歴を押し出してしまう。
     switch result.kind {
+    case .aiUsage:
+      showAIUsage()
+      return
+    case .markdown:
+      showMarkdown(url: result.path)
+      return
     case .ocr:
       startOCR()
       return
@@ -433,7 +448,7 @@ public final class AppCoordinator {
               terminal: terminal
             )
           }
-        case .webSearch, .emoji, .colorPicker, .ocr:
+        case .webSearch, .emoji, .colorPicker, .ocr, .aiUsage, .markdown:
           break
         }
       } catch {
@@ -528,11 +543,30 @@ public final class AppCoordinator {
   }
 
   public func startOCR() {
+    embeddedToolsCoordinator.close()
     dismissLauncher()
     editorPickerPanel.dismissPanel()
     terminalPickerPanel.dismiss()
     emojiPickerPanel.dismissPanel()
     ocrCoordinator.start()
+  }
+
+  public func showAIUsage() {
+    prepareEmbeddedTools()
+    embeddedToolsCoordinator.showUsage()
+  }
+
+  public func showMarkdown(url: String = "") {
+    prepareEmbeddedTools()
+    embeddedToolsCoordinator.showMarkdown(url: url)
+  }
+
+  private func prepareEmbeddedTools() {
+    dismissLauncher()
+    editorPickerPanel.dismissPanel()
+    terminalPickerPanel.dismiss()
+    emojiPickerPanel.dismissPanel()
+    ocrCoordinator.cancel()
   }
 
   /// カラーピッカーを表示し、選択色の HEX をクリップボードにコピーする。

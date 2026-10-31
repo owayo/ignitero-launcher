@@ -420,6 +420,10 @@ public struct LauncherView: View {
   private func resultIcon(for result: SearchResult, isSelected: Bool) -> some View {
     Group {
       switch result.kind {
+      case .aiUsage:
+        Image(systemName: "chart.bar.fill").font(.system(size: 26)).foregroundStyle(.green)
+      case .markdown:
+        Image(systemName: "doc.plaintext").font(.system(size: 26)).foregroundStyle(.blue)
       case .ocr:
         Image(systemName: "text.viewfinder")
           .font(.system(size: 26))
@@ -507,6 +511,10 @@ public struct LauncherView: View {
 
   private func resultSubtitle(for result: SearchResult) -> String {
     switch result.kind {
+    case .aiUsage:
+      "アカウント別の使用率とリセット予定"
+    case .markdown:
+      result.path.isEmpty ? "URLを入力してプレビュー・コピー" : result.path
     case .ocr:
       "範囲を選択して文字を読み取り"
     case .app:

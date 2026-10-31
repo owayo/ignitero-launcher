@@ -53,6 +53,17 @@ enum IgniteroLauncherMain {
         exit(EXIT_FAILURE)
       }
     }
+    if CommandLine.arguments.contains("--self-test-ai-usage") {
+      do {
+        let snapshot = try await EmbeddedToolsService().usage(refresh: false)
+        let failures = snapshot.report.accounts.filter { !$0.ok }.count
+        print("AI usage: \(snapshot.report.accounts.count) accounts, \(failures) failed")
+        exit(failures == snapshot.report.accounts.count && failures > 0 ? EXIT_FAILURE : EXIT_SUCCESS)
+      } catch {
+        FileHandle.standardError.write(Data("AI usage self-test failed: \(error.localizedDescription)\n".utf8))
+        exit(EXIT_FAILURE)
+      }
+    }
     if CommandLine.arguments.contains("--self-test-resources") {
       exit(ResourceSelfTest.run() ? EXIT_SUCCESS : EXIT_FAILURE)
     }
@@ -81,6 +92,9 @@ struct IgniteroApp: App {
         sharedCoordinator.menuBarActions.showWindow()
       }
       .keyboardShortcut("o")
+
+      Button("AI利用枠…") { sharedCoordinator.menuBarActions.onShowAIUsage?() }
+      Button("WebページをMarkdownでコピー…") { sharedCoordinator.menuBarActions.onConvertMarkdown?() }
 
       Button("画面の文字を読み取り…") {
         sharedCoordinator.menuBarActions.onCaptureText?()

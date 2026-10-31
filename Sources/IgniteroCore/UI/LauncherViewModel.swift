@@ -296,6 +296,17 @@ public final class LauncherViewModel {
       searchResults.insert(SearchResult(name: "画面の文字を読み取り", kind: .ocr, score: -10), at: 0)
     }
 
+    if ["ai", "ai usage", "利用枠", "ai利用枠"].contains(normalized) {
+      searchResults.insert(SearchResult(name: "AI利用枠を確認", kind: .aiUsage, score: -10), at: 0)
+    }
+    // Match the command independently: URL paths and queries are case-sensitive.
+    let original = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+    let parts = original.split(maxSplits: 1, whereSeparator: { $0.isWhitespace })
+    if parts.first?.lowercased() == "md" {
+      let url = parts.count == 2 ? String(parts[1]) : ""
+      searchResults.insert(SearchResult(name: "WebページをMarkdownでコピー", kind: .markdown, score: -10, path: url), at: 0)
+    }
+
     // Web検索: g <keyword>
     if normalized.hasPrefix("g ") {
       let keyword = String(normalized.dropFirst(2)).trimmingCharacters(in: .whitespaces)

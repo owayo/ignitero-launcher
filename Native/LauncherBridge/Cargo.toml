@@ -1,0 +1,19 @@
+[package]
+name = "ignitero-native"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+[lib]
+crate-type = ["staticlib", "rlib"]
+[dependencies]
+ocrus-ffi = { path = "../ocrus/crates/ocrus-ffi", features = ["accelerate"] }
+ai-usage = { path = "../ai-usage", default-features = false }
+get-md = { path = "../get-md" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "time", "macros", "sync"] }
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+panic = "unwind"

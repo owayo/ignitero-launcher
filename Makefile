@@ -13,6 +13,8 @@ ENTITLEMENTS := Resources/$(APP_NAME).entitlements
 # swift-frontend がクラッシュするため、最適化だけを無効化して release 出力を生成する。
 RELEASE_SWIFT_FLAGS := -Xswiftc -Onone
 OCRUS_SOURCE_DIR ?= $(CURDIR)/Native/ocrus
+AI_USAGE_SOURCE_DIR ?= $(CURDIR)/Native/ai-usage
+GET_MD_SOURCE_DIR ?= $(CURDIR)/Native/get-md
 OCRUS_MODEL_DIR ?= $(HOME)/.ocrus/models
 
 # 引数なしの `make` は絵文字キーワード辞書を生成する (従来どおり)。
@@ -71,7 +73,7 @@ REQUIRED_RESOURCES := \
 
 native:
 	@test -f "$(OCRUS_SOURCE_DIR)/scripts/build-xcframework.sh" || { echo 'Run git submodule update --init --recursive first.' >&2; exit 1; }
-	@bash "$(OCRUS_SOURCE_DIR)/scripts/build-xcframework.sh" "$(CURDIR)/Native/OcrusFFI.xcframework"
+	@OCRUS_SOURCE_DIR="$(OCRUS_SOURCE_DIR)" AI_USAGE_SOURCE_DIR="$(AI_USAGE_SOURCE_DIR)" GET_MD_SOURCE_DIR="$(GET_MD_SOURCE_DIR)" bash scripts/build_native.sh
 
 setup-ocr-models:
 	@OCRUS_SOURCE_DIR="$(OCRUS_SOURCE_DIR)" OCRUS_MODEL_DIR="$(OCRUS_MODEL_DIR)" $(RUN) python3 scripts/setup_ocr_models.py
@@ -103,6 +105,8 @@ bundle: build
 	@cp "$(OCRUS_MODEL_DIR)/rec.ocnn" "$(OCRUS_MODEL_DIR)/dict.txt" "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/"
 	@cp "$(OCRUS_SOURCE_DIR)/LICENSE" "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/LICENSE-OCRus.txt"
 	@cp Resources/LICENSE-PaddleOCR.txt "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/"
+	@cp "$(AI_USAGE_SOURCE_DIR)/LICENSE" "$(BUNDLE_DIR)/Contents/Resources/LICENSE-ai-usage.txt"
+	@cp "$(GET_MD_SOURCE_DIR)/LICENSE" "$(BUNDLE_DIR)/Contents/Resources/LICENSE-get-md.txt"
 	@# リソースバンドルは Contents/Resources にのみ置く。ResourceBundle.resolve(named:)
 	@# がここを読む。Contents/MacOS へのコピーはどの探索経路からも参照されない
 	@# (Bundle.main.resourceURL / url(forResource:) / Bundle(for:).resourceURL /
@@ -199,6 +203,8 @@ dev: build-debug
 	@cp "$(OCRUS_MODEL_DIR)/rec.ocnn" "$(OCRUS_MODEL_DIR)/dict.txt" "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/"
 	@cp "$(OCRUS_SOURCE_DIR)/LICENSE" "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/LICENSE-OCRus.txt"
 	@cp Resources/LICENSE-PaddleOCR.txt "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/"
+	@cp "$(AI_USAGE_SOURCE_DIR)/LICENSE" "$(BUNDLE_DIR)/Contents/Resources/LICENSE-ai-usage.txt"
+	@cp "$(GET_MD_SOURCE_DIR)/LICENSE" "$(BUNDLE_DIR)/Contents/Resources/LICENSE-get-md.txt"
 	@# 配置方針は bundle ターゲットと同じ (Contents/Resources のみ)。
 	@for b in $(BUILD_DIR)/debug/*.bundle; do \
 		[ -d "$$b" ] || continue; \

@@ -11,11 +11,11 @@ let package = Package(
     .package(url: "https://github.com/danielsaidi/EmojiKit", from: "3.1.0"),
   ],
   targets: [
-    .binaryTarget(name: "OcrusFFI", path: "Native/OcrusFFI.xcframework"),
+    .binaryTarget(name: "IgniteroNative", path: "Native/IgniteroNative.xcframework"),
     .target(
       name: "IgniteroCore",
       dependencies: [
-        "OcrusFFI",
+        "IgniteroNative",
         .product(name: "GRDB", package: "GRDB.swift"),
         .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
         .product(name: "Fuse", package: "fuse-swift"),
@@ -25,7 +25,8 @@ let package = Package(
         .copy("Resources/emoji_keywords_ja.json")
       ],
       linkerSettings: [
-        .linkedLibrary("iconv"), .linkedLibrary("resolv"), .linkedFramework("Accelerate"),
+        .linkedLibrary("sqlite3"), .linkedLibrary("c++"), .linkedLibrary("iconv"),
+        .linkedFramework("SystemConfiguration"), .linkedFramework("Security"), .linkedFramework("CoreFoundation"), .linkedLibrary("resolv"), .linkedFramework("Accelerate"),
       ]
     ),
     .executableTarget(
@@ -39,7 +40,8 @@ let package = Package(
         .product(name: "GRDB", package: "GRDB.swift"),
         .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
         .product(name: "Fuse", package: "fuse-swift"),
-      ]
+      ],
+      exclude: ["Fixtures"]
     ),
   ]
 )

@@ -2,6 +2,19 @@
 
 macOS向けメニューバー常駐型ランチャーアプリケーション。Swift 6.2 以上 + SwiftUI + AppKit で構築。macOS 26+ ネイティブ。
 
+## AI利用枠とMarkdown取得
+
+`ai` はAI利用枠、`md URL` はMarkdownのプレビューとコピーを開く。
+`EmbeddedToolsModel` が要求IDとキャンセルを管理し、閉じた後や次の要求へ古い結果を反映しない。
+`EmbeddedToolsCoordinator` と `WindowManager` でピッカー状態を共有する。
+URLはコマンド部分だけを判定し、パス・クエリの大文字小文字を変更しない。
+
+`Native/ai-usage` と `Native/get-md` のRustライブラリAPIを呼び、CLI自体は起動しない。
+Chromeによる描画はget-mdの既存方式を使う。認証・共有キャッシュはai-usageと共通。
+`Native/LauncherBridge` がOCRと両ツールを1つの `IgniteroNative` XCFrameworkへまとめ、
+SQLiteは同梱せずシステム版に揃える。`make native` が依存ツールと生成物を準備する。
+`IGNITERO_NATIVE_TESTS=1 make native` はホスト向けのC ABI契約テストも実行する。
+
 ## 技術スタック
 
 OCRは `Native/ocrus` サブモジュールの `ocrus-ffi` をXCFrameworkにして静的リンクする。

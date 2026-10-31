@@ -901,12 +901,14 @@ struct AppCoordinatorMenuBarIntegrationTests {
     let coordinator = makeCoordinator()
     let items = coordinator.menuBarActions.menuItems
 
-    #expect(items.count == 5)
+    #expect(items.count == 7)
     #expect(items[0].id == "show-window")
     #expect(items[1].id == "rebuild-cache")
     #expect(items[2].id == "settings")
-    #expect(items[3].id == "capture-text")
-    #expect(items[4].id == "quit")
+    #expect(items[3].id == "ai-usage")
+    #expect(items[4].id == "markdown")
+    #expect(items[5].id == "capture-text")
+    #expect(items[6].id == "quit")
   }
 }
 

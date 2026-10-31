@@ -252,12 +252,14 @@ struct MenuBarActionsMenuItemsTests {
     )
 
     let items = actions.menuItems
-    #expect(items.count == 5)
+    #expect(items.count == 7)
     #expect(items[0].title == "ウィンドウを表示")
     #expect(items[1].title == "キャッシュを再構築")
     #expect(items[2].title == "設定")
-    #expect(items[3].title == "画面の文字を読み取り…")
-    #expect(items[4].title == "終了")
+    #expect(items[3].title == "AI利用枠…")
+    #expect(items[4].title == "WebページをMarkdownでコピー…")
+    #expect(items[5].title == "画面の文字を読み取り…")
+    #expect(items[6].title == "終了")
   }
 
   @MainActor

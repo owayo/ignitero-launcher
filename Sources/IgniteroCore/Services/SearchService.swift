@@ -44,6 +44,8 @@ public enum SearchResultKind: Sendable {
   case colorPicker
   case emoji
   case ocr
+  case aiUsage
+  case markdown
 }
 
 /// 統一された検索結果

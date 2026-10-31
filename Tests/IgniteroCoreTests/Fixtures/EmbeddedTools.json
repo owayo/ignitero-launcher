@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "data": {
+    "report": {
+      "generated_at": "2026-10-31T10:00:00Z",
+      "accounts": [
+        {"profile":"Home","provider":"claude","ok":true,"label":"Home","email":"you@example.com","five_hour":{"kind":"five_hour","used_percent":0,"resets_at":"2026-10-31T15:00:00Z"},"weekly":{"kind":"weekly","used_percent":null,"resets_at":null},"manual_resets":[{"kind":"five_hour","remaining":0,"expires_at":null,"paused":false}]},
+        {"profile":"Work","provider":"codex","ok":false,"error":"Session expired"}
+      ]
+    },
+    "warnings": ["A profile could not be read"]
+  }
+}

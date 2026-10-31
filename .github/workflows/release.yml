@@ -121,8 +121,8 @@ jobs:
       - name: Generate emoji keywords
         run: python3 scripts/update_emoji_keywords.py
 
-      - name: Build native OCR library
-        run: make native
+      - name: Build native libraries
+        run: IGNITERO_NATIVE_TESTS=1 make native
 
       - name: Prepare verified OCR model
         run: make setup-ocr-models OCRUS_MODEL_DIR="$RUNNER_TEMP/ocr-models"

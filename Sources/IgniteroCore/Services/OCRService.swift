@@ -1,7 +1,7 @@
 import CoreGraphics
 import Dispatch
 import Foundation
-import OcrusFFI
+import IgniteroNative
 
 public struct OCRDocument: Decodable, Sendable {
   public struct Page: Decodable, Sendable {
