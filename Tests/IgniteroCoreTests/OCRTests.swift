@@ -115,6 +115,38 @@ struct OCRNativeTests {
     #expect(second.text == first.text)
   }
 
+  @Test(.enabled(if: ProcessInfo.processInfo.environment["IGNITERO_OCR_INTEGRATION"] == "1"))
+  func nativeModelRecognizesManySmallTerminalRows() async throws {
+    let service = OCRService()
+    let text = "日本語の文字をコピーします"
+    for dark in [false, true] {
+      let width = 1200
+      let height = 1560
+      let bitmap = try #require(
+        NSBitmapImageRep(
+          bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height,
+          bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+          colorSpaceName: .deviceRGB, bytesPerRow: width * 4, bitsPerPixel: 32))
+      let context = try #require(NSGraphicsContext(bitmapImageRep: bitmap))
+      NSGraphicsContext.saveGraphicsState()
+      NSGraphicsContext.current = context
+      NSColor(calibratedWhite: dark ? 0.063 : 1, alpha: 1).setFill()
+      NSRect(x: 0, y: 0, width: width, height: height).fill()
+      for row in 0..<48 {
+        (text as NSString).draw(
+          at: NSPoint(x: 12, y: height - 36 - row * 32),
+          withAttributes: [
+            .font: NSFont.monospacedSystemFont(ofSize: 24, weight: .regular),
+            .foregroundColor: dark ? NSColor(calibratedWhite: 0.9, alpha: 1) : NSColor.black,
+          ])
+      }
+      NSGraphicsContext.restoreGraphicsState()
+      let image = try #require(bitmap.cgImage)
+      let result = try await service.recognize(image)
+      #expect(result.text.components(separatedBy: "\n") == Array(repeating: text, count: 48))
+    }
+  }
+
   @Test func macOSVisionRecognizesJapaneseAndEnglish() async throws {
     let image = NSImage(size: NSSize(width: 700, height: 150))
     image.lockFocus()

@@ -24,7 +24,9 @@ let package = Package(
       resources: [
         .copy("Resources/emoji_keywords_ja.json")
       ],
-      linkerSettings: [.linkedLibrary("iconv"), .linkedLibrary("resolv")]
+      linkerSettings: [
+        .linkedLibrary("iconv"), .linkedLibrary("resolv"), .linkedFramework("Accelerate"),
+      ]
     ),
     .executableTarget(
       name: "IgniteroLauncher",
