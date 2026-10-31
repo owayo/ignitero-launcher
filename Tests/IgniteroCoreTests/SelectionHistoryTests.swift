@@ -648,3 +648,73 @@ struct SelectionHistoryTests {
     }
   }
 }
+
+@Suite("負の使用回数を持つ履歴の保持")
+struct SelectionHistoryNegativeCountTests {
+  @Test(
+    "追加時も読込時も負の使用回数を有限のスコアで比較する",
+    arguments: [-2, Int.min], [false, true])
+  func removesOldNegativeCountEntry(count: Int, truncateOnLoad: Bool) throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let file = directory.appendingPathComponent("history.json")
+    let now = Date()
+    var entries = (0..<(truncateOnLoad ? 50 : 49)).map {
+      SelectionHistoryEntry(
+        keyword: "app\($0)", selectedPath: "/Applications/App\($0).app", count: 10, lastUsed: now)
+    }
+    // NaN は min の先頭以外では選ばれないため、比較対象の途中へ置く。
+    let invalidPath = "/Applications/Old.app"
+    entries.insert(
+      SelectionHistoryEntry(
+        keyword: "old", selectedPath: invalidPath, count: count,
+        lastUsed: now.addingTimeInterval(-86400 * 100)), at: 25)
+    let encoder = JSONEncoder()
+    encoder.dateEncodingStrategy = .iso8601
+    try encoder.encode(entries).write(to: file)
+    let history = SelectionHistory(filePath: file.path)
+    try history.load()
+    if !truncateOnLoad {
+      history.record(keyword: "new", path: "/Applications/New.app")
+      #expect(history.allEntries.contains { $0.keyword == "new" })
+    }
+    #expect(history.allEntries.count == 50)
+    #expect(!history.allEntries.contains { $0.selectedPath == invalidPath })
+  }
+}
+
+@Suite("使用回数 -1 の履歴の保持順")
+struct SelectionHistoryMinusOneCountTests {
+  @Test("使用回数 -1 は 0 回と同様に最終使用日時で比較する", arguments: [false, true])
+  func keepsRecentEntry(truncateOnLoad: Bool) throws {
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let file = directory.appendingPathComponent("history.json")
+    let now = Date()
+    var entries = (0..<(truncateOnLoad ? 49 : 48)).map {
+      SelectionHistoryEntry(
+        keyword: "app\($0)", selectedPath: "/Applications/App\($0).app", count: 10, lastUsed: now)
+    }
+    let oldPath = "/Applications/Old.app"
+    let recentPath = "/Applications/Recent.app"
+    entries.append(
+      SelectionHistoryEntry(
+        keyword: "old", selectedPath: oldPath, count: 0,
+        lastUsed: now.addingTimeInterval(-86400 * 100)))
+    entries.append(
+      SelectionHistoryEntry(keyword: "recent", selectedPath: recentPath, count: -1, lastUsed: now))
+    let encoder = JSONEncoder()
+    encoder.dateEncodingStrategy = .iso8601
+    try encoder.encode(entries).write(to: file)
+    let history = SelectionHistory(filePath: file.path)
+    try history.load()
+    if !truncateOnLoad {
+      history.record(keyword: "new", path: "/Applications/New.app")
+    }
+    #expect(history.allEntries.count == 50)
+    #expect(history.allEntries.contains { $0.selectedPath == recentPath })
+    #expect(!history.allEntries.contains { $0.selectedPath == oldPath })
+  }
+}

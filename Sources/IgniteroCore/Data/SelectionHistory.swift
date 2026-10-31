@@ -135,7 +135,10 @@ public final class SelectionHistory: Sendable {
   ///
   /// 使用頻度が高いエントリほど「猶予期間」が長くなる（count の対数 × 1日）。
   private static func retentionScore(_ entry: SelectionHistoryEntry) -> Double {
-    entry.lastUsed.timeIntervalSinceReferenceDate + log2(Double(entry.count) + 1) * 86400
+    // JSON から負数を読めるため、対数へ渡す使用回数を 0 以上に収める。
+    // -2 以下の NaN や -1 の負の無限大で削除候補の比較を壊さない。
+    let count = max(entry.count, 0)
+    return entry.lastUsed.timeIntervalSinceReferenceDate + log2(Double(count) + 1) * 86400
   }
 
   /// JSON ファイルからエントリを読み込む
