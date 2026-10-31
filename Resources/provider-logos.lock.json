@@ -1,0 +1,15 @@
+{
+  "package": "@lobehub/icons-static-svg",
+  "version": "1.101.0",
+  "base_url": "https://unpkg.com/@lobehub/icons-static-svg@1.101.0/icons/",
+  "license": "Resources/LICENSE-lobe-icons.txt",
+  "files": {
+    "openai.svg": "a595df6b423920c67a7f8f73c063e4bfb72d415948097b6cac063a2366bb5186",
+    "claude.svg": "365a70a7eb3956d9b9a96086058ebe04e1dbd8e291a756ad964e8a283fbd6d38",
+    "antigravity.svg": "43f551fd125c17fb54c8c74eb461924fb97f32bb64ac89f73bb73852753a6461",
+    "grok.svg": "9175fc90c22655160231976c849f25a03b888d7cc0e04c5f1b987b659bb07c95"
+  },
+  "local": [
+    "pixellab.svg"
+  ]
+}

@@ -69,6 +69,18 @@ public enum ResourceSelfTest {
       return ShortcutDisplayFormatter.string(for: shortcut).isEmpty ? "表示文字列が空" : nil
     }
 
+    check("AI利用枠のブランドアイコン (SVG) を読み込んで描画できる") {
+      // SwiftPM のリソースバンドルではなく Contents/Resources/ProviderLogos に同梱する。
+      // isValid だけでは形が描かれない破損を見逃すため、実際に描いた画素の割合も確かめる。
+      let store = ProviderLogoStore(directory: ProviderLogoStore.defaultDirectory)
+      let broken = AIUsageProvider.allCases.filter { provider in
+        guard let image = store.image(for: provider) else { return true }
+        return ProviderLogoStore.coverage(of: image) < 0.05
+      }
+      return broken.isEmpty
+        ? nil : "読めない・描けない: \(broken.map { "\($0.logoResourceName).svg" }.joined(separator: ", "))"
+    }
+
     check("絵文字カテゴリの表示名を取得できる") {
       let categories: [EmojiCategory] = .standardGrid
       for category in categories where EmojiCategoryDisplayName.text(for: category).isEmpty {

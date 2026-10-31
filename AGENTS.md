@@ -15,6 +15,22 @@ Chromeによる描画はget-mdの既存方式を使う。認証・共有キャ�
 SQLiteは同梱せずシステム版に揃える。`make native` が依存ツールと生成物を準備する。
 `IGNITERO_NATIVE_TESTS=1 make native` はホスト向けのC ABI契約テストも実行する。
 
+AI利用枠の色分けは ai-usage (`render/palette.rs`・`reset.rs`・`manual_resets.rs`) と同じ規則にする。
+判定は `AIUsageStyle.swift` (使用率60/80/90%、周期ごとの残り時間のしきい値、手動リセットの集計と7日未満の期限)、
+色の値は `AIUsageColors.swift` が外観 (ライト/ダーク/コントラストを上げる設定) ごとに持つ。
+しきい値ちょうどの扱い・`kind` の無い旧キャッシュの周期・未知の `kind` (色を推測せず灰色) は ai-usage と同じ境界値で
+`AIUsageStyleTests` が固定し、色は実際の `windowBackgroundColor` に対して文字4.5:1・アイコン3:1以上かを検査する。
+一覧は親の `TimelineView` が渡す1つの `now` で全行の残り時間と色を計算する (行ごとに時計を持つと境界で行ごとに判定が食い違う)。
+
+ブランドアイコンは ai-status-font と同じSVG (lobe-icons と自作のPixelLab)。lobe-icons のSVGはコミットせず、
+`make bundle` / `make dev` が `scripts/setup_provider_logos.py` で `Resources/provider-logos.lock.json` の版とSHA-256を確かめ、
+正規化 (width/height を viewBox と同じ数値に、塗りを黒に。`1em` のままだと `NSImage.size` が1×1ptになる) して
+`Contents/Resources/ProviderLogos/` へ署名前に置く。SwiftPM のリソースではないので `ProviderLogoStore` が
+`Bundle.main.resourceURL` から読み、読めなければ provider 名の文字だけで表示する (fail-open)。
+`verify-bundle` が6ファイル、`--self-test-resources` が全アイコンの描画を確かめる。
+画面は `IGNITERO_AI_USAGE_SNAPSHOT_DIR=<出力先> IGNITERO_PROVIDER_LOGO_DIR=<SVGの置き場所> swift test --filter AIUsageSnapshotTests`
+でライト・ダークのPNGに書き出して確認する。設計の判断は `docs/ai-usage-brand-colors-2026-11-01.md`。
+
 ## 技術スタック
 
 OCRは `Native/ocrus` サブモジュールの `ocrus-ffi` をXCFrameworkにして静的リンクする。

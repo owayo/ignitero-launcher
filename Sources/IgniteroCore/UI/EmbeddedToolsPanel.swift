@@ -6,7 +6,8 @@ public final class EmbeddedToolsPanel: NSPanel, NSWindowDelegate {
   private let model: EmbeddedToolsModel
   private var presentedMode: EmbeddedToolsModel.Mode
   public var onDismiss: (() -> Void)?
-  public init(model: EmbeddedToolsModel) {
+  /// - Parameter logoStore: ブランドアイコンの読み込み元。nil なら `.app` に同梱したものを読む。
+  public init(model: EmbeddedToolsModel, logoStore: ProviderLogoStore? = nil) {
     self.model = model
     presentedMode = model.mode
     super.init(
@@ -19,7 +20,8 @@ public final class EmbeddedToolsPanel: NSPanel, NSWindowDelegate {
     level = .floating
     delegate = self
     contentView = SafeHostingView.makeContainer(
-      rootView: EmbeddedToolsView(model: model, onClose: { [weak self] in self?.close() }))
+      rootView: EmbeddedToolsView(model: model, onClose: { [weak self] in self?.close() })
+        .environment(\.providerLogoStore, logoStore))
   }
   public override var canBecomeKey: Bool { true }
   public override func cancelOperation(_ sender: Any?) { close() }
@@ -109,7 +111,7 @@ private struct EmbeddedToolsView: View {
       HStack {
         Text("AI利用枠").font(.title2.bold())
         Spacer()
-        if let snapshot = model.usage, let date = parseDate(snapshot.report.generated_at) {
+        if let snapshot = model.usage, let date = AIUsageDate.parse(snapshot.report.generated_at) {
           Text("表示更新: \(date.formatted(date: .omitted, time: .shortened))").font(.caption)
             .foregroundStyle(.secondary)
         }
@@ -138,17 +140,21 @@ private struct EmbeddedToolsView: View {
         Color.clear.frame(width: 24, height: 1)
       }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 8)
       ScrollView {
-        LazyVStack(alignment: .leading, spacing: 0) {
-          if let snapshot = model.usage {
-            if snapshot.report.accounts.isEmpty { Text("対象のアカウントがありません。ai-usageの設定を確認してください。") }
-            ForEach(Array(snapshot.report.accounts.enumerated()), id: \.offset) { _, account in
-              UsageAccountView(account: account)
-              Divider()
+        // 全行の残り時間と色を同じ時刻から計算する。行ごとに時計を持つと、しきい値の境界で
+        // 行によって判定が食い違う (ai-usage の TUI も 1 回の描画で時刻を 1 度だけ取る)。
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+          LazyVStack(alignment: .leading, spacing: 0) {
+            if let snapshot = model.usage {
+              if snapshot.report.accounts.isEmpty { Text("対象のアカウントがありません。ai-usageの設定を確認してください。") }
+              ForEach(Array(snapshot.report.accounts.enumerated()), id: \.offset) { _, account in
+                UsageAccountView(account: account, now: context.date)
+                Divider()
+              }
+            } else if !model.isLoading {
+              Text("利用枠を取得するには「更新」を押してください。").foregroundStyle(.secondary)
             }
-          } else if !model.isLoading {
-            Text("利用枠を取得するには「更新」を押してください。").foregroundStyle(.secondary)
-          }
-        }.frame(maxWidth: .infinity, alignment: .leading)
+          }.frame(maxWidth: .infinity, alignment: .leading)
+        }
       }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
   }
@@ -176,67 +182,120 @@ private struct EmbeddedToolsView: View {
   }
 }
 
+// MARK: - AI利用枠の一覧
+//
+// 色の規則は ai-usage と同じ (しきい値は AIUsageStyle.swift、色の値は AIUsageColors.swift)。
+// 各行は親の TimelineView が渡す同じ `now` で、残り時間の表記と色を計算する。
+
 private struct UsageAccountView: View {
   let account: AIUsageAccount
+  let now: Date
   @State private var showsDetails = false
+  @Environment(\.colorScheme) private var scheme
+  @Environment(\.colorSchemeContrast) private var contrast
   var body: some View {
     HStack(spacing: 12) {
-      VStack(alignment: .leading, spacing: 2) {
-        Text(account.provider.capitalized).font(.system(size: 13, weight: .semibold))
-        Text(account.displayName).font(.caption).foregroundStyle(.secondary)
-          .lineLimit(1).truncationMode(.middle).help(account.displayName)
-      }.frame(width: 154, alignment: .leading)
+      UsageAccountHeading(account: account)
+        .frame(width: 154, alignment: .leading)
       if account.ok {
-        UsageWindowView(window: account.five_hour, fallbackTitle: "短期枠")
-        UsageWindowView(window: account.weekly, fallbackTitle: "長期枠")
+        UsageWindowView(
+          window: account.five_hour, isShortSlot: true, provider: account.provider, now: now)
+        UsageWindowView(
+          window: account.weekly, isShortSlot: false, provider: account.provider, now: now)
       } else {
+        // ai-usage と同じく、取得の失敗は ALERT (赤) で示す。
         Label("取得失敗", systemImage: "exclamationmark.triangle")
-          .font(.caption).foregroundStyle(.orange)
+          .font(.caption)
+          .foregroundStyle(AIUsageColors.level(.critical, scheme: scheme, contrast: contrast))
           .frame(maxWidth: .infinity, alignment: .leading)
         Text("詳細で確認").font(.caption).foregroundStyle(.secondary)
           .frame(maxWidth: .infinity, alignment: .leading)
       }
-      UsageResetSummary(resets: account.ok ? account.manual_resets ?? [] : [])
+      UsageResetSummary(resets: account.ok ? account.manual_resets ?? [] : [], now: now)
         .frame(width: 90, alignment: .leading)
       Button {
         showsDetails.toggle()
       } label: {
         Image(systemName: "info.circle").frame(width: 24, height: 28)
       }.buttonStyle(.plain).foregroundStyle(.secondary)
-        .accessibilityLabel("\(account.provider) \(account.displayName)の詳細")
-        .popover(isPresented: $showsDetails) { UsageAccountDetails(account: account) }
+        .accessibilityLabel(
+          "\(AIUsageProvider.label(for: account.provider)) \(account.displayName)の詳細"
+        )
+        .popover(isPresented: $showsDetails) {
+          UsageAccountDetails(account: account, now: now)
+        }
     }.padding(.horizontal, 8).padding(.vertical, 7)
       .frame(minHeight: 54)
   }
 }
+
+/// アカウント列。ブランドアイコンと provider 名、その下に表示名。
+private struct UsageAccountHeading: View {
+  let account: AIUsageAccount
+  var body: some View {
+    VStack(alignment: .leading, spacing: 2) {
+      HStack(spacing: 5) {
+        ProviderLogoView(provider: account.provider, size: 15)
+        Text(AIUsageProvider.label(for: account.provider))
+          .font(.system(size: 13, weight: .semibold)).lineLimit(1)
+      }
+      Text(account.displayName).font(.caption).foregroundStyle(.secondary)
+        .lineLimit(1).truncationMode(.middle).help(account.displayName)
+    }
+    .accessibilityElement(children: .combine)
+  }
+}
+
+/// プロバイダのブランドアイコン。ai-usage と同じ色 (Codex と Grok は前景色) で塗る。
+/// 読めなければ何も描かない (provider 名の文字だけで識別できる)。
+private struct ProviderLogoView: View {
+  let provider: String
+  let size: CGFloat
+  @Environment(\.colorScheme) private var scheme
+  @Environment(\.colorSchemeContrast) private var contrast
+  @Environment(\.providerLogoStore) private var store
+  var body: some View {
+    if let provider = AIUsageProvider(rawValue: provider),
+      let image = (store ?? ProviderLogoStore.shared).image(for: provider)
+    {
+      Image(nsImage: image).renderingMode(.template).resizable().interpolation(.high)
+        .aspectRatio(contentMode: .fit)
+        .frame(width: size, height: size)
+        .foregroundStyle(AIUsageColors.marker(provider, scheme: scheme, contrast: contrast))
+        .accessibilityHidden(true)
+    }
+  }
+}
+
 private struct UsageWindowView: View {
   let window: AIUsageWindow?
-  let fallbackTitle: String
+  let isShortSlot: Bool
+  let provider: String
+  let now: Date
+  @Environment(\.colorScheme) private var scheme
+  @Environment(\.colorSchemeContrast) private var contrast
+
+  private var fallbackTitle: String { isShortSlot ? "短期枠" : "長期枠" }
+
   var body: some View {
     VStack(alignment: .leading, spacing: 3) {
       if let window {
+        let percent = window.used_percent.flatMap { $0.isFinite ? $0 : nil }
+        let level = percent.map(AIUsageLevel.usage)
         HStack(spacing: 4) {
           Text(window.title(fallback: fallbackTitle)).foregroundStyle(.secondary)
           Spacer(minLength: 0)
+          // 80% 以上は ai-usage と同じく太字にし、色以外でも目立たせる。
           Text(
-            window.used_percent.map {
-              "\($0.formatted(.number.precision(.fractionLength(0...1))))%"
-            } ?? "不明"
+            percent.map { "\($0.formatted(.number.precision(.fractionLength(0...1))))%" } ?? "不明"
           )
-          .fontWeight(.medium).monospacedDigit()
+          .fontWeight(level?.isEmphasized == true ? .bold : .medium).monospacedDigit()
+          .foregroundStyle(style(level))
         }.font(.caption)
-        if let value = window.used_percent, value.isFinite {
-          ProgressView(value: min(100, max(0, value)), total: 100)
-            .tint(value >= 100 ? .red : value >= 90 ? .orange : .accentColor)
-            .controlSize(.mini).frame(height: 3)
-        }
-        if let date = parseDate(window.resets_at) {
-          TimelineView(.periodic(from: .now, by: 1)) { context in
-            let minutes = max(0, Int(ceil(date.timeIntervalSince(context.date) / 60)))
-            Text(minutes == 0 ? "リセット待ち" : "あと\(minutes / 60)時間\(minutes % 60)分")
-              .font(.system(size: 11)).foregroundStyle(.secondary).monospacedDigit()
-          }
-        }
+        UsageBar(
+          fraction: percent.map { min(1, max(0, $0 / 100)) },
+          fill: level.map { AIUsageColors.level($0, scheme: scheme, contrast: contrast) })
+        countdown(window)
       } else {
         Text("—").font(.caption).foregroundStyle(.secondary)
           .accessibilityLabel("\(fallbackTitle)の情報なし")
@@ -244,76 +303,138 @@ private struct UsageWindowView: View {
     }.frame(maxWidth: .infinity, alignment: .leading)
       .accessibilityElement(children: .combine)
   }
-}
-private struct UsageResetSummary: View {
-  let resets: [AIUsageReset]
-  var body: some View {
-    TimelineView(.periodic(from: .now, by: 60)) { context in
-      VStack(alignment: .leading, spacing: 2) {
-        if resets.isEmpty { Text("—").foregroundStyle(.secondary) }
-        ForEach(Array(resets.enumerated()), id: \.offset) { index, reset in
-          let title = resetTitle(reset.kind, fallback: "枠\(index + 1)")
-          if reset.paused == true {
-            Text("\(title) 停止中").foregroundStyle(.secondary)
-          } else if let expiry = parseDate(reset.expires_at), expiry <= context.date {
-            Text("\(title) 期限切れ").foregroundStyle(.secondary)
-          } else {
-            Text("\(title) \(reset.remaining.map { "\($0)回" } ?? "不明")")
-          }
-        }
-      }.font(.system(size: 11)).monospacedDigit().lineLimit(1)
+
+  @ViewBuilder
+  private func countdown(_ window: AIUsageWindow) -> some View {
+    if let date = AIUsageDate.parse(window.resets_at) {
+      let seconds = AIUsageCountdown.remainingSeconds(until: date, now: now)
+      let period = AIUsagePeriod.resolve(
+        kind: window.kind, isShortSlot: isShortSlot, provider: provider)
+      Text(AIUsageCountdown.text(remainingSeconds: seconds))
+        .font(.system(size: 11)).monospacedDigit()
+        .foregroundStyle(style(AIUsageCountdown.level(remainingSeconds: seconds, period: period)))
+        .help("リセット: \(date.formatted(date: .abbreviated, time: .shortened))")
+    } else {
+      Text("リセット時刻不明").font(.system(size: 11)).foregroundStyle(.secondary)
     }
   }
+
+  private func style(_ level: AIUsageLevel?) -> AnyShapeStyle {
+    level.map { AnyShapeStyle(AIUsageColors.level($0, scheme: scheme, contrast: contrast)) }
+      ?? AnyShapeStyle(.secondary)
+  }
 }
+
+/// 使用率のバー。点灯部は段階色、未点灯部は控えめな塗り。使用率が不明なら点灯部を描かず、
+/// 0% と区別できるよう文字は「不明」にする。100% を超えた分はバーでは満杯で止める。
+private struct UsageBar: View {
+  let fraction: Double?
+  let fill: Color?
+  var body: some View {
+    GeometryReader { proxy in
+      ZStack(alignment: .leading) {
+        Rectangle().fill(.quaternary)
+        if let fraction, fraction > 0, let fill {
+          Rectangle().fill(fill).frame(width: proxy.size.width * fraction)
+        }
+      }
+      .clipShape(Capsule())
+    }
+    .frame(height: 4)
+    .accessibilityHidden(true)
+  }
+}
+
+/// 手動リセットの列。種類ごとの残回数と、最も近い有効期限 (残り 7 日未満は赤)。
+private struct UsageResetSummary: View {
+  let resets: [AIUsageReset]
+  let now: Date
+  @Environment(\.colorScheme) private var scheme
+  @Environment(\.colorSchemeContrast) private var contrast
+  var body: some View {
+    let groups = AIUsageManualResets.summarize(resets, now: now)
+    VStack(alignment: .leading, spacing: 2) {
+      if groups.isEmpty { Text("—").foregroundStyle(.secondary) }
+      ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
+        Text(group.countText)
+          .foregroundStyle(group.paused ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+      }
+      if let nearest = AIUsageManualResets.nearestDeadline(in: groups) {
+        if let expiry = nearest.expiry {
+          // ai-usage と同じく、色を変えるのは期限の日付だけ。
+          let date = Text(AIUsageManualResets.shortDateText(expiry, now: now))
+            .foregroundStyle(
+              deadlineStyle(urgent: AIUsageManualResets.isDeadlineUrgent(expiry, now: now)))
+          Text("期限 \(date)").foregroundStyle(.secondary)
+            .help("手動リセットの期限: \(expiry.formatted(date: .abbreviated, time: .shortened))")
+        } else {
+          Text("期限 不明").foregroundStyle(.secondary)
+        }
+      }
+    }.font(.system(size: 11)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.85)
+  }
+
+  private func deadlineStyle(urgent: Bool) -> AnyShapeStyle {
+    urgent
+      ? AnyShapeStyle(AIUsageColors.level(.critical, scheme: scheme, contrast: contrast))
+      : AnyShapeStyle(.secondary)
+  }
+}
+
 private struct UsageAccountDetails: View {
   let account: AIUsageAccount
+  let now: Date
+  @Environment(\.colorScheme) private var scheme
+  @Environment(\.colorSchemeContrast) private var contrast
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 10) {
-        Text("\(account.provider.capitalized) · \(account.displayName)").font(.headline)
+        HStack(spacing: 6) {
+          ProviderLogoView(provider: account.provider, size: 17)
+          Text("\(AIUsageProvider.label(for: account.provider)) · \(account.displayName)")
+            .font(.headline)
+        }
         if let group = account.group_label { Text(group) }
         if let plan = account.plan { Text("プラン: \(plan)") }
         if let email = account.email ?? account.profile_email { Text(email) }
         if account.ok {
           ForEach(Array([account.five_hour, account.weekly].enumerated()), id: \.offset) {
             index, window in
-            if let window {
+            if let window, let date = AIUsageDate.parse(window.resets_at) {
               let title = window.title(fallback: index == 0 ? "短期枠" : "長期枠")
-              if let date = parseDate(window.resets_at) {
-                Text("\(title) リセット: \(date.formatted(date: .abbreviated, time: .shortened))")
+              Text("\(title) リセット: \(date.formatted(date: .abbreviated, time: .shortened))")
+            }
+          }
+          let groups = AIUsageManualResets.summarize(account.manual_resets ?? [], now: now)
+          ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
+            VStack(alignment: .leading, spacing: 2) {
+              Text("手動リセット \(group.countText)")
+              ForEach(Array(group.deadlines.enumerated()), id: \.offset) { _, deadline in
+                deadlineRow(deadline)
               }
             }
           }
-          UsageResetSummary(resets: account.manual_resets ?? [])
-          ForEach(Array((account.manual_resets ?? []).enumerated()), id: \.offset) { index, reset in
-            if let date = parseDate(reset.expires_at) {
-              Text(
-                "\(resetTitle(reset.kind, fallback: "枠\(index + 1)"))の手動リセット期限: \(date.formatted(date: .abbreviated, time: .shortened))"
-              )
-            }
-          }
         } else {
-          Text(account.error ?? "利用枠を取得できませんでした。").foregroundStyle(.orange)
+          Text(account.error ?? "利用枠を取得できませんでした。")
+            .foregroundStyle(AIUsageColors.level(.critical, scheme: scheme, contrast: contrast))
         }
       }.frame(maxWidth: .infinity, alignment: .leading).padding(16).textSelection(.enabled)
     }.frame(width: 380, height: 250)
   }
-}
-private func resetTitle(_ kind: String?, fallback: String) -> String {
-  switch kind {
-  case "full": "全枠"
-  case "five_hour": "5時間"
-  case "daily": "1日"
-  case "weekly": "1週間"
-  case "monthly": "1か月"
-  default: fallback
+
+  /// 付与分ごとの期限。ai-usage の TUI と同じく、期限の日時だけを残り 7 日未満で赤にする。
+  private func deadlineRow(_ deadline: AIUsageResetGroup.Deadline) -> some View {
+    HStack(spacing: 4) {
+      Text("\(deadline.count)回").foregroundStyle(.secondary)
+      if let expiry = deadline.expiry {
+        Text("\(expiry.formatted(date: .abbreviated, time: .shortened))まで")
+          .foregroundStyle(
+            AIUsageManualResets.isDeadlineUrgent(expiry, now: now)
+              ? AnyShapeStyle(AIUsageColors.level(.critical, scheme: scheme, contrast: contrast))
+              : AnyShapeStyle(.secondary))
+      } else {
+        Text("期限不明").foregroundStyle(.secondary)
+      }
+    }.padding(.leading, 12).font(.callout).monospacedDigit()
   }
-}
-private func parseDate(_ text: String?) -> Date? {
-  guard let text else { return nil }
-  let formatter = ISO8601DateFormatter()
-  formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-  if let date = formatter.date(from: text) { return date }
-  formatter.formatOptions = [.withInternetDateTime]
-  return formatter.date(from: text)
 }

@@ -17,9 +17,15 @@ struct EmbeddedToolsLayoutTests {
     var report = try #require(data["report"] as? [String: Any])
     let accounts = try #require(report["accounts"] as? [[String: Any]])
     let normal = try #require(accounts.first)
+    // 手動リセット列が最も高くなる形 (全枠・5時間・最も近い期限の 3 行) でも収まること。
+    let expiry = Date().addingTimeInterval(5 * 86_400).formatted(.iso8601)
     var rows = (0..<5).map { index in
       var row = normal
       row["label"] = "Home Account \(index + 1)"
+      row["manual_resets"] = [
+        ["kind": "full", "remaining": 2, "expires_at": expiry, "paused": false],
+        ["kind": "five_hour", "remaining": 0, "expires_at": NSNull(), "paused": false],
+      ]
       return row
     }
     rows[4]["ok"] = false
