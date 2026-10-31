@@ -100,6 +100,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare-release.outputs.tag }}
+          submodules: recursive
 
       - name: Verify Xcode and Swift
         run: |
@@ -120,6 +121,12 @@ jobs:
       - name: Generate emoji keywords
         run: python3 scripts/update_emoji_keywords.py
 
+      - name: Build native OCR library
+        run: make native
+
+      - name: Prepare verified OCR model
+        run: make setup-ocr-models OCRUS_MODEL_DIR="$RUNNER_TEMP/ocr-models"
+
       - name: Build release binary
         # Swift 6.3 系の release 最適化で KeyboardShortcuts の SIL シリアライズが
         # crash するため、Makefile と同様に -Onone を付与して回避する。
@@ -136,6 +143,10 @@ jobs:
           cp Resources/MenuBarIcon.png "${BUNDLE}/Contents/Resources/MenuBarIcon.png"
           cp Resources/MenuBarIcon@2x.png "${BUNDLE}/Contents/Resources/MenuBarIcon@2x.png"
           cp Resources/IgniteroLauncher.entitlements "${BUNDLE}/Contents/Resources/"
+          mkdir -p "${BUNDLE}/Contents/Resources/OcrusModels"
+          cp "$RUNNER_TEMP/ocr-models/rec.ocnn" "$RUNNER_TEMP/ocr-models/dict.txt" "${BUNDLE}/Contents/Resources/OcrusModels/"
+          cp Native/ocrus/LICENSE "${BUNDLE}/Contents/Resources/OcrusModels/LICENSE-OCRus.txt"
+          cp Resources/LICENSE-PaddleOCR.txt "${BUNDLE}/Contents/Resources/OcrusModels/"
           # SwiftPM のリソースバンドル (EmojiKit のローカライズ名・IgniteroCore の
           # 絵文字キーワード辞書など) を Contents/Resources へ配置する。
           # ResourceBundle.resolve(named:) がここを読む。これを省くと

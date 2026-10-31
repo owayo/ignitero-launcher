@@ -18,3 +18,4 @@ __pycache__/
 
 # 旧 Tauri 実装のバックアップ
 .backup/
+Native/*.xcframework/

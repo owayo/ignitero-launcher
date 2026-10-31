@@ -35,6 +35,15 @@ public enum ResourceSelfTest {
       ResourceBundle.emojiKit == nil ? "ResourceBundle.emojiKit が nil" : nil
     }
 
+    check("同梱したOCRモデルをネイティブエンジンで読み込める") {
+      do {
+        try OCRService.validateBundledModels()
+        return nil
+      } catch {
+        return error.localizedDescription
+      }
+    }
+
     check("IgniteroCore のリソースバンドルを解決できる") {
       ResourceBundle.bundle == nil ? "ResourceBundle.bundle が nil" : nil
     }

@@ -292,6 +292,10 @@ public final class LauncherViewModel {
     let normalized = SearchQueryNormalizer.normalize(searchQuery)
     guard !normalized.isEmpty else { return }
 
+    if normalized == "ocr" || normalized == "文字認識" || normalized == "文字読み取り" {
+      searchResults.insert(SearchResult(name: "画面の文字を読み取り", kind: .ocr, score: -10), at: 0)
+    }
+
     // Web検索: g <keyword>
     if normalized.hasPrefix("g ") {
       let keyword = String(normalized.dropFirst(2)).trimmingCharacters(in: .whitespaces)

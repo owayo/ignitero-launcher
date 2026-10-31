@@ -1,0 +1,8 @@
+{
+  "revision": "7b02d0a30a07ba2b92ad1ff5a8941ae2c633de65",
+  "base_url": "https://huggingface.co/monkt/paddleocr-onnx/resolve/",
+  "files": {
+    "rec.onnx": "26fa4f47060f58e25962b9af6beaee05c8182b90e026c4ecc6db165d9dfdc38a",
+    "dict.txt": "d1979e9f794c464c0d2e0b70a7fe14dd978e9dc644c0e71f14158cdf8342af1b"
+  }
+}

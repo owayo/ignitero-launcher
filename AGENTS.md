@@ -4,6 +4,19 @@ macOS向けメニューバー常駐型ランチャーアプリケーション。
 
 ## 技術スタック
 
+OCRは `Native/ocrus` サブモジュールの `ocrus-ffi` をXCFrameworkにして静的リンクする。
+SwiftPMの前に `make native` が必要。通常は `make build-debug` / `make test` が依存を準備する。
+Rustを変更したらネイティブライブラリも作り直す。開発中の別作業ツリーは `OCRUS_SOURCE_DIR` で指定できる。
+画像は画素のまま渡し、OCRのためにCLIやPythonを起動しない。モデルはアクター内で再利用する。
+推論は専用executorで直列に実行し、キャンセル時にはC側のトークンも停止させる。
+結果を返した要求が現在の要求かを確認し、閉じた画面や次の要求へ古い結果を反映しない。
+OCR結果パネルも `SafeHostingView.makeContainer` を使う。画面取得にはScreenCaptureKitを使い、
+範囲選択前に撮った画面と実際の画像寸法で座標を変換する。
+配布時は `OcrusModels/rec.ocnn` と `dict.txt` を同梱し、自己診断はホーム側へフォールバックせず読み込む。
+モデル、画面の画像、認識結果は公開リポジトリに追加しない。
+同じ範囲の画像をVisionとocrusへ並行して渡し、結果とエラーは各列へ独立して反映する。
+片方の終了を待ってからもう片方を開始したり、両方の終了まで表示を待ったりしない。
+
 - **言語**: Swift 6.2 (Strict Concurrency)
 - **UI**: SwiftUI + AppKit (NSPanel)
 - **データ**: GRDB.swift (SQLite), JSON 永続化

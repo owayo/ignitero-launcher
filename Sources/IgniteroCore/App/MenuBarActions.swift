@@ -43,6 +43,7 @@ public final class MenuBarActions {
 
   /// キャッシュ再構築の実体処理（AppCoordinator が注入し、スキャン結果を DB に保存・ビューモデルへ反映する）。
   public var onRebuildCache: (@MainActor @Sendable () async -> Void)?
+  public var onCaptureText: (@MainActor @Sendable () -> Void)?
 
   // MARK: - 状態
 
@@ -86,6 +87,9 @@ public final class MenuBarActions {
       },
       MenuBarItem(id: "settings", title: "設定") { [weak self] in
         self?.openSettings()
+      },
+      MenuBarItem(id: "capture-text", title: "画面の文字を読み取り…") { [weak self] in
+        self?.onCaptureText?()
       },
       MenuBarItem(id: "quit", title: "終了") { [weak self] in
         self?.quit()

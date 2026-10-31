@@ -84,6 +84,8 @@ public final class AppCoordinator {
   /// Emoji ピッカーパネル
   public let emojiPickerPanel: EmojiPickerPanel
 
+  public let ocrCoordinator = OCRCoordinator()
+
   /// 起動処理がすべて完了し、操作可能な状態かどうか
   public private(set) var isReady: Bool = false
 
@@ -201,6 +203,9 @@ public final class AppCoordinator {
 
     // ランチャーパネルを WindowManager に接続する
     wm.launcherPanel = self.launcherPanel
+    ocrCoordinator.onActivityChanged = { [weak wm] active in
+      if active { wm?.showPicker() } else { wm?.hidePicker() }
+    }
 
     // 設定変更時に変更種別へ応じた反映を行う
     // - reloadOnly: コマンド/エディタ/ターミナル変更 → ViewModel 再読込のみ
@@ -235,6 +240,7 @@ public final class AppCoordinator {
     menuBarActions.onRebuildCache = { [weak self] in
       await self?.rebuildCacheAndReload()
     }
+    menuBarActions.onCaptureText = { [weak self] in self?.startOCR() }
 
     wm.onShowLauncher = { [weak self] in
       guard let self else { return }
@@ -264,6 +270,7 @@ public final class AppCoordinator {
       self.editorPickerPanel.dismissPanel()
       self.terminalPickerPanel.dismiss()
       self.emojiPickerPanel.dismissPanel()
+      self.ocrCoordinator.cancel()
     }
   }
 
@@ -326,6 +333,7 @@ public final class AppCoordinator {
   ///
   /// ショートカットの解除、自動更新の停止、状態の保存を行う。
   public func shutdown() {
+    ocrCoordinator.cancel()
     // ショートカットを解除する
     globalShortcut.teardown()
 
@@ -364,6 +372,9 @@ public final class AppCoordinator {
     // へ復元できないため履歴ブースト・最近使った項目に出ない。記録すると keyword ごとに別エントリが
     // 際限なく蓄積し、最大 50 件の履歴枠を圧迫して正規のアプリ/ディレクトリ履歴を押し出してしまう。
     switch result.kind {
+    case .ocr:
+      startOCR()
+      return
     case .webSearch:
       if let url = URL(string: result.path) {
         NSWorkspace.shared.open(url)
@@ -422,7 +433,7 @@ public final class AppCoordinator {
               terminal: terminal
             )
           }
-        case .webSearch, .emoji, .colorPicker:
+        case .webSearch, .emoji, .colorPicker, .ocr:
           break
         }
       } catch {
@@ -514,6 +525,14 @@ public final class AppCoordinator {
     launcherViewModel.clearSearch()
     windowManager.resizeForContent(launcherViewModel.layoutState)
     windowManager.hideLauncher()
+  }
+
+  public func startOCR() {
+    dismissLauncher()
+    editorPickerPanel.dismissPanel()
+    terminalPickerPanel.dismiss()
+    emojiPickerPanel.dismissPanel()
+    ocrCoordinator.start()
   }
 
   /// カラーピッカーを表示し、選択色の HEX をクリップボードにコピーする。

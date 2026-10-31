@@ -12,6 +12,8 @@ ENTITLEMENTS := Resources/$(APP_NAME).entitlements
 # Swift 6.3.2 の release 最適化で KeyboardShortcuts 3.0.0 のコンパイル中に
 # swift-frontend がクラッシュするため、最適化だけを無効化して release 出力を生成する。
 RELEASE_SWIFT_FLAGS := -Xswiftc -Onone
+OCRUS_SOURCE_DIR ?= $(CURDIR)/Native/ocrus
+OCRUS_MODEL_DIR ?= $(HOME)/.ocrus/models
 
 # 引数なしの `make` は絵文字キーワード辞書を生成する (従来どおり)。
 # 下の mise の要否判定がこの値を参照するため、先頭ターゲットに頼らず明示する。
@@ -65,18 +67,25 @@ REQUIRED_RESOURCES := \
 	EmojiKit_EmojiKit.bundle/ja.lproj/Localizable.strings \
 	IgniteroLauncher_IgniteroCore.bundle/emoji_keywords_ja.json
 
-.PHONY: build build-debug bundle install run dev clean test log emoji-keywords verify-sign verify-bundle smoke-resources
+.PHONY: build build-debug bundle install run dev clean test log emoji-keywords verify-sign verify-bundle smoke-resources native setup-ocr-models
+
+native:
+	@test -f "$(OCRUS_SOURCE_DIR)/scripts/build-xcframework.sh" || { echo 'Run git submodule update --init --recursive first.' >&2; exit 1; }
+	@bash "$(OCRUS_SOURCE_DIR)/scripts/build-xcframework.sh" "$(CURDIR)/Native/OcrusFFI.xcframework"
+
+setup-ocr-models:
+	@OCRUS_SOURCE_DIR="$(OCRUS_SOURCE_DIR)" OCRUS_MODEL_DIR="$(OCRUS_MODEL_DIR)" $(RUN) python3 scripts/setup_ocr_models.py
 
 emoji-keywords:
 	@$(RUN) python3 scripts/update_emoji_keywords.py
 
-build: emoji-keywords
+build: native emoji-keywords
 	swift build -c release $(RELEASE_SWIFT_FLAGS)
 
-build-debug:
+build-debug: native
 	swift build -c debug
 
-test:
+test: native
 	swift test
 
 bundle: build
@@ -89,6 +98,11 @@ bundle: build
 	@cp "Resources/MenuBarIcon.png" "$(BUNDLE_DIR)/Contents/Resources/MenuBarIcon.png"
 	@cp "Resources/MenuBarIcon@2x.png" "$(BUNDLE_DIR)/Contents/Resources/MenuBarIcon@2x.png"
 	@cp "Resources/IgniteroLauncher.entitlements" "$(BUNDLE_DIR)/Contents/Resources/"
+	@test -f "$(OCRUS_MODEL_DIR)/rec.ocnn" -a -f "$(OCRUS_MODEL_DIR)/dict.txt" || { echo 'Run make setup-ocr-models first.' >&2; exit 1; }
+	@mkdir -p "$(BUNDLE_DIR)/Contents/Resources/OcrusModels"
+	@cp "$(OCRUS_MODEL_DIR)/rec.ocnn" "$(OCRUS_MODEL_DIR)/dict.txt" "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/"
+	@cp "$(OCRUS_SOURCE_DIR)/LICENSE" "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/LICENSE-OCRus.txt"
+	@cp Resources/LICENSE-PaddleOCR.txt "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/"
 	@# リソースバンドルは Contents/Resources にのみ置く。ResourceBundle.resolve(named:)
 	@# がここを読む。Contents/MacOS へのコピーはどの探索経路からも参照されない
 	@# (Bundle.main.resourceURL / url(forResource:) / Bundle(for:).resourceURL /
@@ -111,6 +125,7 @@ bundle: build
 
 # `.app` に必要なリソースが揃っているか、バージョンが一意かを検証する。
 verify-bundle:
+	@test -s "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/rec.ocnn" -a -s "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/dict.txt" || { echo 'error: OCR model files are missing' >&2; exit 1; }
 	@# SwiftPM のリソースバンドルは配置が 2 通りある。
 	@#   flat          : <name>.bundle/ja.lproj/Localizable.strings
 	@#   macOS バンドル: <name>.bundle/Contents/Resources/ja.lproj/Localizable.strings
@@ -179,6 +194,11 @@ dev: build-debug
 	@cp "Resources/MenuBarIcon.png" "$(BUNDLE_DIR)/Contents/Resources/MenuBarIcon.png"
 	@cp "Resources/MenuBarIcon@2x.png" "$(BUNDLE_DIR)/Contents/Resources/MenuBarIcon@2x.png"
 	@cp "Resources/IgniteroLauncher.entitlements" "$(BUNDLE_DIR)/Contents/Resources/"
+	@test -f "$(OCRUS_MODEL_DIR)/rec.ocnn" -a -f "$(OCRUS_MODEL_DIR)/dict.txt" || { echo 'Run make setup-ocr-models first.' >&2; exit 1; }
+	@mkdir -p "$(BUNDLE_DIR)/Contents/Resources/OcrusModels"
+	@cp "$(OCRUS_MODEL_DIR)/rec.ocnn" "$(OCRUS_MODEL_DIR)/dict.txt" "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/"
+	@cp "$(OCRUS_SOURCE_DIR)/LICENSE" "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/LICENSE-OCRus.txt"
+	@cp Resources/LICENSE-PaddleOCR.txt "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/"
 	@# 配置方針は bundle ターゲットと同じ (Contents/Resources のみ)。
 	@for b in $(BUILD_DIR)/debug/*.bundle; do \
 		[ -d "$$b" ] || continue; \

@@ -16,6 +16,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: recursive
 
       - name: Verify Xcode and Swift
         run: |
@@ -36,6 +38,12 @@ jobs:
       - name: Generate emoji keywords
         run: python3 scripts/update_emoji_keywords.py
 
+      - name: Build native OCR library
+        run: make native
+
+      - name: Prepare verified OCR model
+        run: make setup-ocr-models OCRUS_MODEL_DIR="$RUNNER_TEMP/ocr-models"
+
       - name: Build
         # Swift 6.3 系の release 最適化で KeyboardShortcuts の SIL シリアライズが
         # crash するため、Makefile と同様に -Onone を付与して回避する。
@@ -44,9 +52,12 @@ jobs:
       - name: Test
         run: swift test
 
+      - name: Test OCR range selection UI
+        run: IGNITERO_OCR_UI=1 swift test --filter OCRSelectionUITests
+
       - name: Verify packaged resource resolution
         # `.app` にリソースバンドルを入れ忘れても、開発マシンでは `Bundle.module` が
         # ビルドディレクトリの絶対パスで偶然解決できてしまうため、配布物でだけ
         # クラッシュする形で現れる (2026-09-01 に絵文字検索で発生)。
         # `.build` の `.bundle` を退避した状態で `.app` の自己診断を走らせて検出する。
-        run: make smoke-resources
+        run: make smoke-resources OCRUS_MODEL_DIR="$RUNNER_TEMP/ocr-models"

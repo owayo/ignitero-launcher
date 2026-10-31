@@ -1,0 +1,3 @@
+[submodule "Native/ocrus"]
+	path = Native/ocrus
+	url = https://github.com/owayo/ocrus.git

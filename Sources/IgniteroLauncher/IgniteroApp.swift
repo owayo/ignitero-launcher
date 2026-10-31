@@ -1,5 +1,6 @@
 import AppKit
 import IgniteroCore
+import ImageIO
 import SwiftUI
 
 /// アプリケーション全体で共有する AppCoordinator。
@@ -32,7 +33,26 @@ final class IgniteroAppDelegate: NSObject, NSApplicationDelegate {
 @main
 enum IgniteroLauncherMain {
   @MainActor
-  static func main() {
+  static func main() async {
+    if let index = CommandLine.arguments.firstIndex(of: "--self-test-ocr") {
+      guard CommandLine.arguments.indices.contains(index + 1),
+        let source = CGImageSourceCreateWithURL(
+          URL(fileURLWithPath: CommandLine.arguments[index + 1]) as CFURL, nil),
+        let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
+        let models = Bundle.main.resourceURL?.appendingPathComponent("OcrusModels")
+      else { exit(EXIT_FAILURE) }
+      do {
+        async let vision = VisionOCRService().recognize(image)
+        async let ocrus = OCRService(modelDirectory: models).recognize(image)
+        let (visionResult, ocrusResult) = try await (vision, ocrus)
+        print("macOS Vision:\n\(visionResult.text)\n\nocrus:\n\(ocrusResult.text)")
+        exit(EXIT_SUCCESS)
+      } catch {
+        FileHandle.standardError.write(
+          Data("OCR self-test failed: \(error.localizedDescription)\n".utf8))
+        exit(EXIT_FAILURE)
+      }
+    }
     if CommandLine.arguments.contains("--self-test-resources") {
       exit(ResourceSelfTest.run() ? EXIT_SUCCESS : EXIT_FAILURE)
     }
@@ -61,6 +81,10 @@ struct IgniteroApp: App {
         sharedCoordinator.menuBarActions.showWindow()
       }
       .keyboardShortcut("o")
+
+      Button("画面の文字を読み取り…") {
+        sharedCoordinator.menuBarActions.onCaptureText?()
+      }
 
       Button("キャッシュを再構築") {
         Task {

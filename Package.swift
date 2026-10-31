@@ -11,9 +11,11 @@ let package = Package(
     .package(url: "https://github.com/danielsaidi/EmojiKit", from: "3.1.0"),
   ],
   targets: [
+    .binaryTarget(name: "OcrusFFI", path: "Native/OcrusFFI.xcframework"),
     .target(
       name: "IgniteroCore",
       dependencies: [
+        "OcrusFFI",
         .product(name: "GRDB", package: "GRDB.swift"),
         .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
         .product(name: "Fuse", package: "fuse-swift"),
@@ -21,7 +23,8 @@ let package = Package(
       ],
       resources: [
         .copy("Resources/emoji_keywords_ja.json")
-      ]
+      ],
+      linkerSettings: [.linkedLibrary("iconv"), .linkedLibrary("resolv")]
     ),
     .executableTarget(
       name: "IgniteroLauncher",

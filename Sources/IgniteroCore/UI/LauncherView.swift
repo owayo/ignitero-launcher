@@ -420,6 +420,10 @@ public struct LauncherView: View {
   private func resultIcon(for result: SearchResult, isSelected: Bool) -> some View {
     Group {
       switch result.kind {
+      case .ocr:
+        Image(systemName: "text.viewfinder")
+          .font(.system(size: 26))
+          .foregroundStyle(.blue)
       case .app:
         if let iconPath = result.iconPath,
           let nsImage = NSImage(contentsOfFile: iconPath)
@@ -503,6 +507,8 @@ public struct LauncherView: View {
 
   private func resultSubtitle(for result: SearchResult) -> String {
     switch result.kind {
+    case .ocr:
+      "範囲を選択して文字を読み取り"
     case .app:
       result.path
     case .directory:

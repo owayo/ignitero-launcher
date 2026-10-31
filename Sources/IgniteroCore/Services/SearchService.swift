@@ -43,6 +43,7 @@ public enum SearchResultKind: Sendable {
   case webSearch
   case colorPicker
   case emoji
+  case ocr
 }
 
 /// 統一された検索結果

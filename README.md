@@ -52,6 +52,42 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 
 ## 主な機能
 
+### 画面の文字を読み取り
+
+検索欄で `ocr` と入力してEnterを押すか、メニューの「画面の文字を読み取り…」を選びます。
+読み取りたい範囲をドラッグすると、macOS Visionとocrusが同じ画像を並行して読み取ります。
+結果は左右に表示され、先に終わった方から確認・修正・コピーできます。
+`⌘1` でVision、`⌘2` でocrusの結果をコピーします。Escで範囲選択や認識を中止します。
+初回はmacOSの「画面収録」の許可が必要です。
+
+VisionはmacOS標準の認識機能を使います。OCRusのRustエンジンは静的リンクし、画像をメモリで渡します。モデルはアプリに同梱するため、
+認識時の通信・CLIの起動・Pythonのインストールは不要です。認識結果と画像は履歴へ保存せず、
+コピー操作を選ぶまでクリップボードを書き換えません。
+
+片方が失敗しても、もう片方の結果は表示したままにします。両方の認識時間も表示します。
+
+開発時はサブモジュールを初期化し、モデルを準備してください。
+
+```bash
+git submodule update --init --recursive
+make setup-ocr-models
+make build-debug  # XCFrameworkも生成する
+make test
+```
+
+Rustの版はOCRus側の `mise.toml` に従います。`make native` でネイティブライブラリだけを再生成できます。
+OCRusを別の作業ツリーで変更する場合は `make native OCRUS_SOURCE_DIR=../ocrus` と指定します。
+モデルの配置先を変える場合は `OCRUS_MODEL_DIR` を各makeコマンドへ渡してください。
+既存モデルは上書きしません。新規取得では `Resources/ocr-model.lock.json` のリビジョンとSHA-256を確認します。
+モデル変換時にはPythonを使いますが、生成済みアプリの実行には不要です。
+
+実モデルを使う追加テストは `IGNITERO_OCR_INTEGRATION=1 swift test --filter OCRNativeTests`、
+配布バンドル内のモデルを使う認識の検証は次のコマンドで実行できます。
+
+```bash
+.build/IgniteroLauncher.app/Contents/MacOS/IgniteroLauncher --self-test-ocr image.png
+```
+
 ### 計算機能
 - 検索欄に計算式を入力すると、自動的に計算結果を表示
 - 対応演算子: `+` `-` `*` `/` `%`（剰余）
@@ -208,8 +244,9 @@ Warp は実機の `sdef` がエラー -192 となり、`Info.plist` の `NSApple
 
 ```bash
 # リポジトリをクローン
-git clone https://github.com/owayo/ignitero-launcher.git
+git clone --recurse-submodules https://github.com/owayo/ignitero-launcher.git
 cd ignitero-launcher
+make setup-ocr-models
 
 # デバッグビルド＆直接実行
 make dev
