@@ -28,6 +28,8 @@
 	<true/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSAppDataUsageDescription</key>
+	<string>AI利用枠を取得するため、Chromeのプロファイルとログイン情報を読み取ります。</string>
 	<key>NSSupportsAutomaticTermination</key>
 	<true/>
 	<key>NSSupportsSuddenTermination</key>

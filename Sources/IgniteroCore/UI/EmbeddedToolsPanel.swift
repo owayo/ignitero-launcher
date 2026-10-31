@@ -90,6 +90,17 @@ private struct EmbeddedToolsView: View {
       }
       Text("各サービスの使用率とリセット予定を確認できます。更新に失敗した場合は、前回の表示を残します。")
         .font(.caption).foregroundStyle(.secondary)
+      HStack(alignment: .top) {
+        Text("Chromeのアカウントが表示されない場合は、macOSのアクセス許可を確認し、アプリを再起動してください。")
+          .font(.caption).foregroundStyle(.secondary)
+        Button("アクセス設定…") {
+          if let url = URL(
+            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
+          {
+            NSWorkspace.shared.open(url)
+          }
+        }.controlSize(.small)
+      }
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 12) {
           if let snapshot = model.usage {
