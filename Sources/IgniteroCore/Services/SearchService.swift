@@ -125,7 +125,7 @@ public struct SearchResult: Sendable {
 
 /// ファジー検索サービス
 ///
-/// アプリケーション、ディレクトリ、カスタムコマンドを Fuse-Swift で並列ファジー検索し、
+/// アプリケーション、ディレクトリ、カスタムコマンドを Fuse-Swift でファジー検索し、
 /// スコア順にマージして上位20件を返す。選択履歴による優先度調整も行う。
 public struct SearchService: Sendable {
   private static let maxResults = 20
@@ -294,34 +294,35 @@ public struct SearchService: Sendable {
     query: String,
     history: [SelectionHistoryEntry]
   ) {
-    guard !history.isEmpty else { return }
+    guard !history.isEmpty, !results.isEmpty else { return }
 
-    // 履歴の keyword 正規化は path に関係なく結果が同じため、入口で一度だけ実施して
-    // (R × H) 回の重複正規化を避ける。旧バージョンの未正規化キーワードも救済する。
-    let normalizedHistory: [(normalizedKeyword: String, path: String, count: Int)] =
-      history.map {
-        (
-          normalizedKeyword: SearchQueryNormalizer.normalize($0.keyword),
-          path: $0.selectedPath,
-          count: $0.count
-        )
+    // クエリに一致する履歴をパス別に索引化し、結果ごとの履歴全走査を避ける。
+    // 正規化後に同じキーとなる旧履歴も、従来どおり一致種別ごとの先頭を使う。
+    var exactCounts: [String: Int] = [:]
+    var prefixCounts: [String: Int] = [:]
+    for entry in history {
+      let keyword = SearchQueryNormalizer.normalize(entry.keyword)
+      guard keyword.hasPrefix(query) else { continue }
+      if keyword == query {
+        if exactCounts[entry.selectedPath] == nil {
+          exactCounts[entry.selectedPath] = entry.count
+        }
+      } else if prefixCounts[entry.selectedPath] == nil {
+        prefixCounts[entry.selectedPath] = entry.count
       }
+    }
 
     for i in results.indices {
       let path = results[i].path
 
       // 完全一致の履歴エントリ
-      if let exactEntry = normalizedHistory.first(where: {
-        $0.normalizedKeyword == query && $0.path == path
-      }) {
+      if let count = exactCounts[path] {
         // 完全一致は最高優先度: スコアを大幅に下げる（負のスコアを許可）
-        let countBoost = min(Double(exactEntry.count) * 0.01, 0.5)
+        let countBoost = min(Double(count) * 0.01, 0.5)
         results[i].score -= 1.0 + countBoost
-      } else if let prefixEntry = normalizedHistory.first(where: {
-        $0.normalizedKeyword.hasPrefix(query) && $0.path == path
-      }) {
+      } else if let count = prefixCounts[path] {
         // 前方一致は中程度の優先度
-        let countBoost = min(Double(prefixEntry.count) * 0.005, 0.2)
+        let countBoost = min(Double(count) * 0.005, 0.2)
         results[i].score -= 0.5 + countBoost
       }
     }

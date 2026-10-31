@@ -858,3 +858,100 @@ struct SearchServiceLongQueryTests {
     #expect(results.contains { $0.name == "Google Chrome" })
   }
 }
+
+@Suite("検索履歴の入力順と一致種別")
+struct SearchServiceHistoryOrderTests {
+  private let service = SearchService()
+  private let app = AppItem(name: "Safari", path: "/Applications/Safari.app")
+
+  @Test("同じ一致種別では最初の履歴を使う", arguments: [false, true])
+  func firstMatchingEntryWins(exact: Bool) {
+    let keyword = exact ? "ＳＡＦ" : "ＳＡＦＡＲＩ"
+    let history = [
+      SelectionHistoryEntry(keyword: keyword, selectedPath: app.path, count: 0),
+      SelectionHistoryEntry(keyword: keyword, selectedPath: app.path, count: 100),
+    ]
+    let base = service.search(query: "saf", apps: [app], directories: [], commands: [], history: [])
+    let results = service.search(
+      query: "saf", apps: [app], directories: [], commands: [], history: history)
+    #expect(results.first?.score == base.first.map { $0.score - (exact ? 1.0 : 0.5) })
+  }
+
+  @Test("完全一致は入力順や count に関係なく前方一致より優先する", arguments: [false, true])
+  func exactMatchWinsRegardlessOfOrder(exactFirst: Bool) {
+    let exact = SelectionHistoryEntry(keyword: " SAF ", selectedPath: app.path, count: -200)
+    let prefix = SelectionHistoryEntry(keyword: "safari", selectedPath: app.path, count: 100)
+    let base = service.search(query: "saf", apps: [app], directories: [], commands: [], history: [])
+    let results = service.search(
+      query: "saf", apps: [app], directories: [], commands: [],
+      history: exactFirst ? [exact, prefix] : [prefix, exact])
+    // 負数の count も既存仕様を保つ。完全一致の補正値が負でも前方一致へ差し替えない。
+    #expect(results.first?.score == base.first.map { $0.score - (1.0 - 2.0) })
+  }
+
+  @Test("一致しない履歴は同じパスの一致履歴を隠さない")
+  func unrelatedEntryDoesNotHideMatch() {
+    let history = [
+      SelectionHistoryEntry(keyword: "other", selectedPath: app.path, count: 100),
+      SelectionHistoryEntry(keyword: "saf", selectedPath: "/Applications/Other.app", count: 100),
+      SelectionHistoryEntry(keyword: "safari", selectedPath: app.path, count: 0),
+    ]
+    let base = service.search(query: "saf", apps: [app], directories: [], commands: [], history: [])
+    let results = service.search(
+      query: "saf", apps: [app], directories: [], commands: [], history: history)
+    #expect(results.first?.score == base.first.map { $0.score - 0.5 })
+  }
+}
+
+@Suite("空クエリの履歴復元の優先順位")
+struct SearchServiceRecentHistoryPrecedenceTests {
+  @Test("同じパスでは先頭のアプリをディレクトリより優先する")
+  func firstAppWins() throws {
+    let path = "/Applications/Example.app"
+    let results = SearchService().search(
+      query: "",
+      apps: [
+        AppItem(name: "First", path: path, iconPath: "/icons/first.icns"),
+        AppItem(name: "Second", path: path),
+      ], directories: [DirectoryItem(name: "Directory", path: path)], commands: [],
+      history: [SelectionHistoryEntry(keyword: "example", selectedPath: path)])
+    let result = try #require(results.first)
+    #expect(results.count == 1)
+    #expect(result.kind == .app)
+    #expect(result.name == "First")
+    #expect(result.iconPath == "/icons/first.icns")
+  }
+
+  @Test("同じパスでは先頭のディレクトリをコマンドより優先する")
+  func firstDirectoryWins() throws {
+    let command = CustomCommand(alias: "build", command: "make build")
+    let path = command.historyIdentifier
+    let results = SearchService().search(
+      query: "", apps: [],
+      directories: [
+        DirectoryItem(name: "First", path: path, editor: "cursor", opensInFinder: true),
+        DirectoryItem(name: "Second", path: path),
+      ], commands: [command],
+      history: [SelectionHistoryEntry(keyword: "example", selectedPath: path)])
+    let result = try #require(results.first)
+    #expect(results.count == 1)
+    #expect(result.kind == .directory)
+    #expect(result.name == "First")
+    #expect(result.editor == "cursor")
+    #expect(result.opensInFinder)
+  }
+
+  @Test("同じ識別子を持つコマンドは先頭を使う")
+  func firstCommandWins() throws {
+    let id = UUID()
+    let first = CustomCommand(id: id, alias: "first", command: "echo first")
+    let second = CustomCommand(id: id, alias: "second", command: "echo second")
+    let results = SearchService().search(
+      query: "", apps: [], directories: [], commands: [first, second],
+      history: [SelectionHistoryEntry(keyword: "example", selectedPath: first.historyIdentifier)])
+    let result = try #require(results.first)
+    #expect(results.count == 1)
+    #expect(result.name == "first")
+    #expect(result.command == "echo first")
+  }
+}
