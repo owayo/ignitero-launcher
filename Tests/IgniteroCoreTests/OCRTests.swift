@@ -147,6 +147,32 @@ struct OCRNativeTests {
     }
   }
 
+  @Test(.enabled(if: ProcessInfo.processInfo.environment["IGNITERO_OCR_INTEGRATION"] == "1"))
+  func nativeModelPreservesTerminalFieldSeparator() async throws {
+    let text = "2026-10-31 10:00:00"
+    let attributes: [NSAttributedString.Key: Any] = [
+      .font: NSFont.monospacedSystemFont(ofSize: 24, weight: .regular),
+      .foregroundColor: NSColor.black,
+    ]
+    let width = Int(ceil((text as NSString).size(withAttributes: attributes).width)) + 32
+    let height = 64
+    let bitmap = try #require(
+      NSBitmapImageRep(
+        bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height,
+        bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+        colorSpaceName: .deviceRGB, bytesPerRow: width * 4, bitsPerPixel: 32))
+    let context = try #require(NSGraphicsContext(bitmapImageRep: bitmap))
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = context
+    NSColor.white.setFill()
+    NSRect(x: 0, y: 0, width: width, height: height).fill()
+    (text as NSString).draw(at: NSPoint(x: 16, y: 20), withAttributes: attributes)
+    NSGraphicsContext.restoreGraphicsState()
+    let image = try #require(bitmap.cgImage)
+    let result = try await OCRService().recognize(image)
+    #expect(result.text == text)
+  }
+
   @Test func macOSVisionRecognizesJapaneseAndEnglish() async throws {
     let image = NSImage(size: NSSize(width: 700, height: 150))
     image.lockFocus()
