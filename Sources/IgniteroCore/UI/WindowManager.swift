@@ -1,6 +1,21 @@
 import AppKit
 import Foundation
 
+/// ランチャーの高さに影響する表示状態。同じスナップショットで通知と計算を行う。
+public struct LauncherLayoutState: Equatable, Sendable {
+  public let resultCount: Int
+  public let showsCalculator: Bool
+  public let showsUpdateBanner: Bool
+
+  public init(
+    resultCount: Int, showsCalculator: Bool = false, showsUpdateBanner: Bool = false
+  ) {
+    self.resultCount = resultCount
+    self.showsCalculator = showsCalculator
+    self.showsUpdateBanner = showsUpdateBanner
+  }
+}
+
 /// ランチャーウィンドウの表示/非表示、リサイズを統括するマネージャ。
 ///
 /// `@MainActor` でスレッド安全性を保証し、`@Observable` で SwiftUI バインディングに対応。
@@ -24,6 +39,10 @@ public final class WindowManager {
   /// 行コンテンツ: 名前(17pt) + spacing(2) + サブタイトル(12pt) + padding(6×2) = ~43pt
   /// 選択時やエディタ行ありではさらに高くなるため、余裕を持たせる。
   public static let rowHeight: CGFloat = 52
+
+  /// 計算結果行と更新バナーの高さ。SwiftUI の表示にも同じ値を使う。
+  public static let calculatorRowHeight: CGFloat = 36
+  public static let updateBannerHeight: CGFloat = 32
 
   /// ランチャーウィンドウの幅 (px)
   public static let width: CGFloat = 680
@@ -238,23 +257,26 @@ public final class WindowManager {
 
   // MARK: - ウィンドウサイズ変更
 
-  /// 検索結果の件数に応じた適切なウィンドウ高さを計算する。
+  /// 検索結果と、計算結果行・更新バナーを含むウィンドウ高さを計算する。
   ///
-  /// - Parameter count: 検索結果の件数
+  /// - Parameter layout: 高さに影響する表示状態
   /// - Returns: 計算されたウィンドウ高さ。`minHeight` 以上 `maxHeight` 以下。
-  public func heightForResults(count: Int) -> CGFloat {
-    let effectiveCount = max(0, count)
-    let computed = Self.minHeight + CGFloat(effectiveCount) * Self.rowHeight
+  public func heightForContent(_ layout: LauncherLayoutState) -> CGFloat {
+    let effectiveCount = max(0, layout.resultCount)
+    let computed =
+      Self.minHeight + CGFloat(effectiveCount) * Self.rowHeight
+      + (layout.showsCalculator ? Self.calculatorRowHeight : 0)
+      + (layout.showsUpdateBanner ? Self.updateBannerHeight : 0)
     return min(computed, Self.maxHeight)
   }
 
-  /// 検索結果の件数に応じたウィンドウのリサイズを予約する。
+  /// 表示内容に応じたウィンドウのリサイズを予約する。
   ///
   /// 高さの状態は即時更新し、フレームは SwiftUI の更新処理が戻ってから反映する。
   /// 連続した要求は最新の高さへまとめ、同じ高さへの再描画を避ける。
-  /// - Parameter count: 検索結果の件数
-  public func resizeForResults(count: Int) {
-    currentHeight = heightForResults(count: count)
+  /// - Parameter layout: 高さに影響する表示状態
+  public func resizeForContent(_ layout: LauncherLayoutState) {
+    currentHeight = heightForContent(layout)
     guard launcherPanel != nil else { return }
     needsResize = true
     guard !isResizeScheduled else { return }

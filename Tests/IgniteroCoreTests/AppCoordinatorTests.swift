@@ -1330,9 +1330,9 @@ struct AppCoordinatorWindowManagerTests {
   func windowResizeBasedOnResultCount() {
     let coordinator = makeCoordinator()
 
-    let height0 = coordinator.windowManager.heightForResults(count: 0)
-    let height5 = coordinator.windowManager.heightForResults(count: 5)
-    let height100 = coordinator.windowManager.heightForResults(count: 100)
+    let height0 = coordinator.windowManager.heightForContent(.init(resultCount: 0))
+    let height5 = coordinator.windowManager.heightForContent(.init(resultCount: 5))
+    let height100 = coordinator.windowManager.heightForContent(.init(resultCount: 100))
 
     #expect(height0 == WindowManager.minHeight)
     #expect(height5 > height0)

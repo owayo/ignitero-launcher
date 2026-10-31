@@ -27,6 +27,71 @@ struct LauncherPanelDisplayCycleTests {
     }
   }
 
+  @Test(arguments: [false, true]) @MainActor
+  func calculatorVisibilityResizesWithNoSearchResults(showsBanner: Bool) async throws {
+    let panel = LauncherPanel()
+    let manager = WindowManager()
+    manager.launcherPanel = panel
+    let model = LauncherViewModel()
+    panel.setContentView(
+      LauncherView(
+        viewModel: model,
+        onContentLayoutChanged: { [weak manager] in manager?.resizeForContent($0) }
+      )
+    )
+    panel.setFrame(
+      NSRect(x: 100, y: 100, width: WindowManager.width, height: WindowManager.minHeight),
+      display: false
+    )
+    panel.orderFront(nil)
+    defer {
+      panel.orderOut(nil)
+      panel.close()
+    }
+    try await flushDisplayCycle(panel)
+    if showsBanner {
+      model.showUpdateBanner(version: "99.0.0")
+      try await flushDisplayCycle(panel)
+    }
+    let baseHeight = WindowManager.minHeight + (showsBanner ? 32 : 0)
+    #expect(panel.frame.height == baseHeight)
+
+    // 検索件数は常に 0 件。計算結果の出入りだけでも高さを変える必要がある。
+    for query in ["1+1", "1+", "(100+50)*1.08", ""] {
+      model.searchQuery = query
+      model.updateSearch()
+      try await flushDisplayCycle(panel)
+      #expect(model.searchResults.isEmpty)
+      let expected = baseHeight + (model.calculatorResult == nil ? 0 : 36)
+      #expect(panel.frame.height == expected)
+    }
+
+    // 計算結果と検索結果が共存しても、500pt を超えず上端を維持する。
+    model.searchQuery = "1+1"
+    model.updateSearch()
+    try await flushDisplayCycle(panel)
+    let top = panel.frame.maxY
+    model.apps = (0..<40).map { index in
+      AppItem(name: "1+1 Example \(index)", path: "/Applications/Example\(index).app")
+    }
+    model.refreshSearchResults()
+    try await flushDisplayCycle(panel)
+    #expect(model.calculatorResult == "2")
+    #expect(model.searchResults.count == 20)
+    #expect(panel.frame.height == WindowManager.maxHeight)
+    #expect(panel.frame.maxY == top)
+
+    model.apps = []
+    model.refreshSearchResults()
+    try await flushDisplayCycle(panel)
+    #expect(panel.frame.height == baseHeight + 36)
+    if showsBanner {
+      model.dismissUpdateBanner(version: "99.0.0")
+      try await flushDisplayCycle(panel)
+      #expect(panel.frame.height == WindowManager.minHeight + 36)
+    }
+  }
+
   @Test @MainActor func animatedSearchChangesKeepWindowFrameUnderAppKitControl() async throws {
     let panel = LauncherPanel()
     let recorder = ResizeRecorder()
@@ -40,7 +105,7 @@ struct LauncherPanelDisplayCycleTests {
     panel.setContentView(
       LauncherView(
         viewModel: model,
-        onResultsCountChanged: { [weak manager] in manager?.resizeForResults(count: $0) }
+        onContentLayoutChanged: { [weak manager] in manager?.resizeForContent($0) }
       )
     )
     panel.setFrame(
@@ -56,7 +121,6 @@ struct LauncherPanelDisplayCycleTests {
     for index in 0..<40 {
       model.searchQuery = "Example"
       model.updateSearch()
-      manager.resizeForResults(count: model.searchResults.count)
       try await flushDisplayCycle(panel)
 
       model.selectedIndex = min(20, model.searchResults.count - 1)
@@ -69,7 +133,6 @@ struct LauncherPanelDisplayCycleTests {
         model.updateBannerVersion = index.isMultiple(of: 4) ? "99.0.0" : nil
         model.updateSearch()
       }
-      manager.resizeForResults(count: model.searchResults.count)
       try await flushDisplayCycle(panel)
 
       #expect(panel.frame.width == WindowManager.width)

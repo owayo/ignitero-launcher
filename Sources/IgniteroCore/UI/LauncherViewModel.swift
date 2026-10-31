@@ -104,6 +104,15 @@ public final class LauncherViewModel {
     updateBannerVersion != nil && !isUpdateBannerDismissed
   }
 
+  /// 検索件数が変わらなくても、計算結果やバナーの出入りをリサイズへ反映する。
+  public var layoutState: LauncherLayoutState {
+    LauncherLayoutState(
+      resultCount: searchResults.count,
+      showsCalculator: calculatorResult != nil,
+      showsUpdateBanner: shouldShowUpdateBanner
+    )
+  }
+
   // MARK: - 初期化
 
   /// LauncherViewModel を初期化する。

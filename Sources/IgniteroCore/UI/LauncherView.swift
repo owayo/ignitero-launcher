@@ -33,8 +33,8 @@ public struct LauncherView: View {
   /// デフォルトターミナルでディレクトリを開く際のコールバック（ディレクトリパスを渡す）
   var onOpenInTerminal: ((String) -> Void)?
 
-  /// 検索結果件数が変化した際のコールバック（ウィンドウリサイズ用）
-  var onResultsCountChanged: ((Int) -> Void)?
+  /// 高さに影響する表示状態が変化した際のコールバック（ウィンドウリサイズ用）
+  var onContentLayoutChanged: ((LauncherLayoutState) -> Void)?
 
   /// キャッシュ更新ボタンが押された際のコールバック
   var onRefreshCache: (() -> Void)?
@@ -53,6 +53,7 @@ public struct LauncherView: View {
   ///   - onShowEditorPicker: エディタピッカー表示コールバック
   ///   - onShowTerminalPicker: ターミナルピッカー表示コールバック
   ///   - onOpenInTerminal: ターミナル起動コールバック
+  ///   - onContentLayoutChanged: 高さに影響する表示状態の変更コールバック
   ///   - onRefreshCache: キャッシュ更新コールバック
   ///   - onOpenSettings: 設定画面表示コールバック
   public init(
@@ -62,7 +63,7 @@ public struct LauncherView: View {
     onShowEditorPicker: ((String) -> Void)? = nil,
     onShowTerminalPicker: ((String) -> Void)? = nil,
     onOpenInTerminal: ((String) -> Void)? = nil,
-    onResultsCountChanged: ((Int) -> Void)? = nil,
+    onContentLayoutChanged: ((LauncherLayoutState) -> Void)? = nil,
     onRefreshCache: (() -> Void)? = nil,
     onOpenSettings: (() -> Void)? = nil
   ) {
@@ -72,7 +73,7 @@ public struct LauncherView: View {
     self.onShowEditorPicker = onShowEditorPicker
     self.onShowTerminalPicker = onShowTerminalPicker
     self.onOpenInTerminal = onOpenInTerminal
-    self.onResultsCountChanged = onResultsCountChanged
+    self.onContentLayoutChanged = onContentLayoutChanged
     self.onRefreshCache = onRefreshCache
     self.onOpenSettings = onOpenSettings
   }
@@ -120,8 +121,8 @@ public struct LauncherView: View {
     .onChange(of: viewModel.focusTrigger) {
       isSearchFieldFocused = true
     }
-    .onChange(of: viewModel.searchResults.count) { _, newCount in
-      onResultsCountChanged?(newCount)
+    .onChange(of: viewModel.layoutState, initial: true) { _, layout in
+      onContentLayoutChanged?(layout)
     }
   }
 
@@ -294,6 +295,7 @@ public struct LauncherView: View {
       Text(result)
         .font(.system(size: 16, weight: .medium, design: .monospaced))
         .foregroundStyle(.primary)
+        .lineLimit(1)
       Spacer()
       Text("Enter to copy")
         .font(.system(size: 11))
@@ -301,6 +303,7 @@ public struct LauncherView: View {
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 8)
+    .frame(height: WindowManager.calculatorRowHeight)
     .background(
       LinearGradient(
         colors: [Self.ember.opacity(0.12), Self.ember.opacity(0.06)],
@@ -559,6 +562,7 @@ public struct LauncherView: View {
         .foregroundStyle(.blue)
       Text("v\(version) available")
         .font(.system(size: 12))
+        .lineLimit(1)
       Spacer()
       Button {
         viewModel.dismissUpdateBanner(version: version)
@@ -571,6 +575,7 @@ public struct LauncherView: View {
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 8)
+    .frame(height: WindowManager.updateBannerHeight)
     .background(Color.blue.opacity(0.08))
   }
 

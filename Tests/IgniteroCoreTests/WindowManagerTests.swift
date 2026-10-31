@@ -51,9 +51,9 @@ struct WindowManagerDeferredResizeTests {
     defer { panel.close() }
     let originalFrame = panel.frame
 
-    manager.resizeForResults(count: 1)
-    manager.resizeForResults(count: 0)
-    manager.resizeForResults(count: 80)
+    manager.resizeForContent(.init(resultCount: 1))
+    manager.resizeForContent(.init(resultCount: 0))
+    manager.resizeForContent(.init(resultCount: 80))
 
     #expect(manager.currentHeight == WindowManager.maxHeight)
     #expect(panel.frame == originalFrame)
@@ -73,13 +73,13 @@ struct WindowManagerDeferredResizeTests {
     manager.launcherPanel = panel
     defer { panel.close() }
 
-    manager.resizeForResults(count: 0)
+    manager.resizeForContent(.init(resultCount: 0))
     scheduler.run()
     #expect(panel.frameRequests.isEmpty)
 
     panel.setFrame(NSRect(x: 100, y: 100, width: 680, height: 500), display: false, animate: false)
     panel.frameRequests.removeAll()
-    manager.resizeForResults(count: 0)
+    manager.resizeForContent(.init(resultCount: 0))
     scheduler.run()
     #expect(panel.frame.height == WindowManager.minHeight)
     #expect(panel.frameRequests.count == 1)
@@ -92,7 +92,7 @@ struct WindowManagerDeferredResizeTests {
     manager.launcherPanel = panel
     defer { panel.close() }
 
-    manager.resizeForResults(count: 80)
+    manager.resizeForContent(.init(resultCount: 80))
     panel.setFrameOrigin(NSPoint(x: 250, y: 400))
     let movedFrame = panel.frame
     scheduler.run()
@@ -108,15 +108,15 @@ struct WindowManagerDeferredResizeTests {
     let manager = WindowManager(scheduleResize: scheduler.schedule)
     let panel = RecordingPanel()
     manager.launcherPanel = panel
-    manager.onShowLauncher = { [weak manager] in manager?.resizeForResults(count: 2) }
+    manager.onShowLauncher = { [weak manager] in manager?.resizeForContent(.init(resultCount: 2)) }
     defer {
       manager.hideLauncher()
       panel.close()
     }
 
-    manager.resizeForResults(count: 80)
+    manager.resizeForContent(.init(resultCount: 80))
     manager.showLauncher()
-    #expect(panel.frame.height == manager.heightForResults(count: 2))
+    #expect(panel.frame.height == manager.heightForContent(.init(resultCount: 2)))
     if let screen =
       NSScreen.screens.first(where: { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) })
       ?? NSScreen.main
@@ -142,7 +142,7 @@ struct WindowManagerDeferredResizeTests {
       panel.close()
     }
 
-    manager.resizeForResults(count: 80)
+    manager.resizeForContent(.init(resultCount: 80))
     manager.hideLauncher()
     scheduler.run()
     #expect(panel.frameRequests.isEmpty)
@@ -162,9 +162,9 @@ struct WindowManagerDeferredResizeTests {
       panel.close()
     }
 
-    manager.resizeForResults(count: 80)
+    manager.resizeForContent(.init(resultCount: 80))
     manager.showLauncher()
-    manager.resizeForResults(count: 0)
+    manager.resizeForContent(.init(resultCount: 0))
     #expect(scheduler.operations.count == 1)
     #expect(panel.frame.height == WindowManager.maxHeight)
     scheduler.run()
@@ -177,7 +177,7 @@ struct WindowManagerDeferredResizeTests {
     defer { panel.close() }
     var manager: WindowManager? = WindowManager(scheduleResize: scheduler.schedule)
     manager?.launcherPanel = panel
-    manager?.resizeForResults(count: 80)
+    manager?.resizeForContent(.init(resultCount: 80))
     weak var releasedManager: WindowManager?
     releasedManager = manager
     manager = nil
@@ -363,14 +363,14 @@ struct WindowManagerResizeTests {
   @MainActor
   @Test func resizeForZeroResultsReturnsMinHeight() {
     let manager = WindowManager()
-    let height = manager.heightForResults(count: 0)
+    let height = manager.heightForContent(.init(resultCount: 0))
     #expect(height == WindowManager.minHeight)
   }
 
   @MainActor
   @Test func resizeForOneResult() {
     let manager = WindowManager()
-    let height = manager.heightForResults(count: 1)
+    let height = manager.heightForContent(.init(resultCount: 1))
     let expected = WindowManager.minHeight + WindowManager.rowHeight
     #expect(height == expected)
   }
@@ -378,7 +378,7 @@ struct WindowManagerResizeTests {
   @MainActor
   @Test func resizeForFiveResults() {
     let manager = WindowManager()
-    let height = manager.heightForResults(count: 5)
+    let height = manager.heightForContent(.init(resultCount: 5))
     let expected = WindowManager.minHeight + 5 * WindowManager.rowHeight
     #expect(height == expected)
   }
@@ -386,7 +386,7 @@ struct WindowManagerResizeTests {
   @MainActor
   @Test func resizeForSevenResultsNotClamped() {
     let manager = WindowManager()
-    let height = manager.heightForResults(count: 7)
+    let height = manager.heightForContent(.init(resultCount: 7))
     // 108 + 7*52 = 472で上限500未満
     let expected = WindowManager.minHeight + 7 * WindowManager.rowHeight
     #expect(height == expected)
@@ -396,7 +396,7 @@ struct WindowManagerResizeTests {
   @MainActor
   @Test func resizeForEightResultsClamps() {
     let manager = WindowManager()
-    let height = manager.heightForResults(count: 8)
+    let height = manager.heightForContent(.init(resultCount: 8))
     // 108 + 8*52 = 524を500へ制限
     #expect(height == WindowManager.maxHeight)
   }
@@ -404,7 +404,7 @@ struct WindowManagerResizeTests {
   @MainActor
   @Test func resizeForTenResults() {
     let manager = WindowManager()
-    let height = manager.heightForResults(count: 10)
+    let height = manager.heightForContent(.init(resultCount: 10))
     // 108 + 10*52 = 628を上限500へ制限
     #expect(height == WindowManager.maxHeight)
   }
@@ -412,7 +412,7 @@ struct WindowManagerResizeTests {
   @MainActor
   @Test func resizeForElevenResultsClampsToMaxHeight() {
     let manager = WindowManager()
-    let height = manager.heightForResults(count: 11)
+    let height = manager.heightForContent(.init(resultCount: 11))
     // 108 + 11*52 = 680を500へ制限
     #expect(height == WindowManager.maxHeight)
   }
@@ -420,21 +420,21 @@ struct WindowManagerResizeTests {
   @MainActor
   @Test func resizeForTwentyResultsClampsToMaxHeight() {
     let manager = WindowManager()
-    let height = manager.heightForResults(count: 20)
+    let height = manager.heightForContent(.init(resultCount: 20))
     #expect(height == WindowManager.maxHeight)
   }
 
   @MainActor
   @Test func resizeForNegativeCountTreatedAsZero() {
     let manager = WindowManager()
-    let height = manager.heightForResults(count: -1)
+    let height = manager.heightForContent(.init(resultCount: -1))
     #expect(height == WindowManager.minHeight)
   }
 
   @MainActor
   @Test func resizeForResultsUpdatesCurrentHeight() {
     let manager = WindowManager()
-    manager.resizeForResults(count: 5)
+    manager.resizeForContent(.init(resultCount: 5))
     let expected = WindowManager.minHeight + 5 * WindowManager.rowHeight
     #expect(manager.currentHeight == expected)
   }
@@ -456,16 +456,16 @@ struct WindowManagerResizeEdgeCaseTests {
   @MainActor
   @Test func resizeForVeryLargeCountClampsToMax() {
     let manager = WindowManager()
-    let height = manager.heightForResults(count: 10000)
+    let height = manager.heightForContent(.init(resultCount: 10000))
     #expect(height == WindowManager.maxHeight)
   }
 
   @MainActor
   @Test func resizeForZeroUpdatesCurrentHeight() {
     let manager = WindowManager()
-    manager.resizeForResults(count: 5)
+    manager.resizeForContent(.init(resultCount: 5))
     #expect(manager.currentHeight > WindowManager.minHeight)
-    manager.resizeForResults(count: 0)
+    manager.resizeForContent(.init(resultCount: 0))
     #expect(manager.currentHeight == WindowManager.minHeight)
   }
 }

@@ -243,8 +243,7 @@ public final class AppCoordinator {
       // 既に空のときは発火しないため、ここで明示的に実行しないと
       // 「起動直後は履歴が出ず、一度入力して消したときだけ出る」という挙動になる。
       self.launcherViewModel.updateSearch()
-      self.windowManager.resizeForResults(
-        count: self.launcherViewModel.searchResults.count)
+      self.windowManager.resizeForContent(self.launcherViewModel.layoutState)
       self.launcherViewModel.focusTrigger += 1
     }
 
@@ -513,7 +512,7 @@ public final class AppCoordinator {
   /// ランチャーを非表示にし、検索状態をクリアする。
   public func dismissLauncher() {
     launcherViewModel.clearSearch()
-    windowManager.resizeForResults(count: 0)
+    windowManager.resizeForContent(launcherViewModel.layoutState)
     windowManager.hideLauncher()
   }
 
@@ -602,7 +601,7 @@ public final class AppCoordinator {
       }
       // エディタ確定時はランチャーの検索もクリアする
       self.launcherViewModel.clearSearch()
-      self.windowManager.resizeForResults(count: 0)
+      self.windowManager.resizeForContent(self.launcherViewModel.layoutState)
     }
 
     // ピッカーを閉じたときのコールバックを設定する
@@ -687,8 +686,8 @@ public final class AppCoordinator {
       onOpenInTerminal: { [weak self] path in
         self?.openInTerminal(path)
       },
-      onResultsCountChanged: { [weak self] count in
-        self?.windowManager.resizeForResults(count: count)
+      onContentLayoutChanged: { [weak self] layout in
+        self?.windowManager.resizeForContent(layout)
       },
       onRefreshCache: { [weak self] in
         guard let self else { return }
