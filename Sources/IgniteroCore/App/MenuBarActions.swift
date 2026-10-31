@@ -91,7 +91,9 @@ public final class MenuBarActions {
         self?.openSettings()
       },
       MenuBarItem(id: "ai-usage", title: "AI利用枠…") { [weak self] in self?.onShowAIUsage?() },
-      MenuBarItem(id: "markdown", title: "WebページをMarkdownでコピー…") { [weak self] in self?.onConvertMarkdown?() },
+      MenuBarItem(id: "markdown", title: "WebページをMarkdownでコピー…") { [weak self] in
+        self?.onConvertMarkdown?()
+      },
       MenuBarItem(id: "capture-text", title: "画面の文字を読み取り…") { [weak self] in
         self?.onCaptureText?()
       },

@@ -26,7 +26,9 @@ let package = Package(
       ],
       linkerSettings: [
         .linkedLibrary("sqlite3"), .linkedLibrary("c++"), .linkedLibrary("iconv"),
-        .linkedFramework("SystemConfiguration"), .linkedFramework("Security"), .linkedFramework("CoreFoundation"), .linkedLibrary("resolv"), .linkedFramework("Accelerate"),
+        .linkedFramework("SystemConfiguration"), .linkedFramework("Security"),
+        .linkedFramework("CoreFoundation"), .linkedLibrary("resolv"),
+        .linkedFramework("Accelerate"),
       ]
     ),
     .executableTarget(

@@ -304,7 +304,8 @@ public final class LauncherViewModel {
     let parts = original.split(maxSplits: 1, whereSeparator: { $0.isWhitespace })
     if parts.first?.lowercased() == "md" {
       let url = parts.count == 2 ? String(parts[1]) : ""
-      searchResults.insert(SearchResult(name: "WebページをMarkdownでコピー", kind: .markdown, score: -10, path: url), at: 0)
+      searchResults.insert(
+        SearchResult(name: "WebページをMarkdownでコピー", kind: .markdown, score: -10, path: url), at: 0)
     }
 
     // Web検索: g <keyword>

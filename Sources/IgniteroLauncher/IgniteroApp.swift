@@ -58,9 +58,11 @@ enum IgniteroLauncherMain {
         let snapshot = try await EmbeddedToolsService().usage(refresh: false)
         let failures = snapshot.report.accounts.filter { !$0.ok }.count
         print("AI usage: \(snapshot.report.accounts.count) accounts, \(failures) failed")
-        exit(failures == snapshot.report.accounts.count && failures > 0 ? EXIT_FAILURE : EXIT_SUCCESS)
+        exit(
+          failures == snapshot.report.accounts.count && failures > 0 ? EXIT_FAILURE : EXIT_SUCCESS)
       } catch {
-        FileHandle.standardError.write(Data("AI usage self-test failed: \(error.localizedDescription)\n".utf8))
+        FileHandle.standardError.write(
+          Data("AI usage self-test failed: \(error.localizedDescription)\n".utf8))
         exit(EXIT_FAILURE)
       }
     }
