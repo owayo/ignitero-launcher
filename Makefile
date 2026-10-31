@@ -16,6 +16,9 @@ OCRUS_SOURCE_DIR ?= $(CURDIR)/Native/ocrus
 AI_USAGE_SOURCE_DIR ?= $(CURDIR)/Native/ai-usage
 GET_MD_SOURCE_DIR ?= $(CURDIR)/Native/get-md
 OCRUS_MODEL_DIR ?= $(HOME)/.ocrus/models
+# AI 利用枠のプロバイダーロゴ (第三者のブランドの SVG) を取得して置く場所。リポジトリには
+# 入れず、scripts/setup_provider_logos.py が lock の SHA-256 と照合してから使う。
+PROVIDER_LOGO_CACHE_DIR ?= $(HOME)/.cache/ignitero-launcher/provider-logos
 
 # 引数なしの `make` は絵文字キーワード辞書を生成する (従来どおり)。
 # 下の mise の要否判定がこの値を参照するため、先頭ターゲットに頼らず明示する。
@@ -31,7 +34,8 @@ OCRUS_MODEL_DIR ?= $(HOME)/.ocrus/models
 MISE_CANDIDATES ?= $(HOME)/.local/bin/mise /opt/homebrew/bin/mise /usr/local/bin/mise
 # mise.toml のツールを呼ばないターゲット。判定は make がファイルを読む時点で動くため、
 # 追加するときはこの行に足す (後ろで += しても効かない)。
-NO_MISE_TARGETS := build-debug test dev verify-bundle verify-sign log clean
+# dev は bundle と同じくプロバイダーロゴの配置で python を呼ぶため、ここに入れない。
+NO_MISE_TARGETS := build-debug test verify-bundle verify-sign log clean
 ifeq ($(SYSTEM_TOOLS),1)
 RUN :=
 else
@@ -69,7 +73,13 @@ REQUIRED_RESOURCES := \
 	EmojiKit_EmojiKit.bundle/ja.lproj/Localizable.strings \
 	IgniteroLauncher_IgniteroCore.bundle/emoji_keywords_ja.json
 
-.PHONY: build build-debug bundle install run dev clean test log emoji-keywords verify-sign verify-bundle smoke-resources native setup-ocr-models
+# AI 利用枠が読むプロバイダーロゴ。scripts/setup_provider_logos.py が lock の files・local を
+# 正規化して書き出し、ライセンスを添える。
+BUNDLE_PROVIDER_LOGO_DIR := $(BUNDLE_DIR)/Contents/Resources/ProviderLogos
+PROVIDER_LOGO_FILES := \
+	claude.svg openai.svg antigravity.svg grok.svg pixellab.svg LICENSE-lobe-icons.txt
+
+.PHONY: build build-debug bundle install run dev clean test log emoji-keywords verify-sign verify-bundle smoke-resources native setup-ocr-models setup-provider-logos
 
 native:
 	@test -f "$(OCRUS_SOURCE_DIR)/scripts/build-xcframework.sh" || { echo 'Run git submodule update --init --recursive first.' >&2; exit 1; }
@@ -77,6 +87,11 @@ native:
 
 setup-ocr-models:
 	@OCRUS_SOURCE_DIR="$(OCRUS_SOURCE_DIR)" OCRUS_MODEL_DIR="$(OCRUS_MODEL_DIR)" $(RUN) python3 scripts/setup_ocr_models.py
+
+# プロバイダーロゴを取得し、lock の SHA-256 と照合してキャッシュに置く (CI では事前の取得に使う)。
+# bundle / dev は同じスクリプトに --dest を付け、正規化した SVG を .app へ書き出す。
+setup-provider-logos:
+	@$(RUN) python3 scripts/setup_provider_logos.py --cache-dir "$(PROVIDER_LOGO_CACHE_DIR)"
 
 emoji-keywords:
 	@$(RUN) python3 scripts/update_emoji_keywords.py
@@ -107,6 +122,8 @@ bundle: build
 	@cp Resources/LICENSE-PaddleOCR.txt "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/"
 	@cp "$(AI_USAGE_SOURCE_DIR)/LICENSE" "$(BUNDLE_DIR)/Contents/Resources/LICENSE-ai-usage.txt"
 	@cp "$(GET_MD_SOURCE_DIR)/LICENSE" "$(BUNDLE_DIR)/Contents/Resources/LICENSE-get-md.txt"
+	@# 署名より前に置く (署名の後に足すと seal が壊れる)。
+	@$(RUN) python3 scripts/setup_provider_logos.py --cache-dir "$(PROVIDER_LOGO_CACHE_DIR)" --dest "$(BUNDLE_PROVIDER_LOGO_DIR)"
 	@# リソースバンドルは Contents/Resources にのみ置く。ResourceBundle.resolve(named:)
 	@# がここを読む。Contents/MacOS へのコピーはどの探索経路からも参照されない
 	@# (Bundle.main.resourceURL / url(forResource:) / Bundle(for:).resourceURL /
@@ -130,6 +147,14 @@ bundle: build
 # `.app` に必要なリソースが揃っているか、バージョンが一意かを検証する。
 verify-bundle:
 	@test -s "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/rec.ocnn" -a -s "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/dict.txt" || { echo 'error: OCR model files are missing' >&2; exit 1; }
+	@for f in $(PROVIDER_LOGO_FILES); do \
+		if [ ! -s "$(BUNDLE_PROVIDER_LOGO_DIR)/$$f" ]; then \
+			echo "error: $$f が $(BUNDLE_PROVIDER_LOGO_DIR) に無いか空" >&2; \
+			echo "       bundle / dev の scripts/setup_provider_logos.py --dest を確認する。" >&2; \
+			exit 1; \
+		fi; \
+	done
+	@echo "Provider logos: OK"
 	@# SwiftPM のリソースバンドルは配置が 2 通りある。
 	@#   flat          : <name>.bundle/ja.lproj/Localizable.strings
 	@#   macOS バンドル: <name>.bundle/Contents/Resources/ja.lproj/Localizable.strings
@@ -205,6 +230,7 @@ dev: build-debug
 	@cp Resources/LICENSE-PaddleOCR.txt "$(BUNDLE_DIR)/Contents/Resources/OcrusModels/"
 	@cp "$(AI_USAGE_SOURCE_DIR)/LICENSE" "$(BUNDLE_DIR)/Contents/Resources/LICENSE-ai-usage.txt"
 	@cp "$(GET_MD_SOURCE_DIR)/LICENSE" "$(BUNDLE_DIR)/Contents/Resources/LICENSE-get-md.txt"
+	@$(RUN) python3 scripts/setup_provider_logos.py --cache-dir "$(PROVIDER_LOGO_CACHE_DIR)" --dest "$(BUNDLE_PROVIDER_LOGO_DIR)"
 	@# 配置方針は bundle ターゲットと同じ (Contents/Resources のみ)。
 	@for b in $(BUILD_DIR)/debug/*.bundle; do \
 		[ -d "$$b" ] || continue; \

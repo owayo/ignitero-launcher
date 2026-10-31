@@ -1,6 +1,6 @@
 """scripts/setup_provider_logos.py の単体テスト。ネットワークには出ない。
 
-    python3 -m unittest discover -s scripts/tests
+実行: python3 -m unittest discover -s scripts/tests
 """
 
 from __future__ import annotations
@@ -43,7 +43,8 @@ def _load_script():
 logos = _load_script()
 SetupError = logos.SetupError
 
-# 区切りの省略・円弧フラグの連結・指数表記を含む自作のパスデータ (ブランドのロゴではない)。
+# 区切りの省略・円弧フラグの連結・指数表記を含む自作のパスデータ。
+# ブランドのロゴではない。
 TRICKY_D = (
     "M1.5 2.25v-1.2c0-.19.072-.333.238-.428l4.5-2.6a.797.797 0 00-.856 0z"
     "M3 3h2v2H3z m1e-1,2E+0L-.5-.5"
@@ -81,12 +82,18 @@ class NormalizeSvgTests(unittest.TestCase):
         """パスデータを一字も変えず、文書の順に残す。"""
         second = "M0,0 L10,0 10,10 Z"
         output = logos.normalize_svg(_svg(_path(TRICKY_D) + _path(second)), "test")
-        self.assertEqual(re.findall(r' d="([^"]*)"', output.decode()), [TRICKY_D, second])
+        self.assertEqual(
+            re.findall(r' d="([^"]*)"', output.decode()), [TRICKY_D, second]
+        )
 
     def test_width_and_height_follow_view_box(self) -> None:
         """幅と高さを viewBox からとる (縦横が違う場合も)。"""
         cases = {
-            'viewBox="0 0 24 19.2" width="1em" height="1em"': ("0 0 24 19.2", "24", "19.2"),
+            'viewBox="0 0 24 19.2" width="1em" height="1em"': (
+                "0 0 24 19.2",
+                "24",
+                "19.2",
+            ),
             'viewBox="0,0,24,19.2"': ("0 0 24 19.2", "24", "19.2"),
             'viewBox=" -2 -1.5  30 12.25 "': ("-2 -1.5 30 12.25", "30", "12.25"),
         }
@@ -125,14 +132,14 @@ class NormalizeSvgTests(unittest.TestCase):
     def test_drops_declaration_comments_and_title(self) -> None:
         """XML 宣言・コメント・title を受け付け、出力からは落とす。"""
         data = (
-            '<?xml version="1.0" encoding="UTF-8"?>\n<!-- comment -->\n'
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">\n'
-            '  <title>Example</title>\n  <path d="M0 0h1v1H0z"/>\n</svg>\n'
-        ).encode()
+            b'<?xml version="1.0" encoding="UTF-8"?>\n<!-- comment -->\n'
+            b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">\n'
+            b'  <title>Example</title>\n  <path d="M0 0h1v1H0z"/>\n</svg>\n'
+        )
         expected = (
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"'
-            ' width="24" height="24"><path d="M0 0h1v1H0z" fill="#000000"/></svg>\n'
-        ).encode()
+            b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"'
+            b' width="24" height="24"><path d="M0 0h1v1H0z" fill="#000000"/></svg>\n'
+        )
         self.assertEqual(logos.normalize_svg(data, "test"), expected)
 
     def test_normalized_output_is_stable(self) -> None:
@@ -219,10 +226,10 @@ class RejectionTests(unittest.TestCase):
     def test_rejects_namespaced_href(self) -> None:
         """名前空間付きの外部参照 (xlink:href) を拒否する。"""
         data = (
-            '<svg xmlns="http://www.w3.org/2000/svg"'
-            ' xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24">'
-            '<path d="M0 0" xlink:href="https://example.com/a.svg"/></svg>'
-        ).encode()
+            b'<svg xmlns="http://www.w3.org/2000/svg"'
+            b' xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24">'
+            b'<path d="M0 0" xlink:href="https://example.com/a.svg"/></svg>'
+        )
         self.assert_rejected(data, "href (名前空間 http://www.w3.org/1999/xlink)")
 
     def test_rejects_style_that_affects_rendering(self) -> None:
@@ -271,10 +278,10 @@ class RejectionTests(unittest.TestCase):
     def test_rejects_doctype(self) -> None:
         """DOCTYPE (エンティティの定義) を拒否する。"""
         data = (
-            '<!DOCTYPE svg [<!ENTITY x "M0 0h1v1H0z">]>'
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
-            '<path d="&x;"/></svg>'
-        ).encode()
+            b'<!DOCTYPE svg [<!ENTITY x "M0 0h1v1H0z">]>'
+            b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
+            b'<path d="&x;"/></svg>'
+        )
         self.assert_rejected(data, "DOCTYPE")
 
     def test_rejects_processing_instructions(self) -> None:
@@ -472,6 +479,7 @@ class PipelineTests(unittest.TestCase):
 
         Returns:
             終了コード、標準出力、標準エラーの組。
+
         """
         stdout, stderr = io.StringIO(), io.StringIO()
         argv = ["--cache-dir", str(self.cache), *arguments]

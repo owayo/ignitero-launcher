@@ -38,11 +38,20 @@ jobs:
       - name: Generate emoji keywords
         run: python3 scripts/update_emoji_keywords.py
 
+      - name: Test Python scripts
+        # scripts/tests の単体テスト。ネットワークには出ない。
+        run: python3 -m unittest discover -v -s scripts/tests
+
       - name: Build native libraries
         run: IGNITERO_NATIVE_TESTS=1 make native
 
       - name: Prepare verified OCR model
         run: make setup-ocr-models OCRUS_MODEL_DIR="$RUNNER_TEMP/ocr-models"
+
+      - name: Prepare verified provider logos
+        # 第三者のロゴはリポジトリに入れず、lock の SHA-256 と照合して取得する。
+        # 後の make smoke-resources (bundle) は、このキャッシュを照合し直して .app に置く。
+        run: make setup-provider-logos PROVIDER_LOGO_CACHE_DIR="$RUNNER_TEMP/provider-logos"
 
       - name: Build
         # Swift 6.3 系の release 最適化で KeyboardShortcuts の SIL シリアライズが
@@ -60,4 +69,4 @@ jobs:
         # ビルドディレクトリの絶対パスで偶然解決できてしまうため、配布物でだけ
         # クラッシュする形で現れる (2026-09-01 に絵文字検索で発生)。
         # `.build` の `.bundle` を退避した状態で `.app` の自己診断を走らせて検出する。
-        run: make smoke-resources OCRUS_MODEL_DIR="$RUNNER_TEMP/ocr-models"
+        run: make smoke-resources OCRUS_MODEL_DIR="$RUNNER_TEMP/ocr-models" PROVIDER_LOGO_CACHE_DIR="$RUNNER_TEMP/provider-logos"

@@ -65,7 +65,8 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 プラン・手動リセットの期限・エラー全文は各行の詳細ボタンから確認できます。
 
 各行の左端には、プロバイダのブランドアイコン (Claude・Codex・Antigravity・PixelLab・Grok) を表示します。
-アイコンの色はai-usageのstatuslineと同じで、白黒のブランドであるCodexとGrokは文字と同じ色です。
+アイコンの色はai-usageのstatuslineに合わせ、白黒のブランドであるCodexとGrokは文字と同じ色にします。
+PixelLabの黄緑は白い背景で見えにくいため、ライトモードでは濃い緑にします。「コントラストを上げる」設定では、すべて文字と同じ色です。
 
 使用率・リセットまでの残り時間・手動リセットの期限は、ai-usageと同じ基準で色分けします。
 使用率の数字とバーは次の色になり、80%以上は数字を太字にします。
@@ -91,6 +92,12 @@ macOS向けの高速アプリケーション・ディレクトリランチャー
 
 ダークモードではai-usageの端末と同じ色を使います。赤だけは背景との差が足りないため、少し明るくしています。
 ライトモードと「コントラストを上げる」設定では、同じ色相のまま背景に対して読める濃さに変えます。
+
+ブランドアイコンは [lobe-icons](https://github.com/lobehub/lobe-icons) (MIT) のSVGと、PixelLab用に作成したSVGです。
+lobe-icons のSVGはリポジトリに含めません。`make bundle` と `make dev` が `Resources/provider-logos.lock.json` の
+版とSHA-256を確認してから `.app` に同梱します。取得したSVGは `~/.cache/ignitero-launcher/provider-logos` に残すため、
+2回目以降のビルドではネットワークに接続しません。オフラインでビルドする前に取得だけを済ませる場合は、
+`make setup-provider-logos` を実行します。アイコンを読めないときは、プロバイダ名の文字だけで表示します。
 
 Chromeのアカウントが表示されずmacOSにブロックされた場合は、「ヘルプ」→「アクセス設定…」から
 「プライバシーとセキュリティ」→「フルディスクアクセス」を確認してください。
@@ -291,7 +298,7 @@ Warp は実機の `sdef` がエラー -192 となり、`Info.plist` の `NSApple
 - macOS 26以降
 - Swift 6.2以降
 - Xcode 26以降
-- [mise](https://mise.jdx.dev)（`make build` / `make bundle` / `make install` が絵文字キーワード辞書の生成に使う Python の版を `mise.toml` で固定している。mise を使わない場合は `SYSTEM_TOOLS=1` を付けると PATH の `python3` を使う）
+- [mise](https://mise.jdx.dev)（`make build` / `make bundle` / `make install` / `make dev` が絵文字キーワード辞書の生成とブランドアイコンの同梱に使う Python の版を `mise.toml` で固定している。mise を使わない場合は `SYSTEM_TOOLS=1` を付けると PATH の `python3` を使う）
 
 ## インストール
 

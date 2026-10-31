@@ -28,6 +28,7 @@ AI利用枠の色分けは ai-usage (`render/palette.rs`・`reset.rs`・`manual_
 `Contents/Resources/ProviderLogos/` へ署名前に置く。SwiftPM のリソースではないので `ProviderLogoStore` が
 `Bundle.main.resourceURL` から読み、読めなければ provider 名の文字だけで表示する (fail-open)。
 `verify-bundle` が6ファイル、`--self-test-resources` が全アイコンの描画を確かめる。
+`make dev` もこの配置で Python を呼ぶため `NO_MISE_TARGETS` から外した (mise が無い環境では `SYSTEM_TOOLS=1`)。
 画面は `IGNITERO_AI_USAGE_SNAPSHOT_DIR=<出力先> IGNITERO_PROVIDER_LOGO_DIR=<SVGの置き場所> swift test --filter AIUsageSnapshotTests`
 でライト・ダークのPNGに書き出して確認する。設計の判断は `docs/ai-usage-brand-colors-2026-11-01.md`。
 
